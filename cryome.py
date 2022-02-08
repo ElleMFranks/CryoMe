@@ -29,7 +29,7 @@ import start_session as ss
 
 # region User defined settings
 # region Measurement settings
-comment_en = False        # True prompts user to input session comment
+comment_en = True        # True prompts user to input session comment
 dark_mode_plot = True     # True will save plots in dark mode palette
 in_cal_file_id = 1        # Decides which calibration file to use.
 instr_buffer_time = 0.3   # Seconds to wait between instrument commands.
