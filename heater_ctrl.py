@@ -39,7 +39,7 @@ def set_temp(tc_rm: pv.Resource, temp: float, lna_or_load: str) -> None:
     """Sets the temp of either the lna or load in the cryostat."""
     # region Send sample heater cmd if LNA or warmup cmd if Load.
     if lna_or_load == 'lna':
-        ut.safe_write(f'SETP 0 {temp}', 0.5, tc_rm)  # Sample heater set to 20k
+        ut.safe_write(f'SETP 0 {temp}', 0.5, tc_rm)  # Sample heater to 20k
         ut.safe_write('RANGE 0 8', 0.5, tc_rm)
     elif lna_or_load == 'load':
         ut.safe_write(f'SETP 1 {temp}', 0.5, tc_rm)

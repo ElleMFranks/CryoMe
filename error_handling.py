@@ -10,7 +10,8 @@ import util as ut
 import settings_classes as sc
 
 
-def check_lna_info(lna_info: sc.LNAInfo) -> None:
+def check_lna_info(
+    lna_info: sc.LNAInfo) -> None:
     """LNA info error handling."""
     if lna_info.lna_cryo_layout.cryo_chain not in [1, 2, 3]:
         raise Exception('Chain must be 1, 2, or 3.')
@@ -19,7 +20,8 @@ def check_lna_info(lna_info: sc.LNAInfo) -> None:
         raise Exception('Maximum 3 stages per chain.')
 
 
-def check_misc(misc: sc.Misc) -> None:
+def check_misc(
+    misc: sc.Misc) -> None:
     """Misc error handling"""
     if not isinstance(misc.dark_mode_plot, bool):
         raise Exception('Dark mode plot must be true or false.')
@@ -31,7 +33,8 @@ def check_misc(misc: sc.Misc) -> None:
         ut.yes_no('Order', misc.order, '')
 
 
-def check_cal_info(cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
+def check_cal_info(
+    cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
     """Cal info error handling."""
     if cal_info.is_calibration \
             and session_info.measure_method != 'Calibration':
@@ -45,7 +48,8 @@ def check_cal_info(cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
         raise Exception('Input cal file ID must be 1 or greater.')
 
 
-def check_session_info(session_info: sc.SessionInfo) -> None:
+def check_session_info(
+    session_info: sc.SessionInfo) -> None:
     """Session info error handling."""
     validate_filename(session_info.project_title)
     if session_info.measure_method not in ['ACTAH', 'AT',
@@ -53,7 +57,8 @@ def check_session_info(session_info: sc.SessionInfo) -> None:
         raise Exception('Invalid measurement method.')
 
 
-def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
+def check_meas_sequence(
+    meas_sequence: sc.MeasSequence) -> None:
     """Measurement sequence error handling."""
     # region Measurement sequence error handling.
     if (any(meas_sequence.stage_sequence) not in [1, 2, 3]) \
@@ -68,7 +73,8 @@ def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
     # endregion
 
 
-def check_nominals(nominal_bias: sc.NominalBias) -> None:
+def check_nominals(
+    nominal_bias: sc.NominalBias) -> None:
     """Nominal bias error handling."""
     # region Nominal bias error handling.
     if nominal_bias != None:
@@ -82,7 +88,8 @@ def check_nominals(nominal_bias: sc.NominalBias) -> None:
     # endregion
 
 
-def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
+def check_sweep_setup_vars(
+    sweep_setup_vars: sc.SweepSetupVars) -> None:
     """Sweep setup variable error handling."""
     # region Sweep setup variable error handling.
     if sweep_setup_vars.num_of_d_v > 6:
@@ -117,7 +124,8 @@ def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
     # endregion
 
 
-def check_sa_freq_settings(sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+def check_sa_freq_settings(
+    sa_freq_settings: ic.SpecAnFreqSettings) -> None:
     """"""
     if 0 > sa_freq_settings.center_freq > 10:
         raise Exception('Invalid center frequency.')
@@ -136,9 +144,9 @@ def check_sa_freq_settings(sa_freq_settings: ic.SpecAnFreqSettings) -> None:
 
 
 def check_sa_bw_settings(
-        sa_bw_settings: ic.SpecAnBWSettings,
-        sa_freq_settings: ic.SpecAnFreqSettings) -> None:
-    """"""
+    sa_bw_settings: ic.SpecAnBWSettings, 
+    sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+    """a"""
     if 1 > sa_bw_settings.res_bw > 100:
         ut.yes_no('Resolution Bandwidth', sa_bw_settings.res_bw, 'MHz')
 
@@ -149,7 +157,8 @@ def check_sa_bw_settings(
             (sa_freq_settings.freq_span * 2):
         ut.yes_no('Power Bandwidth', sa_bw_settings.power_bw, 'MHz')
 
-def check_sa_ampl_settings(sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
+def check_sa_ampl_settings(
+    sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
     """"""
     if 0 > sa_ampl_settings.atten > 30:
         ut.yes_no('Attenuation', sa_ampl_settings.atten, 'dB')
@@ -158,7 +167,7 @@ def check_sa_ampl_settings(sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
         ut.yes_no('Reference Level', sa_ampl_settings.ref_lvl, 'dBm')
 
 def check_freq_sweep_settings(
-        freq_sweep_settings: ic.FreqSweepSettings) -> None:
+    freq_sweep_settings: ic.FreqSweepSettings) -> None:
     """"""
     if 60 > freq_sweep_settings.min_freq > 350:
         ut.yes_no('Minimum Frequency', freq_sweep_settings.min_freq, 'GHz')
@@ -174,7 +183,8 @@ def check_freq_sweep_settings(
         ut.yes_no('Frequency Multi Factor',
                   freq_sweep_settings.inter_freq_factor, '')
 
-def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
+def check_temp_ctrl_channels(
+    temp_ctrl_channels: ic.TempCtrlChannels) -> None:
     """"""
     if int(temp_ctrl_channels.chn1_lna_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
@@ -188,7 +198,8 @@ def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
     if int(temp_ctrl_channels.load_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
 
-def check_temp_targets(temp_targets: ic.TempTargets) -> None:
+def check_temp_targets(
+    temp_targets: ic.TempTargets) -> None:
     """"""
     if temp_targets.cold_target > temp_targets.hot_target:
         raise Exception('Hot temperature must be greater than cold.')
@@ -201,7 +212,7 @@ def check_temp_targets(temp_targets: ic.TempTargets) -> None:
 
 
 def check_g_v_search_settings(
-        g_v_search_settings: ic.GVSearchSettings) -> None:
+    g_v_search_settings: ic.GVSearchSettings) -> None:
     """"""
     g_v_lower_lim = g_v_search_settings.g_v_lower_lim
     g_v_upper_lim = g_v_search_settings.g_v_upper_lim
@@ -233,7 +244,8 @@ def check_g_v_search_settings(
         ut.yes_no('Number of Gate Voltage Narrow Steps',
                   num_of_g_v_nrw_steps, 'V')
 
-def check_psu_limits(psu_limits: ic.PSULimits) -> None:
+def check_psu_limits(
+    psu_limits: ic.PSULimits) -> None:
     """"""
     if 3 > psu_limits.d_i_lim > 10:
         ut.yes_no('Drain Current Limit', psu_limits.d_i_lim, 'mA')
@@ -242,7 +254,8 @@ def check_psu_limits(psu_limits: ic.PSULimits) -> None:
         ut.yes_no('Voltage Step Limit', psu_limits.v_step_lim, 'V')
 
 
-def check_psu_meta_settings(psu_meta_settings: ic.PSUMetaSettings) -> None:
+def check_psu_meta_settings(
+    psu_meta_settings: ic.PSUMetaSettings) -> None:
     """"""
     if not isinstance(psu_meta_settings.bias_psu_en, bool):
         raise Exception('bias_psu_en must be True or False.')

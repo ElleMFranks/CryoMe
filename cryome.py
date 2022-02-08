@@ -108,6 +108,7 @@ allchn_load_lsch = '08'
 chn1_lna_lsch = '07'
 chn2_lna_lsch = '09'
 chn3_lna_lsch = '10'
+extra_sensors_en = False
 t_cold_target = 20.2    # Kelvin - To give 20K
 t_hot_target = 50.7     # 60.9K - To give 60K
 # endregion
@@ -199,7 +200,8 @@ for i, cryo_chain in enumerate(chain_sequence):
 
     # region Temperature Controller Settings
     temp_ctrl_channels = ic.TempCtrlChannels(
-        allchn_load_lsch, chn1_lna_lsch, chn2_lna_lsch, chn3_lna_lsch)
+        allchn_load_lsch, chn1_lna_lsch, chn2_lna_lsch,
+        chn3_lna_lsch, extra_sensors_en)
     temp_targets = ic.TempTargets(t_hot_target, t_cold_target)
     temp_ctrl_settings = ic.TempControllerSettings(
         temp_ctrl_channels, temp_targets, cryo_chain, temp_ctrl_en)

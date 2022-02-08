@@ -130,6 +130,7 @@ class TempCtrlChannels:
     chn1_lna_lsch: str
     chn2_lna_lsch: str
     chn3_lna_lsch: str
+    extra_sensors_en: bool
 
 
 @dataclass()
@@ -226,10 +227,11 @@ class PSULimits:
 class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
     """"""
-    def __init__(self, sa_freq_settings: SpecAnFreqSettings,
-                 sa_bw_settings: SpecAnBWSettings,
-                 sa_ampl_settings: SpecAnAmplSettings,
-                 sig_an_en: bool) -> None:
+    def __init__(
+        self, sa_freq_settings: SpecAnFreqSettings, 
+        sa_bw_settings: SpecAnBWSettings, 
+        sa_ampl_settings: SpecAnAmplSettings,
+        sig_an_en: bool) -> None:
         """"""
 
         # region Check input settings.

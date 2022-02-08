@@ -42,7 +42,7 @@ def _get_temp_target(
 
 def _get_temps(tc_rm, temp_target: float,
                instr_settings: ic.InstrumentSettings) -> list[float]:
-
+    # region Get and return temperatures for requested temp sensors.
     buffer_time = instr_settings.buffer_time
     ls_settings = instr_settings.temp_ctrl_settings
     if tc_rm is not None:
@@ -55,23 +55,32 @@ def _get_temps(tc_rm, temp_target: float,
         lna_temp = ut.safe_query(
             f'KRDG? {ls_settings.lna_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
-        extra_1_temp = ut.safe_query(
-            f'KRDG? {ls_settings.extra_1_lsch}', buffer_time, tc_rm,
-            'lakeshore', True)
-        extra_2_temp = ut.safe_query(
-            f'KRDG? {ls_settings.extra_2_lsch}', buffer_time, tc_rm,
-            'lakeshore', True)
+        if ls_settings.extra_sensors_en
+            extra_1_temp = ut.safe_query(
+                f'KRDG? {ls_settings.extra_1_lsch}', buffer_time, tc_rm,
+                'lakeshore', True)
+            extra_2_temp = ut.safe_query(
+                f'KRDG? {ls_settings.extra_2_lsch}', buffer_time, tc_rm,
+                'lakeshore', True)
+        else:
+            extra_1_temp = 'NA'
+            extra_2_temp = 'NA'
         # endregion
 
     # region Provide dummy temperature measurement values for debugging.
     else:
         load_temp = temp_target
         lna_temp = 21
-        extra_1_temp = 40
-        extra_2_temp = 30
+        if ls_settings.extra_sensors_en:
+            extra_1_temp = 40
+            extra_2_temp = 30
+        else:
+            extra_1_temp = 'NA'
+            extra_2_temp = 'NA'
     # endregion
 
     return [load_temp, lna_temp, extra_1_temp, extra_2_temp]
+    # endregion
 
 
 def _meas_loop(
