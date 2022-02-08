@@ -49,7 +49,7 @@ def _trigger_algorithm(settings, lna_biases, lna_nominals, res_managers,
                         settings.instr_settings.buffer_time)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
         # endregion
-        
+
         # region Set up LNA2.
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             lna_2_man = meas_settings.direct_lnas.manual_lna_settings.lna_2_man
@@ -100,7 +100,7 @@ def _comment_handling(comment_en: bool) -> str:
         comment = input("Please input measurement comment: ")
     else:
         print('Measurement comment not enabled')
-        comment = ''
+        comment = 'NA'
     return comment
     # endregion
 

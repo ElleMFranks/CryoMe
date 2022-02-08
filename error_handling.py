@@ -2,16 +2,18 @@
 """error_handling.py - Input checking functions and error types.
 """
 
+# region Import modules.
 from __future__ import annotations
 from pathvalidate import validate_filename
 
 import instr_classes as ic
 import util as ut
 import settings_classes as sc
+# endregion
 
 
-def check_lna_info(
-    lna_info: sc.LNAInfo) -> None:
+# region Measurement settings.
+def check_lna_info(lna_info: sc.LNAInfo) -> None:
     """LNA info error handling."""
     if lna_info.lna_cryo_layout.cryo_chain not in [1, 2, 3]:
         raise Exception('Chain must be 1, 2, or 3.')
@@ -20,8 +22,7 @@ def check_lna_info(
         raise Exception('Maximum 3 stages per chain.')
 
 
-def check_misc(
-    misc: sc.Misc) -> None:
+def check_misc(misc: sc.Misc) -> None:
     """Misc error handling"""
     if not isinstance(misc.dark_mode_plot, bool):
         raise Exception('Dark mode plot must be true or false.')
@@ -33,8 +34,7 @@ def check_misc(
         ut.yes_no('Order', misc.order, '')
 
 
-def check_cal_info(
-    cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
+def check_cal_info(cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
     """Cal info error handling."""
     if cal_info.is_calibration \
             and session_info.measure_method != 'Calibration':
@@ -48,48 +48,46 @@ def check_cal_info(
         raise Exception('Input cal file ID must be 1 or greater.')
 
 
-def check_session_info(
-    session_info: sc.SessionInfo) -> None:
+def check_session_info(session_info: sc.SessionInfo) -> None:
     """Session info error handling."""
     validate_filename(session_info.project_title)
     if session_info.measure_method not in ['ACTAH', 'AT',
                                            'MEM', 'Calibration']:
         raise Exception('Invalid measurement method.')
+# endregion
 
 
-def check_meas_sequence(
-    meas_sequence: sc.MeasSequence) -> None:
+# region Sweep settings.
+def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
     """Measurement sequence error handling."""
     # region Measurement sequence error handling.
     if (any(meas_sequence.stage_sequence) not in [1, 2, 3]) \
             or (0 >= len(meas_sequence.stage_sequence) > 3):
-        if meas_sequence.stage_sequence != []:
+        if meas_sequence.stage_sequence:
             raise Exception('Invalid stage sequence.')
 
     if (any(meas_sequence.lna_sequence) not in [1, 2]) \
             or (0 > len(meas_sequence.lna_sequence) > 2):
-        if meas_sequence.lna_sequence != []:
+        if meas_sequence.lna_sequence:
             raise Exception('Invalid LNA sequence.')
     # endregion
 
 
-def check_nominals(
-    nominal_bias: sc.NominalBias) -> None:
+def check_nominals(nominal_bias: sc.NominalBias) -> None:
     """Nominal bias error handling."""
     # region Nominal bias error handling.
-    if nominal_bias != None:
-        if 3 > nominal_bias.d_i_nominal > 9 and nominal_bias != None:
+    if nominal_bias is not None:
+        if 3 > nominal_bias.d_i_nominal > 9 and nominal_bias is not None:
             ut.yes_no('Nominal Drain Current', nominal_bias.d_i_nominal,
                       'mA')
 
-        if 0.5 > nominal_bias.d_v_nominal > 1.3 and nominal_bias != None:
+        if 0.5 > nominal_bias.d_v_nominal > 1.3 and nominal_bias is not None:
             ut.yes_no('Nominal Drain Voltage', nominal_bias.d_v_nominal,
                       'V')
     # endregion
 
 
-def check_sweep_setup_vars(
-    sweep_setup_vars: sc.SweepSetupVars) -> None:
+def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
     """Sweep setup variable error handling."""
     # region Sweep setup variable error handling.
     if sweep_setup_vars.num_of_d_v > 6:
@@ -122,11 +120,13 @@ def check_sweep_setup_vars(
             sweep_setup_vars.alt_temp_sweep_skips, int):
         raise Exception('Incorrectly specified alt_temp_sweep_skips.')
     # endregion
+# endregion
 
 
-def check_sa_freq_settings(
-    sa_freq_settings: ic.SpecAnFreqSettings) -> None:
-    """"""
+# region Instrumentation settings.
+# region Signal analyser settings.
+def check_sa_freq_settings(sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+    """Check signal analyser frequency settings."""
     if 0 > sa_freq_settings.center_freq > 10:
         raise Exception('Invalid center frequency.')
 
@@ -143,10 +143,9 @@ def check_sa_freq_settings(
         ut.yes_no('Frequency Span', sa_freq_settings.freq_span, 'MHz')
 
 
-def check_sa_bw_settings(
-    sa_bw_settings: ic.SpecAnBWSettings, 
-    sa_freq_settings: ic.SpecAnFreqSettings) -> None:
-    """a"""
+def check_sa_bw_settings(sa_bw_settings: ic.SpecAnBWSettings,
+                         sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+    """Check signal analyser bandwidth settings."""
     if 1 > sa_bw_settings.res_bw > 100:
         ut.yes_no('Resolution Bandwidth', sa_bw_settings.res_bw, 'MHz')
 
@@ -157,18 +156,21 @@ def check_sa_bw_settings(
             (sa_freq_settings.freq_span * 2):
         ut.yes_no('Power Bandwidth', sa_bw_settings.power_bw, 'MHz')
 
-def check_sa_ampl_settings(
-    sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
-    """"""
+
+def check_sa_ampl_settings(sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
+    """Check signal analyser amplitude settings."""
     if 0 > sa_ampl_settings.atten > 30:
         ut.yes_no('Attenuation', sa_ampl_settings.atten, 'dB')
 
     if -50 > sa_ampl_settings.ref_lvl > 0:
         ut.yes_no('Reference Level', sa_ampl_settings.ref_lvl, 'dBm')
+# endregion
 
+
+# region Signal generator settings.
 def check_freq_sweep_settings(
-    freq_sweep_settings: ic.FreqSweepSettings) -> None:
-    """"""
+        freq_sweep_settings: ic.FreqSweepSettings) -> None:
+    """Check frequency sweep settings."""
     if 60 > freq_sweep_settings.min_freq > 350:
         ut.yes_no('Minimum Frequency', freq_sweep_settings.min_freq, 'GHz')
 
@@ -182,10 +184,12 @@ def check_freq_sweep_settings(
     if freq_sweep_settings.inter_freq_factor != 8:
         ut.yes_no('Frequency Multi Factor',
                   freq_sweep_settings.inter_freq_factor, '')
+# endregion
 
-def check_temp_ctrl_channels(
-    temp_ctrl_channels: ic.TempCtrlChannels) -> None:
-    """"""
+
+# region Temperature controller settings.
+def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
+    """Check temperature controller channel settings."""
     if int(temp_ctrl_channels.chn1_lna_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
 
@@ -198,9 +202,12 @@ def check_temp_ctrl_channels(
     if int(temp_ctrl_channels.load_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
 
-def check_temp_targets(
-    temp_targets: ic.TempTargets) -> None:
-    """"""
+    if isinstance(temp_ctrl_channels.extra_sensors_en, bool):
+        raise Exception('extra_sensors_en must be True or False.')
+
+
+def check_temp_targets(temp_targets: ic.TempTargets) -> None:
+    """Check temperature controller target temperatures."""
     if temp_targets.cold_target > temp_targets.hot_target:
         raise Exception('Hot temperature must be greater than cold.')
 
@@ -209,11 +216,13 @@ def check_temp_targets(
 
     if 5 > temp_targets.cold_target > 40:
         ut.yes_no('Cold Target', temp_targets.cold_target, 'K')
+# endregion
 
 
+# region Bias PSU settings.
 def check_g_v_search_settings(
-    g_v_search_settings: ic.GVSearchSettings) -> None:
-    """"""
+        g_v_search_settings: ic.GVSearchSettings) -> None:
+    """Check gate voltage drain current search settings."""
     g_v_lower_lim = g_v_search_settings.g_v_lower_lim
     g_v_upper_lim = g_v_search_settings.g_v_upper_lim
     num_of_g_v_brd_steps = g_v_search_settings.num_of_g_v_brd_steps
@@ -244,9 +253,9 @@ def check_g_v_search_settings(
         ut.yes_no('Number of Gate Voltage Narrow Steps',
                   num_of_g_v_nrw_steps, 'V')
 
-def check_psu_limits(
-    psu_limits: ic.PSULimits) -> None:
-    """"""
+
+def check_psu_limits(psu_limits: ic.PSULimits) -> None:
+    """Check power supply limits."""
     if 3 > psu_limits.d_i_lim > 10:
         ut.yes_no('Drain Current Limit', psu_limits.d_i_lim, 'mA')
 
@@ -254,11 +263,12 @@ def check_psu_limits(
         ut.yes_no('Voltage Step Limit', psu_limits.v_step_lim, 'V')
 
 
-def check_psu_meta_settings(
-    psu_meta_settings: ic.PSUMetaSettings) -> None:
-    """"""
+def check_psu_meta_settings(psu_meta_settings: ic.PSUMetaSettings) -> None:
+    """Check power supply meta settings."""
     if not isinstance(psu_meta_settings.bias_psu_en, bool):
         raise Exception('bias_psu_en must be True or False.')
 
     if not isinstance(psu_meta_settings.psu_safe_init, bool):
         raise Exception('psu_safe_init must be True or False.')
+# endregion
+# endregion

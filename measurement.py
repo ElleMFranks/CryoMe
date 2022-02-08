@@ -55,7 +55,7 @@ def _get_temps(tc_rm, temp_target: float,
         lna_temp = ut.safe_query(
             f'KRDG? {ls_settings.lna_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
-        if ls_settings.extra_sensors_en
+        if ls_settings.extra_sensors_en:
             extra_1_temp = ut.safe_query(
                 f'KRDG? {ls_settings.extra_1_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
