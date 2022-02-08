@@ -1,0 +1,377 @@
+# -*- coding: utf-8 -*-
+"""meas_algorithms.py - Decides how each full measurement happens.
+
+Contains the different measurement algorithms which can be used for the
+y factor measurement:
+
+    * All Cold To All Hot (ACTAH)
+    * Alternating Temperatures (AT)
+    * Manual Entry Measurement (MEM)
+    * Calibration
+
+ACTAH and AT are bias sweeping algorithms, MEM is a single measurement
+with given parameters, and Calibration is a single measurement with only
+the back end LNAs present.
+"""
+
+# region Import modules.
+from __future__ import annotations
+from itertools import product
+import copy as cp
+
+import progressbar as pb
+
+import bias_ctrl as bc
+import instr_classes as ic
+import lna_classes as lc
+import measurement as meas
+import output_classes as ocl
+import output_saving as sv
+import settings_classes as sc
+# endregion
+
+
+def all_cold_to_all_hot(
+        settings: sc.Settings,
+        lna_biases: list[lc.LNABiasSet],
+        lna_nominals: lc.NominalLNASettings,
+        res_managers: ic.ResourceManagers,
+        trimmed_input_data: sc.TrimmedInputs) -> None:
+    """Parallel sweep where cold measurements are taken, then hot.
+
+    This  method loops through each drain current for each drain
+    voltage for each stage for each lna for cold and then hot
+    temperatures. A set of cold measurements is taken for each
+    point in the bias sweep, the cryostat temperature is then
+    taken up to the hot temperature, and the set of hot for each
+    bias point is taken. The results are then processed all at once.
+
+    Args:
+        settings:
+        lna_biases:
+        lna_nominals:
+        res_managers: An object containing the resource managers for the
+            instruments used in the measurement.
+        trimmed_input_data:
+    """
+    sweep_settings = settings.sweep_settings
+    meas_settings = settings.meas_settings
+    lna_1_bias = lna_biases[0]
+    lna_2_bias = lna_biases[1]
+    d_v_nom = settings.sweep_settings.d_v_nominal
+    d_i_nom = settings.sweep_settings.d_i_nominal
+
+    # region Instantiate arrays.
+    hot_array = []
+    cold_array = []
+    hot_cold = [0, 1]
+    lna_1_array = []
+    lna_2_array = []
+    prev_temp_ut = None
+    # endregion
+
+    # region Iterate measuring lna/stage/bias value states.
+    actah_pbar = pb.ProgressBar(max_value=len(list(product(
+            hot_cold, sweep_settings.lna_sequence,
+            sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
+            sweep_settings.d_i_sweep)))).start()
+
+    for i, state in enumerate(product(
+            hot_cold, sweep_settings.lna_sequence,
+            sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
+            sweep_settings.d_i_sweep)):
+        lna_noms = cp.copy(lna_nominals)
+        # region Get iterables from state object.
+        temp_ut = state[0]
+        lna_ut = state[1]
+        stage_ut = state[2]
+        d_v_ut = state[3]
+        d_i_ut = state[4]
+
+        prev_meas_same_temp = bool(prev_temp_ut == temp_ut)
+        # endregion
+
+        # region Configure LNA biasing settings to send to bias control.
+        # region LNA 1.
+        if lna_ut == 1:
+            lna_1_bias.sweep_setup(
+                stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+
+            if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+                lna_2_bias.nominalise(d_v_nom, d_i_nom)
+        # endregion
+
+        # region LNA 2.
+        elif lna_ut == 2 and \
+                meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+            lna_1_bias.nominalise(d_v_nom, d_i_nom)
+
+            lna_2_bias.sweep_setup(
+                stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+        # endregion
+
+        # endregion
+
+        # region Set and store LNA 1 PSU settings.
+        if res_managers.psu_rm is not None:
+            bc.bias_set(
+                res_managers.psu_rm, lna_1_bias,
+                settings.instr_settings.bias_psu_settings,
+                settings.instr_settings.buffer_time)
+
+        lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
+
+        if temp_ut == 0:
+            lna_1_array.append(cp.deepcopy(lna_1_bias))
+        # endregion
+
+        # region Set and store LNA 2 PSU settings.
+        if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+            if res_managers.psu_rm is not None:
+                bc.bias_set(
+                    res_managers.psu_rm, lna_2_bias,
+                    settings.instr_settings.bias_psu_settings,
+                    settings.instr_settings.buffer_time)
+
+            lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
+            lna_2_array.append(cp.deepcopy(lna_2_bias))
+
+        else:
+            if temp_ut == 0:
+                lna_2_array.append(cp.deepcopy(lna_2_bias))
+        # endregion
+
+        # region Trigger measurement
+        if temp_ut == 0:
+            cold_array.append(meas.measurement(
+                settings, res_managers, trimmed_input_data, temp_ut,
+                prev_meas_same_temp))
+
+        else:
+            hot_array.append(meas.measurement(
+                settings, res_managers, trimmed_input_data, temp_ut,
+                prev_meas_same_temp))
+
+        actah_pbar.update(i)
+        print(f'Measurement: {i} HotOrCold:{temp_ut} LNA:{lna_ut} '
+              f'DV:{d_v_ut:.2f} DI:{d_i_ut:.2f}')
+
+        prev_temp_ut = temp_ut
+        # endregion
+
+    actah_pbar.finish()
+    # endregion
+
+    # region Analyse and save each set of hot and cold results.
+    freq_array = settings.instr_settings.sig_gen_settings.freq_array
+    for i, _ in enumerate(hot_array):
+        result = ocl.Results(
+            ocl.LoopPair(cold_array[i], hot_array[i]),
+            ocl.ResultsMetaInfo(
+                meas_settings.comment, freq_array, meas_settings.order,
+                meas_settings.is_calibration, trimmed_input_data.trimmed_loss,
+                trimmed_input_data.trimmed_cal_data))
+
+        sv.save_standard_results(
+            settings, result, i + 1, lna_1_array[i], lna_2_array[i])
+    # endregion
+
+
+def alternating_temps(
+        settings: sc.Settings,
+        lna_biases: list[lc.LNABiasSet],
+        lna_nominals: lc.NominalLNASettings,
+        res_managers: ic.ResourceManagers,
+        trimmed_input_data: sc.TrimmedInputs) -> None:
+    """Series sweep where temp is alternated between measurements.
+
+    For each LNA, for each stage, for each drain voltage, for each
+    drain current a hot or cold temperature measurement is made, the
+    temperature is then taken to the alternative temperature and
+    another measurement is made.  Each individual measurement is saved
+    as the measurement progresses.  This sequential method is less at
+    risk of going wrong as should the measurement be interrupted only
+    the measurement being done at that instant is lost, instead of all
+    the results.
+
+    Args:
+        settings: The settings for the measurement session.
+        lna_biases: The target bias values for the LNAs in the cryostat
+            chain.
+        lna_nominals: Nominal bias settings for the LNAs.
+        res_managers: An object containing the resource managers for the
+            instruments used in the measurement.
+        trimmed_input_data:
+    """
+
+    # region Unpack classes.
+    sweep_settings = settings.sweep_settings
+    meas_settings = settings.meas_settings
+    lna_1_bias = lna_biases[0]
+    lna_2_bias = lna_biases[1]
+    d_v_nom = settings.sweep_settings.d_v_nominal
+    d_i_nom = settings.sweep_settings.d_i_nominal
+    # endregion
+
+    # region Iterate measuring and saving lna/stage/bias value states.
+    at_pbar = pb.ProgressBar(max_value=len(list(product(
+            sweep_settings.lna_sequence, sweep_settings.stage_sequence,
+            sweep_settings.d_v_sweep, sweep_settings.d_i_sweep)))).start()
+    for i, state in enumerate(product(
+            sweep_settings.lna_sequence, sweep_settings.stage_sequence,
+            sweep_settings.d_v_sweep, sweep_settings.d_i_sweep)):
+
+        lna_noms = cp.deepcopy(lna_nominals)
+
+        if i >= sweep_settings.alt_temp_sweep_skips:
+            # region Get iterables from state object.
+            lna_ut = state[0]
+            stage_ut = state[1]
+            d_v_ut = state[2]
+            d_i_ut = state[3]
+            # endregion
+
+            # region Configure LNA Biasing.
+            # region LNA 1.
+            if lna_ut == 1:
+
+                lna_1_bias.sweep_setup(
+                    stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+
+                if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+                    lna_2_bias.nominalise(d_v_nom, d_i_nom)
+            # endregion
+
+            # region LNA 2.
+            elif lna_ut == 2 and \
+                    meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+                lna_1_bias.nominalise(d_v_nom, d_i_nom)
+
+                lna_2_bias.sweep_setup(
+                    stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+            # endregion
+            # endregion
+
+            # region Set and enable power supply.
+            # region LNA 1.
+            if res_managers.psu_rm is not None:
+                bc.bias_set(
+                    res_managers.psu_rm, lna_1_bias,
+                    settings.instr_settings.bias_psu_settings,
+                    settings.instr_settings.buffer_time)
+
+            lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
+            # endregion
+
+            # region LNA 2.
+            if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
+                if res_managers.psu_rm is not None:
+                    bc.bias_set(
+                        res_managers.psu_rm, lna_2_bias,
+                        settings.instr_settings.bias_psu_settings,
+                        settings.instr_settings.buffer_time)
+                lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
+            # endregion
+            # endregion
+
+            # region Trigger measurement.
+            standard_results = meas.measurement(
+                settings, res_managers, trimmed_input_data)
+            # endregion
+
+            # region Analyse and save results.
+            sv.save_standard_results(
+                settings, standard_results, i + 1, lna_1_bias, lna_2_bias)
+            # endregion
+
+            # region Update status and continue sweep.
+            at_pbar.update(i)
+            print('Measurement finished, incrementing bias sweep')
+            # endregion
+        
+        del lna_noms    
+        # endregion
+
+    at_pbar.finish()
+    # endregion
+
+
+def calibration_measurement(
+        settings: sc.Settings, res_managers: ic.ResourceManagers,
+        trimmed_loss: list[float]) -> None:
+    """Triggers and saves a calibration measurement.
+
+    Calibration measurements are output into the calibration folder into
+    a folder for whichever specific chain the calibration is done with.
+    Other measurements are corrected with the output of this type of
+    measurement. Only the backend LNAs should be present during this
+    measurement.
+
+    Args:
+        settings:
+        res_managers: An object containing the resource managers for the
+            instruments used in the measurement.
+        trimmed_loss: The loss to be accounted for at each frequency
+            point as obtained by interpolation/decimation of the
+            measured loss over frequency.
+    """
+    # region Trigger measurement and save results.
+    meas_settings = settings.meas_settings
+    be_lna_settings = meas_settings.direct_lnas.be_lna_settings
+
+    rtbe_lna_bias = be_lna_settings.rtbe_chain_a_lna
+    rtbe_stg = be_lna_settings.rtbe_chain_a_lna.stage_1
+
+    if settings.instr_settings.switch_settings.cryo_chain == 1:
+        crbe_lna_bias = be_lna_settings.crbe_chain_1_lna
+        crbe_stg = be_lna_settings.crbe_chain_1_lna.stage_1
+
+    elif settings.instr_settings.switch_settings.cryo_chain == 2:
+        crbe_lna_bias = be_lna_settings.crbe_chain_2_lna
+        crbe_stg = be_lna_settings.crbe_chain_2_lna.stage_1
+
+    elif settings.instr_settings.switch_settings.cryo_chain == 3:
+        crbe_lna_bias = be_lna_settings.crbe_chain_3_lna
+        crbe_stg = be_lna_settings.crbe_chain_3_lna.stage_1
+    else:
+        raise Exception('Cryostat chain not set.')
+
+    calibration_result = meas.measurement(
+        settings, res_managers, sc.TrimmedInputs(trimmed_loss))
+
+    be_biases = [crbe_lna_bias, rtbe_lna_bias]
+    be_stages = [crbe_stg, rtbe_stg]
+    sv.save_calibration_results(
+        be_biases, be_stages, settings, calibration_result)
+    # endregion
+
+
+def manual_entry_measurement(
+        settings: sc.Settings,
+        lna_biases: list[lc.LNABiasSet],
+        res_managers: ic.ResourceManagers,
+        trimmed_input_data: sc.TrimmedInputs) -> None:
+    """Single measurement point with user input bias conditions.
+
+    User inputs bias array for a noise temperature measurement, this
+    function then applies that bias condition, conducts the test, and
+    saves the result.
+
+    Args:
+        settings: Contains settings for measurement session.
+        res_managers: An object containing the resource managers for the
+            instruments used in the measurement.
+        lna_biases:
+        trimmed_input_data:
+    """
+    # region Set bias ID, trigger measurement, save results.
+    bias_id = 1
+    lna_1_bias = lna_biases[0]
+    lna_2_bias = lna_biases[1]
+
+    standard_results = meas.measurement(
+        settings, res_managers, trimmed_input_data)
+
+    sv.save_standard_results(
+        settings, standard_results, bias_id, lna_1_bias, lna_2_bias)
+    # endregion
