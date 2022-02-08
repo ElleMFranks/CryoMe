@@ -162,20 +162,21 @@ temp_ctrl_en = False
 # endregion
 
 # region Measure each chain as requested.
-for cryo_chain in chain_sequence:
+for i, cryo_chain in enumerate(chain_sequence):
 
     # region Reset all class instances.
-    sig_an_settings = None
-    sig_gen_settings = None
-    temp_ctrl_settings = None
-    bias_psu_settings = None
-    switch_settings = None
-    be_lna_settings = None
-    manual_lna_settings = None
-    mean_settings = None
-    sweep_settings = None
-    instr_settings = None
-    file_struc = None
+    if i > 0:
+        del sig_an_settings
+        del sig_gen_settings
+        del temp_ctrl_settings
+        del bias_psu_settings
+        del switch_settings
+        del be_lna_settings
+        del manual_lna_settings
+        del meas_settings
+        del sweep_settings
+        del instr_settings
+        del file_struc
     # endregion
 
     # region Put user variables into class instances.
