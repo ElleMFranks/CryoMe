@@ -431,10 +431,10 @@ def _post_process(freqs, non_db_gain: list, noise_temperature,
         std_devs = []
         rngs = []
         for bandwidth in bandwidths:
-            if bandwidth is not None:
+            if bandwidth:
                 trimmed_res = []
                 for freq_res in freq_results:
-                    if bandwidth[0] >= freq_res[0] >= bandwidth[1]:
+                    if bandwidth[0] <= freq_res[0] <= bandwidth[1]:
                         trimmed_res.append(freq_res[1])
                 if is_gain:
                     avgs.append(10 * mt.log10(abs(st.mean(trimmed_res))))
@@ -571,17 +571,17 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Date', 'Time', 'Comment', '',
             'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
             'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Range (K)']
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev']
         return res_ana_log_col_titles
 
     def results_ana_log_data(self, meas_settings: sc.MeasurementSettings,
@@ -596,7 +596,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         bws = [bw_1, bw_2, bw_3, bw_4, bw_5]
         bws_trm = []
         for bandwidth in bws:
-            if bandwidth is not None:
+            if bandwidth:
                 bws_trm.append(f'{bandwidth[0]:.2f} -> {bandwidth[1]:.2f}')
             else:
                 bws_trm.append('NA')
@@ -610,7 +610,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.gain_post_proc.gain_std_dev_full,
             self.gain_post_proc.gain_range_full,
             self.noise_temp_post_proc.avg_noise_temp_full,
-            self.noise_temp_post_proc.noise_temp_std_dev_bws, None,
+            self.noise_temp_post_proc.noise_temp_std_dev_full, None,
             self.gain_post_proc.avg_gain_bws[0],
             self.gain_post_proc.gain_std_dev_bws[0],
             self.gain_post_proc.gain_range_bws[0],
