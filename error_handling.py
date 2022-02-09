@@ -202,7 +202,7 @@ def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
     if int(temp_ctrl_channels.load_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
 
-    if isinstance(temp_ctrl_channels.extra_sensors_en, bool):
+    if not isinstance(temp_ctrl_channels.extra_sensors_en, bool):
         raise Exception('extra_sensors_en must be True or False.')
 
 

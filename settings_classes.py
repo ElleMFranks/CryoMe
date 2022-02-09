@@ -23,29 +23,6 @@ import util as ut
 
 # region Base Level Classes.
 # region Measurement Settings.
-# region Session Settings.
-@dataclass()
-class SessionInfo:
-    """Object containing the session title and measurement method.
-
-    Constructor Attributes:
-        project_title (str): The title of the project for the current
-            measurement session. No special characters  and keep it
-            short, becomes results folder/file titles.
-
-        measure_method (str): Decides which measurement algorithm to use
-            for the current measurement.
-            AllColdToAllHot = 'ACTAH' - Does all cold then all hot
-            measurements. Parallel measurements.
-            AlternatingTemps: 'AT' - Does one cold, then the
-            corresponding hot measurement. Sequential measurements.
-            ManualEntryMeasure: 'MEM' - Measures the bias point which is
-            manually entered.
-    """
-    project_title: str
-    measure_method: str
-
-
 @dataclass()
 class CalInfo:
     """Object containing user inputs regarding calibration.
@@ -76,6 +53,53 @@ class Misc:
     comment_en: bool = False
     dark_mode_plot: bool = True
     order: int = 1
+
+
+@dataclass()
+class AnalysisBandwidths:
+    """Sub bandwidths to analyse data over defined by min-max GHz freqs.
+
+    Constructor Attributes:
+        bw_1_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 1.
+        bw_2_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 2.
+        bw_3_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 3.
+        bw_4_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 4.
+        bw_5_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 5.
+    """
+    bw_1_min_max: Optional[list[float]]
+    bw_2_min_max: Optional[list[float]]
+    bw_3_min_max: Optional[list[float]]
+    bw_4_min_max: Optional[list[float]]
+    bw_5_min_max: Optional[list[float]]
+
+
+# region Session Settings.
+@dataclass()
+class SessionInfo:
+    """Object containing the session title and measurement method.
+
+    Constructor Attributes:
+        project_title (str): The title of the project for the current
+            measurement session. No special characters  and keep it
+            short, becomes results folder/file titles.
+
+        measure_method (str): Decides which measurement algorithm to use
+            for the current measurement.
+            AllColdToAllHot = 'ACTAH' - Does all cold then all hot
+            measurements. Parallel measurements.
+            AlternatingTemps: 'AT' - Does one cold, then the
+            corresponding hot measurement. Sequential measurements.
+            ManualEntryMeasure: 'MEM' - Measures the bias point which is
+            manually entered.
+    """
+    project_title: str
+    measure_method: str
+    analysis_bws: AnalysisBandwidths
 # endregion
 
 
@@ -465,6 +489,7 @@ class FileStructure:
         in_cal_file_path (Path): The path for the input calibration file
             for this measurement.
         settings_path (Path): The path for the settings log file.
+        res_log_path (Path): The path for the results log file.
     """
 
     def __init__(self, project_title: str, in_cal_file_id: int,
@@ -500,6 +525,9 @@ class FileStructure:
         self.settings_path = pl.Path(
             str(self.results_directory) +
             f'\\{project_title} Settings Log.csv')
+        self.res_log_path = pl.Path(
+            str(self.results_directory) +
+            f'\\{project_title} Results Log.csv')
         # endregion
 
         # region Check results/calibration folder exist, if not create.
@@ -509,6 +537,7 @@ class FileStructure:
 
         # region If normal and cal settings logs don't exist make them.
         self._settings_log_setup()
+        self._results_log_setup()
         # endregion
 
     def _settings_log_setup(self):
@@ -531,6 +560,19 @@ class FileStructure:
                 writer = csv.writer(
                     file, quoting=csv.QUOTE_NONE, escapechar='\\')
                 writer.writerows([cal_settings_col_titles])
+        # endregion
+
+    def _results_log_setup(self):
+        """Sets up the results log."""
+        # region Setup results log
+        if not os.path.isfile(self.res_log_path):
+            res_log_col_header = oc.Results.results_ana_log_header()
+            res_log_col_titles = oc.Results.results_ana_log_column_titles()
+            with open(self.res_log_path,
+                      'a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(
+                    file, quoting=csv.QUOTE_NONE, escapechar='\\')
+                writer.writerows([res_log_col_header, res_log_col_titles])
         # endregion
 # endregion
 

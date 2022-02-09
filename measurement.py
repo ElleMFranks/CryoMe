@@ -332,6 +332,7 @@ def measurement(
             ocl.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
+                meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss,
                 trimmed_input_data.trimmed_cal_data))
 
@@ -387,6 +388,7 @@ def measurement(
             ocl.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
+                meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss))
 
         return calibration_results

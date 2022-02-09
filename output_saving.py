@@ -241,7 +241,7 @@ def save_standard_results(
             *rtbe_lna.lna_meas_column_data]
     # endregion
 
-    # region Add row to settings log
+    # region Add row to settings log.
     with open(
             file_struc.settings_path, 'a',
             newline='', encoding="utf-8") as file:
@@ -252,6 +252,17 @@ def save_standard_results(
 
     print('Settings log updated')
     print('Saving raw results to be processed')
+
+    # region Update results log.
+    res_log_data = results.results_ana_log_data(meas_settings, bias_id)
+
+    with open(
+            file_struc.res_log_path, 'a',
+            newline='', encoding="utf-8") as file:
+        writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
+                            delimiter=',', escapechar='\\')
+        writer.writerow(res_log_data)
+    # endregion
 
     # region Setup and save plot
     lna_biases = [lna_1_bias, lna_2_bias]

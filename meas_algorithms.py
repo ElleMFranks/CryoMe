@@ -169,7 +169,8 @@ def all_cold_to_all_hot(
             ocl.LoopPair(cold_array[i], hot_array[i]),
             ocl.ResultsMetaInfo(
                 meas_settings.comment, freq_array, meas_settings.order,
-                meas_settings.is_calibration, trimmed_input_data.trimmed_loss,
+                meas_settings.is_calibration, meas_settings.analysis_bws,
+                trimmed_input_data.trimmed_loss,
                 trimmed_input_data.trimmed_cal_data))
 
         sv.save_standard_results(

@@ -15,6 +15,7 @@ import datetime as dt
 import math as mt
 import os
 import pathlib as pl
+import statistics as st
 
 import numpy as np
 
@@ -66,7 +67,69 @@ class LoopInstanceResult:
     load_temps: list
     lna_temps: list
     pre_post_temps: PrePostTemps
+
+
+@dataclass()
+class AnalysisBandwidths:
+    """Sub bandwidths to analyse data over defined by min-max GHz freqs.
+
+    Constructor Attributes:
+        bw_1_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 1.
+        bw_2_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 2.
+        bw_3_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 3.
+        bw_4_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 4.
+        bw_5_min_max (Optional[list[float]]): Sub bandwidth min max GHz
+            freq 5.
+    """
+    bw_1_min_max: Optional[list[float]]
+    bw_2_min_max: Optional[list[float]]
+    bw_3_min_max: Optional[list[float]]
+    bw_4_min_max: Optional[list[float]]
+    bw_5_min_max: Optional[list[float]]
 # endregion
+
+
+@dataclass()
+class GainPostProc:
+    """Post-processing gain outputs.
+
+    Constructor Attributes:
+        avg_gain_full (float): Full bandwidth average gain (dBm)
+        gain_std_dev_full (float): Full bandwidth gain standard
+            deviation.
+        gain_range_full (float): Full bandwidth gain range (dB)
+        avg_gain_bws (list[Optional[float]]): Sub bandwidth average
+            gain (dBm).
+        gain_std_dev_bws (list[Optional[float]]): Sub bandwidth standard
+            deviations.
+        gain_range_bws (list[Optional[float]]): Sub bandwidth ranges.
+    """
+    avg_gain_full: float
+    gain_std_dev_full: float
+    gain_range_full: float
+    avg_gain_bws: list[Optional[float]]
+    gain_std_dev_bws: list[Optional[float]]
+    gain_range_bws: list[Optional[float]]
+
+
+@dataclass()
+class NoiseTempPostProc:
+    """Post-processing noise temperature outputs.
+
+    Constructor Attributes:
+        avg_noise_temp_full (float):
+        noise_temp_std_dev_full (float):
+        avg_noise_temp_bws (list[Optional[float]]):
+        noise_temp_std_dev_bws (float[Optional[float]]):
+    """
+    avg_noise_temp_full: float
+    noise_temp_std_dev_full: float
+    avg_noise_temp_bws: list[Optional[float]]
+    noise_temp_std_dev_bws: list[Optional[float]]
 
 
 # region Mid level classes.
@@ -172,7 +235,7 @@ class CalibrationAnalysedResults:
     loss_cor_noise_temp: list[float]
 
 
-@dataclass
+@dataclass()
 class ResultsMetaInfo:
     """Non measurement output results information.
 
@@ -187,6 +250,9 @@ class ResultsMetaInfo:
         is_calibration (bool): Decides whether the measurement is
             handled as a calibration, if it is then there are different
             ways to process and store the results.
+        sub_bws (list[Optional[list[float]]]): The minimum and maximum
+            GHz frequencies of the sub-bandwidths for post-processing
+            analysis.
         trimmed_loss (list[float]): Cryostat losses at each requested
             freq point in dB.
         trimmed_in_cal_data (Optional[list[float]]): The input
@@ -196,8 +262,22 @@ class ResultsMetaInfo:
     freq_array: list[float]
     order: int
     is_calibration: bool
+    sub_bws: AnalysisBandwidths
     trimmed_loss: list[float]
     trimmed_in_cal_data: Optional[list[float]] = None
+
+
+@dataclass()
+class PostProcResults:
+    """Contains gain and noise temperature results analysis.
+
+    Constructor Attributes:
+        gain_post_proc (GainPostProc): Post processed gain.
+        noise_temp_post_proc (NoiseTempPostProc): Post processed noise
+            temperature.
+    """
+    gain_post_proc: GainPostProc
+    noise_temp_post_proc: NoiseTempPostProc
 # endregion
 
 
@@ -323,9 +403,78 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
 # endregion
 
 
+# region Top level class post-processing
+def _post_process(freqs, non_db_gain: list, noise_temperature,
+                  bws: AnalysisBandwidths) -> PostProcResults:
+    """Carries out post-processing on results set."""
+    freqs = np.array(freqs)
+    gain = np.array(non_db_gain)
+    noise_temperature = np.array(noise_temperature)
+    f_gain = np.column_stack((freqs, gain))
+    f_nt = np.column_stack((freqs, noise_temperature))
+
+    bandwidths = [bws.bw_1_min_max, bws.bw_2_min_max, bws.bw_3_min_max,
+                  bws.bw_4_min_max, bws.bw_5_min_max]
+
+    def _bw_analyse(freq_results: np.ndarray, is_gain: bool) -> list:
+        """Returns [mean, standard deviations] for sub-bandwidths.
+
+        Args:
+            freq_results: An array [frequency (GHz), result].
+            is_gain: If true analyses as gain.
+
+        Returns:
+            [Bandwidth[mean, standard deviation, (if gain then) range]]
+        """
+
+        avgs = []
+        std_devs = []
+        rngs = []
+        for bandwidth in bandwidths:
+            if bandwidth is not None:
+                trimmed_res = []
+                for freq_res in freq_results:
+                    if bandwidth[0] >= freq_res[0] >= bandwidth[1]:
+                        trimmed_res.append(freq_res[1])
+                if is_gain:
+                    avgs.append(10 * mt.log10(abs(st.mean(trimmed_res))))
+                    rng = 10 * mt.log10(max(trimmed_res) - min(trimmed_res))
+                    rngs.append(10 * mt.log10(rng))
+                else:
+                    avgs.append(st.mean(trimmed_res))
+                    rngs.append('NA')
+                std_devs.append(st.stdev(trimmed_res))
+            else:
+                avgs.append('NA')
+                std_devs.append('NA')
+                rngs.append('NA')
+        if is_gain:
+            return [avgs, std_devs, gain]
+        return [avgs, std_devs]
+
+    gain_full_analysis = [10 * mt.log10(abs(st.mean(gain))), st.stdev(gain),
+                          10 * mt.log10(max(gain) - min(gain))]
+    noise_temp_full_analysis = [st.mean(noise_temperature),
+                                st.stdev(noise_temperature)]
+    gain_bws_analyses = _bw_analyse(f_gain, True)
+    noise_temp_bws_analyses = _bw_analyse(f_nt, False)
+
+    return PostProcResults(
+        GainPostProc(gain_full_analysis[0],
+                     gain_full_analysis[1],
+                     gain_full_analysis[2],
+                     gain_bws_analyses[0],
+                     gain_bws_analyses[1],
+                     gain_bws_analyses[2]),
+        NoiseTempPostProc(noise_temp_full_analysis[0],
+                          noise_temp_full_analysis[1],
+                          noise_temp_bws_analyses[0],
+                          noise_temp_bws_analyses[1]))
+
+
 # region Top level class.
 class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
-              ResultsMetaInfo):
+              ResultsMetaInfo, AnalysisBandwidths, PostProcResults):
     """Overall results incorporating hot and cold measurements.
 
     Attributes:
@@ -351,9 +500,16 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
                 self, *ut.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
         else:
+            AnalysisBandwidths.__init__(self, *ut.get_dataclass_args(results_meta_info.sub_bws))
+
             StandardAnalysedResults.__init__(
                 self, *ut.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
+
+            PostProcResults.__init__(self, *ut.get_dataclass_args(
+                _post_process(self.freq_array, self.gain.gain,
+                              self.noise_temp.cal_loss_cor,
+                              results_meta_info.sub_bws)))
         # endregion
 
         # region Set time and date of creation as attributes.
@@ -370,27 +526,118 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         """Returns the standard settings column titles."""
         settings_col_titles = [
             'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date', 'Time', 'Comment','', 'Center Frequency (GHz)', 
-            'Marker Frequency (GHz)', 'Resolution Bandwidth (MHz)', 
-            'Video Bandwidth (Hz)', 'Frequency Span (MHz)', 
-            'Power Bandwidth (MHz)', 'Attenuation (dB)','',
+            'Date', 'Time', 'Comment', '', 'Center Frequency (GHz)',
+            'Marker Frequency (GHz)', 'Resolution Bandwidth (MHz)',
+            'Video Bandwidth (Hz)', 'Frequency Span (MHz)',
+            'Power Bandwidth (MHz)', 'Attenuation (dB)', '',
             'L1S1GV Set (V)', 'L1S1DV Set (V)', 'L1S1DI Set (mA)',
             'L1S2GV Set (V)', 'L1S2DV Set (V)', 'L1S2DI Set (mA)',
-            'L1S3GV Set (V)', 'L1S3DV Set (V)', 'L1S3DI Set (mA)','',
+            'L1S3GV Set (V)', 'L1S3DV Set (V)', 'L1S3DI Set (mA)', '',
             'L2S1GV Set (V)', 'L2S1DV Set (V)', 'L2S1DI Set (mA)',
             'L2S2GV Set (V)', 'L2S2DV Set (V)', 'L2S2DI Set (mA)',
             'L2S3GV Set (V)', 'L2S3DV Set (V)', 'L2S3DI Set (mA)','',
             'L1S1GV Meas (V)', 'L1S1DV Meas (V)', 'L1S1DI Meas (mA)',
             'L1S2GV Meas (V)', 'L1S2DV Meas (V)', 'L1S2DI Meas (mA)',
-            'L1S3GV Meas (V)', 'L1S3DV Meas (V)', 'L1S3DI Meas (mA)','',
+            'L1S3GV Meas (V)', 'L1S3DV Meas (V)', 'L1S3DI Meas (mA)', '',
             'L2S1GV Meas (V)', 'L2S1DV Meas (V)', 'L2S1DI Meas (mA)',
             'L2S2GV Meas (V)', 'L2S2DV Meas (V)', 'L2S2DI Meas (mA)',
-            'L2S3GV Meas (V)', 'L2S3DV Meas (V)', 'L2S3DI Meas (mA)','',
-            'CRBE GV Set (V)', 'CRBE DV Set (V)', 'CRBE DI Set (mA)', 
-            'RTBE GV Set (V)', 'RTBE DV Set (V)', 'RTBE DI Set (mA)','', 
+            'L2S3GV Meas (V)', 'L2S3DV Meas (V)', 'L2S3DI Meas (mA)', '',
+            'CRBE GV Set (V)', 'CRBE DV Set (V)', 'CRBE DI Set (mA)',
+            'RTBE GV Set (V)', 'RTBE DV Set (V)', 'RTBE DI Set (mA)', '',
             'CRBE GV Meas (V)', 'CRBE DV Meas (V)', 'CRBE DI Meas (mA)',
             'RTBE GV Meas (V)', 'RTBE DV Meas (V)', 'RTBE DI Meas (mA)']
         return settings_col_titles
+
+    @staticmethod
+    def results_ana_log_header() -> list[str]:
+        """Returns part of the header for the results analysis log."""
+        res_ana_log_header = [
+            '', '', '', '',
+            '', '', '', '',
+            '', '', '', '', '', '',
+            'FBW', 'FBW', 'FBW', 'FBW', 'FBW', '',
+            'BW1', 'BW1', 'BW1', 'BW1', 'BW1', '',
+            'BW2', 'BW2', 'BW2', 'BW2', 'BW2', '',
+            'BW3', 'BW3', 'BW3', 'BW3', 'BW3', '',
+            'BW4', 'BW4', 'BW4', 'BW4', 'BW4', '',
+            'BW5', 'BW5', 'BW5', 'BW5', 'BW5', '']
+        return res_ana_log_header
+
+    @staticmethod
+    def results_ana_log_column_titles() -> list[str]:
+        """Returns the column titles for the results analysis log."""
+        res_ana_log_col_titles = [
+            'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
+            'Date', 'Time', 'Comment', '',
+            'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)', '',
+            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Range (K)']
+        return res_ana_log_col_titles
+
+    def results_ana_log_data(self, meas_settings: sc.MeasurementSettings,
+                             bias_id: int) -> list:
+
+        bw_1 = self.bw_1_min_max
+        bw_2 = self.bw_2_min_max
+        bw_3 = self.bw_3_min_max
+        bw_4 = self.bw_4_min_max
+        bw_5 = self.bw_5_min_max
+
+        bws = [bw_1, bw_2, bw_3, bw_4, bw_5]
+        bws_trm = []
+        for bandwidth in bws:
+            if bandwidth is not None:
+                bws_trm.append(f'{bandwidth[0]:.2f} -> {bandwidth[1]:.2f}')
+            else:
+                bws_trm.append('NA')
+
+        col_data = [
+            meas_settings.project_title, meas_settings.lna_id_str,
+            str(meas_settings.session_id), str(bias_id),
+            self.date_str, self.time_str, meas_settings.comment, None,
+            bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4], None,
+            self.gain_post_proc.avg_gain_full,
+            self.gain_post_proc.gain_std_dev_full,
+            self.gain_post_proc.gain_range_full,
+            self.noise_temp_post_proc.avg_noise_temp_full,
+            self.noise_temp_post_proc.noise_temp_std_dev_bws, None,
+            self.gain_post_proc.avg_gain_bws[0],
+            self.gain_post_proc.gain_std_dev_bws[0],
+            self.gain_post_proc.gain_range_bws[0],
+            self.noise_temp_post_proc.avg_noise_temp_bws[0],
+            self.noise_temp_post_proc.noise_temp_std_dev_bws[0], None,
+            self.gain_post_proc.avg_gain_bws[1],
+            self.gain_post_proc.gain_std_dev_bws[1],
+            self.gain_post_proc.gain_range_bws[1],
+            self.noise_temp_post_proc.avg_noise_temp_bws[1],
+            self.noise_temp_post_proc.noise_temp_std_dev_bws[1], None,
+            self.gain_post_proc.avg_gain_bws[2],
+            self.gain_post_proc.gain_std_dev_bws[2],
+            self.gain_post_proc.gain_range_bws[2],
+            self.noise_temp_post_proc.avg_noise_temp_bws[2],
+            self.noise_temp_post_proc.noise_temp_std_dev_bws[2], None,
+            self.gain_post_proc.avg_gain_bws[3],
+            self.gain_post_proc.gain_std_dev_bws[3],
+            self.gain_post_proc.gain_range_bws[3],
+            self.noise_temp_post_proc.avg_noise_temp_bws[3],
+            self.noise_temp_post_proc.noise_temp_std_dev_bws[3], None,
+            self.gain_post_proc.avg_gain_bws[4],
+            self.gain_post_proc.gain_std_dev_bws[4],
+            self.gain_post_proc.gain_range_bws[4],
+            self.noise_temp_post_proc.avg_noise_temp_bws[4],
+            self.noise_temp_post_proc.noise_temp_std_dev_bws[4]]
+        return col_data
+
 
     @staticmethod
     def std_output_column_titles() -> list[str]:
@@ -444,7 +691,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
     def cal_settings_column_titles() -> list[str]:
         """Returns the calibration settings file column titles."""
         cal_settings_col_titles = [
-            'Project Title', 'Cryostat Chain', 'Calibration ID', 
+            'Project Title', 'Cryostat Chain', 'Calibration ID',
             'Date', 'Time', 'Comment', '',
             'Center Frequency (GHz)', 'Marker Frequency (GHz)',
             'Resolution Bandwidth (MHz)', 'Video Bandwidth (Hz)',

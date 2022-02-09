@@ -17,6 +17,7 @@ Todo:
         * Document socket_communication.py if pyvisa impossible.
     * Features
         * See if way of replacing socket_comms with pyvisa for psx.
+        * Add extra results analysis log.
 """
 
 # region Import modules
@@ -25,6 +26,7 @@ from __future__ import annotations
 import settings_classes as scl
 import lna_classes as lc
 import instr_classes as ic
+import output_classes as oc
 import start_session as ss
 # endregion
 
@@ -38,7 +40,7 @@ inter_freq_factor = 8     # Multiplier factor from sig gen.
 is_calibration = False    # Enables calibration handling
 lnas_per_chain = 1        # How many LNAs per chain?
 order = 1                 # Leave as 1 unless explicitly understood why.
-project_title = 'Test6'   # No special characters, becomes folder title
+project_title = 'Test7'   # No special characters, becomes folder title
 psu_safe_init = False
 stage_1_2_same = False    # If true L1S1 = L1S2 and L2S1 = L2S2
 stage_2_3_same = False    # If true L1S2 = L1S3 and L2S2 = L2S3
@@ -153,6 +155,14 @@ man_l2_s3_d_v = 1.1  # V
 man_l2_s3_d_i = 6    # mA
 # endregion
 
+# region Analysis bandwidths
+ana_bw_1_min_max = [67, 90]   # Min GHz to max GHz
+ana_bw_2_min_max = [90, 116]  # Min GHz to max GHz
+ana_bw_3_min_max = []         # Min GHz to max GHz
+ana_bw_4_min_max = []         # Min GHz to max GHz
+ana_bw_5_min_max = []         # Min GHz to max GHz
+# endregion
+
 # region Available Instruments
 bias_psu_en = False
 sig_an_en = False
@@ -231,8 +241,6 @@ for i, cryo_chain in enumerate(chain_sequence):
     # endregion
 
     # region Measurement Settings.
-    session_info = scl.SessionInfo(project_title, measure_method)
-
     lna_ids = scl.LNAIDs(chain_1_lna_1_id, chain_1_lna_2_id,
                          chain_2_lna_1_id, chain_2_lna_2_id,
                          chain_3_lna_1_id, chain_3_lna_2_id)
@@ -244,6 +252,13 @@ for i, cryo_chain in enumerate(chain_sequence):
         stage_2_3_same)
 
     misc = scl.Misc(comment_en, dark_mode_plot, order)
+
+    analysis_sub_bws = oc.AnalysisBandwidths(
+        ana_bw_1_min_max, ana_bw_2_min_max, ana_bw_3_min_max, ana_bw_4_min_max,
+        ana_bw_5_min_max)
+
+    session_info = scl.SessionInfo(
+        project_title, measure_method, analysis_sub_bws)
 
     # region Back End LNA Settings.
     be_lna_bias_vars = [
