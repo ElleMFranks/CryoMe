@@ -4,6 +4,8 @@
 
 # region Import modules
 from __future__ import annotations
+import csv
+import os
 
 import numpy as np
 import pandas as pd
@@ -271,6 +273,28 @@ def start_session(settings: scl.Settings) -> None:
                            res_managers, trimmed_input_data)
     else:
         _trigger_algorithm(settings, None, None, res_managers, trimmed_input_data)
+    # endregion
+
+    # region Add empty line in logs between sessions.
+    if meas_settings.is_calibration:
+        with open(settings.file_struc.cal_settings_path, 'a',
+                  newline='', encoding='utf-8') as file:
+            writer = csv.writer(
+                file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
+            writer.writerow(cal_settings_col_data)
+    else:
+        with open(
+                settings.file_struc.settings_path, 'a',
+                newline='', encoding="utf-8") as file:
+            writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
+                                delimiter=',', escapechar='\\')
+            writer.writerows('\n')
+        with open(
+                settings.file_struc.res_log_path, 'a',
+                newline='', encoding="utf-8") as file:
+            writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
+                                delimiter=',', escapechar='\\')
+            writer.writerow('\n')
     # endregion
 
     # region Turn PSX off safely

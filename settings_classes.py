@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 import csv
+import math as mt
 import os
 import pathlib as pl
 
@@ -399,12 +400,16 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
     def config_session_id(self, file_struc: FileStructure) -> None:
         """Set session ID for this measurement session."""
         settings_log_exists = os.path.isfile(file_struc.settings_path)
+        session_ids = []
         # region Scan settings log, session ID = highest existing + 1.
         if settings_log_exists:
             settings_log = np.array(pd.read_csv(
                 file_struc.settings_path, dtype=str))
             if len(settings_log) != 0:
-                session_id = int(settings_log[len(settings_log) - 1, 2]) + 1
+                for i in settings_log[:,2]:
+                    if not mt.isnan(float(i)):
+                        session_ids.append(int(i))
+                session_id = max(session_ids) + 1
             else:
                 session_id = 1
         else:

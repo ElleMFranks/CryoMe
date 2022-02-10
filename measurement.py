@@ -178,7 +178,10 @@ def _meas_loop(
                 ':CALC:MARK1:Y?', buffer_time, spec_an_rm, 'spec an')
             powers.append(float(marker_power.strip()))
         else:
-            marker_power = round(rd.uniform(-60, -40), 2)
+            if hot_or_cold == 'Hot':
+                marker_power = -50 + round(rd.uniform(1.2, 2), 2)
+            else:
+                marker_power = -50 + round(rd.uniform(0.3, 0.6), 2)
             powers.append(marker_power)
         # endregion
 

@@ -108,12 +108,14 @@ class GainPostProc:
             deviations.
         gain_range_bws (list[Optional[float]]): Sub bandwidth ranges.
     """
-    avg_gain_full: float
-    gain_std_dev_full: float
-    gain_range_full: float
-    avg_gain_bws: list[Optional[float]]
-    gain_std_dev_bws: list[Optional[float]]
-    gain_range_bws: list[Optional[float]]
+    avgs: list[Optional[float]]
+    std_devs: list[Union[str, float]]
+    mins: list[Union[str, float]]
+    maxs: list[Union[str, float]]
+    ranges: list[Union[str, float]]
+    
+    def as_tuple(self, index):
+        return self.avgs[index], self.std_devs[index], self.mins[index], self.maxs[index], self.ranges[index]
 
 
 @dataclass()
@@ -126,10 +128,14 @@ class NoiseTempPostProc:
         avg_noise_temp_bws (list[Optional[float]]):
         noise_temp_std_dev_bws (float[Optional[float]]):
     """
-    avg_noise_temp_full: float
-    noise_temp_std_dev_full: float
-    avg_noise_temp_bws: list[Optional[float]]
-    noise_temp_std_dev_bws: list[Optional[float]]
+    avgs: list[Optional[float]]
+    std_devs: list[Optional[float]]
+    mins: list[Optional[float]]
+    maxs: list[Optional[float]]
+    ranges: list[Optional[float]]
+
+    def as_tuple(self, index):
+        return self.avgs[index], self.std_devs[index], self.mins[index], self.maxs[index], self.ranges[index]
 
 
 # region Mid level classes.
@@ -404,14 +410,17 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
 
 
 # region Top level class post-processing
-def _post_process(freqs, non_db_gain: list, noise_temperature,
+def _post_process(freqs, gain: Gain, noise_temperature,
                   bws: AnalysisBandwidths) -> PostProcResults:
     """Carries out post-processing on results set."""
     freqs = np.array(freqs)
-    gain = np.array(non_db_gain)
+    non_db_gain = np.array(gain.gain)
+    db_gain = np.array(gain.gain_db)
     noise_temperature = np.array(noise_temperature)
-    f_gain = np.column_stack((freqs, gain))
+    f_gain = np.column_stack((freqs, non_db_gain, db_gain))
     f_nt = np.column_stack((freqs, noise_temperature))
+    gain_full_analyses = []
+    noise_temp_full_analyses = []
 
     bandwidths = [bws.bw_1_min_max, bws.bw_2_min_max, bws.bw_3_min_max,
                   bws.bw_4_min_max, bws.bw_5_min_max]
@@ -429,47 +438,51 @@ def _post_process(freqs, non_db_gain: list, noise_temperature,
 
         avgs = []
         std_devs = []
+        mins = []
+        maxs = []
         rngs = []
+        if is_gain:
+            avgs.append(10 * mt.log10(abs(st.mean(non_db_gain))))
+            std_devs.append(st.stdev(non_db_gain))
+            mins.append(min(db_gain))
+            maxs.append(max(db_gain))
+            rngs.append(max(db_gain) - min(db_gain))
+        else:
+            avgs.append(st.mean(noise_temperature))
+            std_devs.append(st.stdev(noise_temperature))
+            mins.append(min(noise_temperature))
+            maxs.append(max(noise_temperature))
+            rngs.append(max(noise_temperature) - min(noise_temperature))
         for bandwidth in bandwidths:
             if bandwidth:
                 trimmed_res = []
+                trimmed_res_db = []
                 for freq_res in freq_results:
                     if bandwidth[0] <= freq_res[0] <= bandwidth[1]:
                         trimmed_res.append(freq_res[1])
+                        if is_gain:
+                            trimmed_res_db.append(freq_res[2])
                 if is_gain:
                     avgs.append(10 * mt.log10(abs(st.mean(trimmed_res))))
-                    rng = 10 * mt.log10(max(trimmed_res) - min(trimmed_res))
-                    rngs.append(10 * mt.log10(rng))
+                    mins.append(min(trimmed_res_db))
+                    maxs.append(max(trimmed_res_db))
+                    rngs.append(max(trimmed_res_db) - min(trimmed_res_db))
                 else:
                     avgs.append(st.mean(trimmed_res))
-                    rngs.append('NA')
+                    mins.append(min(trimmed_res))
+                    maxs.append(max(trimmed_res))
+                    rngs.append(max(trimmed_res) - min(trimmed_res))
                 std_devs.append(st.stdev(trimmed_res))
             else:
                 avgs.append('NA')
                 std_devs.append('NA')
+                mins.append('NA')
+                maxs.append('NA')
                 rngs.append('NA')
-        if is_gain:
-            return [avgs, std_devs, gain]
-        return [avgs, std_devs]
+        return [avgs, std_devs, mins, maxs, rngs]
 
-    gain_full_analysis = [10 * mt.log10(abs(st.mean(gain))), st.stdev(gain),
-                          10 * mt.log10(max(gain) - min(gain))]
-    noise_temp_full_analysis = [st.mean(noise_temperature),
-                                st.stdev(noise_temperature)]
-    gain_bws_analyses = _bw_analyse(f_gain, True)
-    noise_temp_bws_analyses = _bw_analyse(f_nt, False)
-
-    return PostProcResults(
-        GainPostProc(gain_full_analysis[0],
-                     gain_full_analysis[1],
-                     gain_full_analysis[2],
-                     gain_bws_analyses[0],
-                     gain_bws_analyses[1],
-                     gain_bws_analyses[2]),
-        NoiseTempPostProc(noise_temp_full_analysis[0],
-                          noise_temp_full_analysis[1],
-                          noise_temp_bws_analyses[0],
-                          noise_temp_bws_analyses[1]))
+    return PostProcResults(GainPostProc(*_bw_analyse(f_gain, True)),
+                           NoiseTempPostProc(*_bw_analyse(f_nt, False)))
 
 
 # region Top level class.
@@ -500,14 +513,15 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
                 self, *ut.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
         else:
-            AnalysisBandwidths.__init__(self, *ut.get_dataclass_args(results_meta_info.sub_bws))
+            AnalysisBandwidths.__init__(
+                self, *ut.get_dataclass_args(results_meta_info.sub_bws))
 
             StandardAnalysedResults.__init__(
                 self, *ut.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
 
             PostProcResults.__init__(self, *ut.get_dataclass_args(
-                _post_process(self.freq_array, self.gain.gain,
+                _post_process(self.freq_array, self.gain,
                               self.noise_temp.cal_loss_cor,
                               results_meta_info.sub_bws)))
         # endregion
@@ -526,24 +540,24 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         """Returns the standard settings column titles."""
         settings_col_titles = [
             'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date', 'Time', 'Comment', '', 'Center Frequency (GHz)',
+            'Date', 'Time', 'Comment', ' ', 'Center Frequency (GHz)',
             'Marker Frequency (GHz)', 'Resolution Bandwidth (MHz)',
             'Video Bandwidth (Hz)', 'Frequency Span (MHz)',
-            'Power Bandwidth (MHz)', 'Attenuation (dB)', '',
+            'Power Bandwidth (MHz)', 'Attenuation (dB)', ' ',
             'L1S1GV Set (V)', 'L1S1DV Set (V)', 'L1S1DI Set (mA)',
             'L1S2GV Set (V)', 'L1S2DV Set (V)', 'L1S2DI Set (mA)',
-            'L1S3GV Set (V)', 'L1S3DV Set (V)', 'L1S3DI Set (mA)', '',
+            'L1S3GV Set (V)', 'L1S3DV Set (V)', 'L1S3DI Set (mA)', ' ',
             'L2S1GV Set (V)', 'L2S1DV Set (V)', 'L2S1DI Set (mA)',
             'L2S2GV Set (V)', 'L2S2DV Set (V)', 'L2S2DI Set (mA)',
-            'L2S3GV Set (V)', 'L2S3DV Set (V)', 'L2S3DI Set (mA)','',
+            'L2S3GV Set (V)', 'L2S3DV Set (V)', 'L2S3DI Set (mA)',' ',
             'L1S1GV Meas (V)', 'L1S1DV Meas (V)', 'L1S1DI Meas (mA)',
             'L1S2GV Meas (V)', 'L1S2DV Meas (V)', 'L1S2DI Meas (mA)',
-            'L1S3GV Meas (V)', 'L1S3DV Meas (V)', 'L1S3DI Meas (mA)', '',
+            'L1S3GV Meas (V)', 'L1S3DV Meas (V)', 'L1S3DI Meas (mA)', ' ',
             'L2S1GV Meas (V)', 'L2S1DV Meas (V)', 'L2S1DI Meas (mA)',
             'L2S2GV Meas (V)', 'L2S2DV Meas (V)', 'L2S2DI Meas (mA)',
-            'L2S3GV Meas (V)', 'L2S3DV Meas (V)', 'L2S3DI Meas (mA)', '',
+            'L2S3GV Meas (V)', 'L2S3DV Meas (V)', 'L2S3DI Meas (mA)', ' ',
             'CRBE GV Set (V)', 'CRBE DV Set (V)', 'CRBE DI Set (mA)',
-            'RTBE GV Set (V)', 'RTBE DV Set (V)', 'RTBE DI Set (mA)', '',
+            'RTBE GV Set (V)', 'RTBE DV Set (V)', 'RTBE DI Set (mA)', ' ',
             'CRBE GV Meas (V)', 'CRBE DV Meas (V)', 'CRBE DI Meas (mA)',
             'RTBE GV Meas (V)', 'RTBE DV Meas (V)', 'RTBE DI Meas (mA)']
         return settings_col_titles
@@ -554,13 +568,19 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         res_ana_log_header = [
             '', '', '', '',
             '', '', '', '',
-            '', '', '', '', '', '',
+            '', '', '', '', '', '', '',
+            'FBW', 'FBW', 'FBW', 'FBW', 'FBW', 
             'FBW', 'FBW', 'FBW', 'FBW', 'FBW', '',
+            'BW1', 'BW1', 'BW1', 'BW1', 'BW1', 
             'BW1', 'BW1', 'BW1', 'BW1', 'BW1', '',
+            'BW2', 'BW2', 'BW2', 'BW2', 'BW2', 
             'BW2', 'BW2', 'BW2', 'BW2', 'BW2', '',
+            'BW3', 'BW3', 'BW3', 'BW3', 'BW3', 
             'BW3', 'BW3', 'BW3', 'BW3', 'BW3', '',
+            'BW4', 'BW4', 'BW4', 'BW4', 'BW4', 
             'BW4', 'BW4', 'BW4', 'BW4', 'BW4', '',
-            'BW5', 'BW5', 'BW5', 'BW5', 'BW5', '']
+            'BW5', 'BW5', 'BW5', 'BW5', 'BW5', 
+            'BW5', 'BW5', 'BW5', 'BW5', 'BW5']
         return res_ana_log_header
 
     @staticmethod
@@ -568,25 +588,38 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         """Returns the column titles for the results analysis log."""
         res_ana_log_col_titles = [
             'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date', 'Time', 'Comment', '',
-            'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', '',
-            'Gain Avg (dBm)', 'Gain Std Dev', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev']
+            'Date', 'Time', 'Comment', ' ',
+            'FBW', 'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Max (dB)', 'Gain Range (dB)',
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Max (K)', 'Noise Temp Range (K)']
         return res_ana_log_col_titles
 
     def results_ana_log_data(self, meas_settings: sc.MeasurementSettings,
                              bias_id: int) -> list:
-
+        
+        fwb = f'{self.freq_array[0]:.2f} -> {self.freq_array[-1]:.2f}'
         bw_1 = self.bw_1_min_max
         bw_2 = self.bw_2_min_max
         bw_3 = self.bw_3_min_max
@@ -605,37 +638,19 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             meas_settings.project_title, meas_settings.lna_id_str,
             str(meas_settings.session_id), str(bias_id),
             self.date_str, self.time_str, meas_settings.comment, None,
-            bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4], None,
-            self.gain_post_proc.avg_gain_full,
-            self.gain_post_proc.gain_std_dev_full,
-            self.gain_post_proc.gain_range_full,
-            self.noise_temp_post_proc.avg_noise_temp_full,
-            self.noise_temp_post_proc.noise_temp_std_dev_full, None,
-            self.gain_post_proc.avg_gain_bws[0],
-            self.gain_post_proc.gain_std_dev_bws[0],
-            self.gain_post_proc.gain_range_bws[0],
-            self.noise_temp_post_proc.avg_noise_temp_bws[0],
-            self.noise_temp_post_proc.noise_temp_std_dev_bws[0], None,
-            self.gain_post_proc.avg_gain_bws[1],
-            self.gain_post_proc.gain_std_dev_bws[1],
-            self.gain_post_proc.gain_range_bws[1],
-            self.noise_temp_post_proc.avg_noise_temp_bws[1],
-            self.noise_temp_post_proc.noise_temp_std_dev_bws[1], None,
-            self.gain_post_proc.avg_gain_bws[2],
-            self.gain_post_proc.gain_std_dev_bws[2],
-            self.gain_post_proc.gain_range_bws[2],
-            self.noise_temp_post_proc.avg_noise_temp_bws[2],
-            self.noise_temp_post_proc.noise_temp_std_dev_bws[2], None,
-            self.gain_post_proc.avg_gain_bws[3],
-            self.gain_post_proc.gain_std_dev_bws[3],
-            self.gain_post_proc.gain_range_bws[3],
-            self.noise_temp_post_proc.avg_noise_temp_bws[3],
-            self.noise_temp_post_proc.noise_temp_std_dev_bws[3], None,
-            self.gain_post_proc.avg_gain_bws[4],
-            self.gain_post_proc.gain_std_dev_bws[4],
-            self.gain_post_proc.gain_range_bws[4],
-            self.noise_temp_post_proc.avg_noise_temp_bws[4],
-            self.noise_temp_post_proc.noise_temp_std_dev_bws[4]]
+            fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4], 
+            None, *self.gain_post_proc.as_tuple(0), 
+            *self.noise_temp_post_proc.as_tuple(0), None,
+            *self.gain_post_proc.as_tuple(1), 
+            *self.noise_temp_post_proc.as_tuple(1), None,
+            *self.gain_post_proc.as_tuple(2), 
+            *self.noise_temp_post_proc.as_tuple(2), None,
+            *self.gain_post_proc.as_tuple(3), 
+            *self.noise_temp_post_proc.as_tuple(3), None,
+            *self.gain_post_proc.as_tuple(4), 
+            *self.noise_temp_post_proc.as_tuple(4), None,
+            *self.gain_post_proc.as_tuple(5), 
+            *self.noise_temp_post_proc.as_tuple(5), None]
         return col_data
 
 
@@ -692,13 +707,13 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         """Returns the calibration settings file column titles."""
         cal_settings_col_titles = [
             'Project Title', 'Cryostat Chain', 'Calibration ID',
-            'Date', 'Time', 'Comment', '',
+            'Date', 'Time', 'Comment', ' ',
             'Center Frequency (GHz)', 'Marker Frequency (GHz)',
             'Resolution Bandwidth (MHz)', 'Video Bandwidth (Hz)',
             'Frequency Span (MHz)', 'Power Bandwidth (MHz)',
-            'Attenuation (dB)', '', 'CRBE GV Set (V)', 'CRBE DV Set (V)',
+            'Attenuation (dB)', ' ', 'CRBE GV Set (V)', 'CRBE DV Set (V)',
             'CRBE DI Set (mA)', 'RTBE GV Set (V)', 'RTBE DV Set (V)',
-            'RTBE DI Set (mA)', '', 'CRBE GV Meas (V)',
+            'RTBE DI Set (mA)', ' ', 'CRBE GV Meas (V)',
             'CRBE DV Meas (V)', 'CRBE DI Meas (mA)', 'RTBE GV Meas (V)',
             'RTBE DV Meas (V)', 'RTBE DI Meas (mA)']
         return cal_settings_col_titles
