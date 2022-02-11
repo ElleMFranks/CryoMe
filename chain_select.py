@@ -12,16 +12,16 @@ from __future__ import annotations
 import time
 
 import nidaqmx
+import pyvisa as pv
 
 import bias_ctrl as bc
 import instr_classes as ic
-import settings_classes as scl
-import socket_communication as sc
+import settings_classes as sc
 # endregion
 
 
 def cryo_chain_switch(
-        buffer_time: float, meas_settings: scl.MeasurementSettings) -> None:
+        buffer_time: float, meas_settings: sc.MeasurementSettings) -> None:
     """Controls the switch between the signal and cryostat chain.
 
     Args:
@@ -89,7 +89,7 @@ def cryo_chain_switch(
 
 
 def back_end_lna_setup(
-        settings: scl.Settings, psu_rm: sc.InstrumentSocket,
+        settings: sc.Settings, psu_rm: pv.Resource,
         direct_set: bool = True) -> None:
     """Safely sets back end LNA biases for requested cryostat chain.
 
@@ -108,56 +108,67 @@ def back_end_lna_setup(
 
     # region Unpack required LNA class instances from be_lna_settings
     rtbe_lna = be_lna_settings.rtbe_chain_a_lna
-    rtbe_chn_g_v = be_lna_settings.rtbe_chain_a_lna.stage_1.g_v
-    rtbe_chn_d_v = be_lna_settings.rtbe_chain_a_lna.stage_1.d_v_at_psu
+    rtbe_chn_g_v = be_lna_settings.rtbe_gv
+    if direct_set:
+        rtbe_chn_d_v = be_lna_settings.rtbe_chain_a_lna.stage_1.target_d_v_at_lna
+    else:
+        rtbe_chn_d_v = be_lna_settings.rtbe_chain_a_lna.stage_1.d_v_at_psu
     if chain == 1:
         crbe_lna = be_lna_settings.crbe_chain_1_lna
-        crbe_chn_g_v = be_lna_settings.crbe_chain_1_lna.stage_1.g_v
-        crbe_chn_d_v = be_lna_settings.crbe_chain_1_lna.stage_1.d_v_at_psu
+        crbe_chn_g_v = be_lna_settings.crbe_gvs[0]
+        if direct_set:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_1_lna.stage_1.target_d_v_at_lna
+        else:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_1_lna.stage_1.d_v_at_psu
     elif chain == 2:
         crbe_lna = be_lna_settings.crbe_chain_2_lna
-        crbe_chn_g_v = be_lna_settings.crbe_chain_2_lna.stage_1.g_v
-        crbe_chn_d_v = be_lna_settings.crbe_chain_2_lna.stage_1.d_v_at_psu
+        crbe_chn_g_v = be_lna_settings.crbe_gvs[1]
+        if direct_set:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_2_lna.stage_1.target_d_v_at_lna
+        else:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_2_lna.stage_1.d_v_at_psu
     elif chain == 3:
         crbe_lna = be_lna_settings.crbe_chain_3_lna
-        crbe_chn_g_v = be_lna_settings.crbe_chain_3_lna.stage_1.g_v
-        crbe_chn_d_v = be_lna_settings.crbe_chain_3_lna.stage_1.d_v_at_psu
+        crbe_chn_g_v = be_lna_settings.crbe_gvs[2]
+        if direct_set:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_3_lna.stage_1.target_d_v_at_lna
+        else:
+            crbe_chn_d_v = be_lna_settings.crbe_chain_3_lna.stage_1.d_v_at_psu
     else:
         raise Exception('Invalid chain requested.')
     # endregion
 
     # region Send requests to bias control to set room-temp/cryo BELNAs.
     if psu_rm is not None:
-        with psu_rm.open_instrument():
 
-            # region If direct set uncor manual input g/dV to biasing.
-            if direct_set:
-                bc.direct_set_stage(
-                    psu_rm, bc.CardChnl(8, chain),
-                    ic.PSULimits(18, psu_settings.v_step_lim), buffer_time,
-                    [bc.GOrDVTarget('g', rtbe_chn_g_v),
-                     bc.GOrDVTarget('d', rtbe_chn_d_v)])
-                bc.direct_set_stage(
-                    psu_rm, bc.CardChnl(7, chain),
-                    ic.PSULimits(18, psu_settings.v_step_lim), buffer_time,
-                    [bc.GOrDVTarget('g', crbe_chn_g_v),
-                     bc.GOrDVTarget('d', crbe_chn_d_v)])
-            # endregion
+        # region If direct set uncor manual input g/dV to biasing.
+        if direct_set:
+            bc.direct_set_stage(
+                psu_rm, bc.CardChnl(1, 8),
+                ic.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+                [bc.GOrDVTarget('g', rtbe_chn_g_v),
+                    bc.GOrDVTarget('d', rtbe_chn_d_v)])
+            bc.direct_set_stage(
+                psu_rm, bc.CardChnl(chain, 7),
+                ic.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+                [bc.GOrDVTarget('g', crbe_chn_g_v),
+                    bc.GOrDVTarget('d', crbe_chn_d_v)])
+        # endregion
 
-            # region Otherwise send required drain I/V to bias_control
-            # This will algorithmically find the requested current at
-            # required drain voltage, need to remember in this case
-            # drain voltage is corrected.
-            else:
-                bc.bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
-                bc.bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
-            # endregion
+        # region Otherwise send required drain I/V to bias_control
+        # This will algorithmically find the requested current at
+        # required drain voltage, need to remember in this case
+        # drain voltage is corrected.
+        else:
+            bc.bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
+            bc.bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
+        # endregion
 
-            # region If calibration get the back end LNA measured data.
+        # region If calibration get the back end LNA measured data.
             
-            rtbe_lna.lna_measured_column_data(psu_rm, True)
-            crbe_lna.lna_measured_column_data(psu_rm, True)
-            # endregion
+        rtbe_lna.lna_measured_column_data(psu_rm, True)
+        crbe_lna.lna_measured_column_data(psu_rm, True)
+        # endregion
 
     # region If calibration then get the back end LNA measured data.
     else:

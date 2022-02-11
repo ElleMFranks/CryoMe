@@ -150,15 +150,15 @@ def _res_manager_setup(
 
     # region Set up PSX bias supply.
     if bias_psu_settings.bias_psu_en:
-        psu_rm = sc.InstrumentSocket("10.99.9.58", 5025, timeout=10000)
+        psu_rm = res_manager.open_resource('TCPIP0::10.99.9.58::5025::SOCKET')
+        psu_rm.read_termination = '\n'
+        psu_rm.write_termination = '\n'
         # Ensure psx is initialised safely
         if bias_psu_settings.psu_safe_init:
-            with psu_rm.open_instrument():
-                bc.psu_safe_init(
-                    psu_rm, instr_settings.buffer_time,
-                    ic.PSULimits(bias_psu_settings.d_i_lim,
-                                 bias_psu_settings.v_step_lim),
-                    bias_psu_settings.g_v_lower_lim)
+            bc.psu_safe_init(
+                psu_rm, instr_settings.buffer_time,
+                ic.PSULimits(bias_psu_settings.v_step_lim, bias_psu_settings.d_i_lim),
+                bias_psu_settings.g_v_lower_lim)
     # endregion
 
     # region Initialise each instrument with defined settings.
@@ -172,10 +172,9 @@ def _res_manager_setup(
         temp_ctrl_settings.lakeshore_init(
             temp_ctrl_rm, instr_settings.buffer_time, 'warm up')
     if bias_psu_settings.bias_psu_en:
-        with psu_rm.open_instrument():
-            bias_psu_settings.psx_init(
-                psu_rm, instr_settings.buffer_time, 0,
-                bias_psu_settings.g_v_lower_lim)
+        bias_psu_settings.psx_init(
+            psu_rm, instr_settings.buffer_time, 0,
+            bias_psu_settings.g_v_lower_lim)
     # endregion
     print('Instrumentation initialised')
     # endregion
@@ -225,6 +224,9 @@ def start_session(settings: scl.Settings) -> None:
     if not meas_settings.is_calibration:
         lna_nominals = lc.NominalLNASettings(settings)
         lna_biases = [lna_nominals.lna_1_nom_bias, lna_nominals.lna_2_nom_bias]
+    else:
+        lna_nominals = None
+        lna_biases = None
 
     # region Trim loss/cal/sig gen power arrays for requested frequency.
     # Ensure loss, calibration, and sig gen power arrays are correct for
@@ -263,9 +265,8 @@ def start_session(settings: scl.Settings) -> None:
 
     # region Trigger measurement with power supply enabled.
     if bias_psu_settings.bias_psu_en:
-        with res_managers.psu_rm.open_instrument():
-            _trigger_algorithm(settings, lna_biases, lna_nominals,
-                               res_managers, trimmed_input_data)
+        _trigger_algorithm(settings, lna_biases, lna_nominals,
+                            res_managers, trimmed_input_data)
     # endregion
     # region If PSU not enabled, trigger measurement without it.
     elif not meas_settings.is_calibration:
@@ -281,7 +282,7 @@ def start_session(settings: scl.Settings) -> None:
                   newline='', encoding='utf-8') as file:
             writer = csv.writer(
                 file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
-            writer.writerow(cal_settings_col_data)
+            writer.writerow('\n')
     else:
         with open(
                 settings.file_struc.settings_path, 'a',
@@ -299,12 +300,10 @@ def start_session(settings: scl.Settings) -> None:
 
     # region Turn PSX off safely
     if bias_psu_settings.bias_psu_en:
-        with res_managers.psu_rm.open_instrument():
-            bc.psu_safe_init(
-                res_managers.psu_rm, instr_settings.buffer_time,
-                ic.PSULimits(bias_psu_settings.d_i_lim,
-                             bias_psu_settings.v_step_lim),
-                bias_psu_settings.g_v_lower_lim)
+        bc.psu_safe_init(
+            res_managers.psu_rm, instr_settings.buffer_time,
+            ic.PSULimits(bias_psu_settings.v_step_lim, bias_psu_settings.d_i_lim),
+            bias_psu_settings.g_v_lower_lim)
     # endregion
 
     # region Close resource managers.

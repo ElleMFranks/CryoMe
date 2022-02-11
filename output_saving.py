@@ -392,7 +392,7 @@ def save_calibration_results(
         *crbe_lna_bias.lna_set_column_data(True),
         *rtbe_lna_bias.lna_set_column_data(True), None,
         *crbe_lna_bias.lna_meas_column_data,
-        *rtbe_lna_bias.lna_meas_column_data, '\n']
+        *rtbe_lna_bias.lna_meas_column_data]
 
     with open(settings.file_struc.cal_settings_path, 'a',
               newline='', encoding='utf-8') as file:
@@ -426,7 +426,7 @@ def save_calibration_results(
 
     with open(cal_csv_path, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        writer.writerows([cal_results_csv_data, '\n'])
+        writer.writerows(cal_results_csv_data)
     # endregion
 
     print('Calibration saved')

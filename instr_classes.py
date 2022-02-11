@@ -60,7 +60,6 @@ import pyvisa as pv
 import bias_ctrl as bc
 import error_handling as eh
 import heater_ctrl as hc
-import socket_communication as sc
 import util as ut
 # endregion
 
@@ -281,7 +280,7 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         ut.safe_write(f':POW:ATT {self.atten} dB', buffer_time, sarm)
         error_status = ut.safe_query(
             'SYSTem:ERRor?', buffer_time, sarm, 'spec an')
-        if error_status != '0':
+        if error_status != '+0,"No error"':
             raise Exception(f'Spec An Error Code {error_status}')
         ut.safe_query('*OPC?', buffer_time, sarm, 'spec an')
         # endregion
@@ -376,7 +375,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         ut.safe_write('SENS:FREQ:CW 10 GHz', buffer_time, sig_gen_rm)
         error_status = ut.safe_query(
             'SYST:ERR?', buffer_time, sig_gen_rm, 'sig gen')
-        if error_status != 0:
+        if error_status != '+0,"No error"':
             raise Exception(f'VNA Error Code {error_status}')
         # endregion
 
@@ -507,7 +506,7 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         # endregion
 
     @staticmethod
-    def psx_init(psx_rm: sc.InstrumentSocket, buffer_time: float,
+    def psx_init(psx_rm: pv.Resource, buffer_time: float,
                  init_d_v: float, init_g_v: float):
         """Initialise the PSX bias power supply to initial values.
 
@@ -526,8 +525,8 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         ut.safe_write("BIAS:SET:MODECV:CArd3 1", buffer_time, psx_rm)
 
         ut.safe_write(f"BIAS:SET:VD:CArd1 {init_d_v}", buffer_time, psx_rm)
-        ut.safe_write(f"BIAS:SET:VD:CArd2 {init_g_v}", buffer_time, psx_rm)
-        ut.safe_write(f"BIAS:SET:VD:CArd3 {init_g_v}", buffer_time, psx_rm)
+        ut.safe_write(f"BIAS:SET:VD:CArd2 {init_d_v}", buffer_time, psx_rm)
+        ut.safe_write(f"BIAS:SET:VD:CArd3 {init_d_v}", buffer_time, psx_rm)
         ut.safe_write(f"BIAS:SET:VG:CArd1 {init_g_v}", buffer_time, psx_rm)
         ut.safe_write(f"BIAS:SET:VG:CArd2 {init_g_v}", buffer_time, psx_rm)
         ut.safe_write(f"BIAS:SET:VG:CArd3 {init_g_v}", buffer_time, psx_rm)
@@ -538,6 +537,7 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         ut.safe_write("BIAS:ENable:CArd2 0", buffer_time, psx_rm)
         ut.safe_write("BIAS:ENable:CArd3 0", buffer_time, psx_rm)
         ut.safe_write("BIAS:ENable:SYStem 1", buffer_time, psx_rm)
+        print(ut.safe_query('*IDN?', buffer_time, psx_rm, 'psx'))
         print("PSX initialised. Global Enabled.")
         # endregion
 
@@ -596,7 +596,7 @@ class ResourceManagers:
     sa_rm: Optional[pv.Resource]
     sg_rm: Optional[pv.Resource]
     tc_rm: Optional[pv.Resource]
-    psu_rm: Optional[sc.InstrumentSocket]
+    psu_rm: Optional[pv.Resource]
     # endregion
 
     def __del__(self):

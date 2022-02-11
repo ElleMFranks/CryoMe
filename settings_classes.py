@@ -311,7 +311,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
         # region Initialise attributes to set later.
         if self.lna_cryo_layout.cryo_chain == 1:
-            self.lnas_ut_ids = LNAsUTIDs(
+            self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_1_lna_1_id,
                 self.lna_ids.chain_1_lna_2_id)
         elif self.lna_cryo_layout.cryo_chain == 2:
@@ -328,12 +328,12 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
         # endregion
 
     @property
-    def lnas_ut_ids(self) -> LNAsUTIDs:
-        return self._lnas_ut_ids
+    def lna_ut_ids(self) -> LNAsUTIDs:
+        return self._lna_ut_ids
 
-    @lnas_ut_ids.setter
-    def lnas_ut_ids(self, value: LNAsUTIDs) -> None:
-        self._lnas_ut_ids = value
+    @lna_ut_ids.setter
+    def lna_ut_ids(self, value: LNAsUTIDs) -> None:
+        self._lna_ut_ids = value
 
     @property
     def lna_id_str(self) -> str:

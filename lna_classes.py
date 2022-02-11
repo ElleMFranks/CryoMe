@@ -25,9 +25,10 @@ from dataclasses import dataclass
 from typing import (Optional, Union)
 import copy as cp
 
+import pyvisa as pv
+
 import bias_ctrl as bc
 import settings_classes as scl
-import socket_communication as sc
 import util as ut
 # endregion
 
@@ -405,7 +406,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # endregion
 
     def lna_measured_column_data(
-            self, psx_rm: Optional[sc.InstrumentSocket] = None,
+            self, psx_rm: Optional[pv.Resource] = None,
             is_calibration: bool = False) -> Optional[list[Union[float, str]]]:
         """Return the measured bias conditions of the LNA."""
         # region Measure and return bias conditions, or dummy values.
@@ -731,6 +732,11 @@ class BackEndLNASettings:
         Args:
             d_i_lim: D current limit for the LNA in question.
         """
+
+        self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']
+        self.crbe_gvs = [be_lna_biases['crbe_chn1_g_v'],
+                         be_lna_biases['crbe_chn2_g_v'],
+                         be_lna_biases['crbe_chn3_g_v']]
 
         # region Set args to attributes.
         self.d_i_lim = be_d_i_lim

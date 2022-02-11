@@ -37,18 +37,18 @@ dark_mode_plot = True     # True will save plots in dark mode palette
 in_cal_file_id = 1        # Decides which calibration file to use.
 instr_buffer_time = 0.3   # Seconds to wait between instrument commands.
 inter_freq_factor = 8     # Multiplier factor from sig gen.
-is_calibration = False    # Enables calibration handling
+is_calibration = True    # Enables calibration handling
 lnas_per_chain = 1        # How many LNAs per chain?
 order = 1                 # Leave as 1 unless explicitly understood why.
-project_title = 'Test7'   # No special characters, becomes folder title
-psu_safe_init = False
+project_title = 'ESO LNAs'   # No special characters, becomes folder title
+psu_safe_init = True
 stage_1_2_same = False    # If true L1S1 = L1S2 and L2S1 = L2S2
 stage_2_3_same = False    # If true L1S2 = L1S3 and L2S2 = L2S3
 stages_per_lna = 3        # How many stages per LNA?
 # For measure_method:
 # AllColdToAllHot = 'ACTAH', ManualEntryMeasure = 'MEM',
 # AlternatingTemps = 'AT',  Calibration = 'Calibration'
-measure_method = 'ACTAH'     # Chooses the measurement algorithm.
+measure_method = 'Calibration'     # Chooses the measurement algorithm.
 # endregion
 
 # region LNA IDs
@@ -62,7 +62,7 @@ chain_3_lna_2_id = 55     # LNA ID number for 2nd LNA in chain 3.
 
 # region Bias Sweep Settings
 alt_temp_sweep_skips = 0  # How many meas to skip on 'AT' alg sweep.
-chain_sequence = [3]      # Order of cryostat chains to measure.
+chain_sequence = [1]      # Order of cryostat chains to measure.
 lna_sequence = [1]     # [FirstLNAToSweep, SecondLNAToSweep].
 stage_sequence = [1, 2, 3]   # This decides which order to sweep stages in.
 d_i_max = 6               # mA
@@ -91,13 +91,13 @@ center_freq = 0.075  # GHz
 freq_span = 25       # MHz
 marker_freq = 0.075  # GHz
 power_bw = 24        # MHz
-ref_level = -20      # dBm
+ref_level = -50      # dBm
 res_bw = 8           # MHz
 vid_bw = 10          # Hz
 # endregion
 
 # region Signal Generator Settings
-freq_step_size = 1      # GHz
+freq_step_size = 0.2      # GHz
 max_freq = 116          # GHz
 min_freq = 67           # GHz
 vna_or_sig_gen = 'vna'  # Either 'vna' or 'sig gen'
@@ -164,11 +164,11 @@ ana_bw_5_min_max = []         # Min GHz to max GHz
 # endregion
 
 # region Available Instruments
-bias_psu_en = False
-sig_an_en = False
-sig_gen_en = False
-switch_en = False
-temp_ctrl_en = False
+bias_psu_en = True
+sig_an_en = True
+sig_gen_en = True
+switch_en = True
+temp_ctrl_en = True
 # endregion
 # endregion
 

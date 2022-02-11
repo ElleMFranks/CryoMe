@@ -50,8 +50,7 @@ def yes_no(variable_name: str, variable_val: Any, variable_unit: str) -> None:
 
 
 def safe_query(
-        command: str, buffer_time: float,
-        res_manager: Union[pv.Resource, sc.InstrumentSocket],
+        command: str, buffer_time: float, res_manager: pv.Resource,
         instr: str, float_req: bool = False, str_req: bool = False,
         instr_settings: Optional[ic.InstrumentSettings] = None) -> Any:
     """Try query, if failed wait 5s and try again up to 10 times.
@@ -64,6 +63,7 @@ def safe_query(
     i = 0
     while True:
         try:
+            res_manager.read_termination = '\n'
             output = res_manager.query(command)
             if float_req:
                 output = float(output)
@@ -107,7 +107,7 @@ def safe_query(
 
 def safe_write(
         command: str, buffer_time: float,
-        res_manager: Union[pv.Resource, sc.InstrumentSocket]):
+        res_manager: pv.Resource:
     """Writes a command to an instrument and waits the buffer time."""
     # region Write command and then sleep for buffer time.
     res_manager.write(command)
