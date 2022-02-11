@@ -113,9 +113,11 @@ class GainPostProc:
     mins: list[Union[str, float]]
     maxs: list[Union[str, float]]
     ranges: list[Union[str, float]]
-    
-    def as_tuple(self, index):
-        return self.avgs[index], self.std_devs[index], self.mins[index], self.maxs[index], self.ranges[index]
+
+    def as_tuple(self, index: int) -> tuple:
+        """Returns instance as tuple of attributes."""
+        return self.avgs[index], self.std_devs[index], self.mins[index], \
+               self.maxs[index], self.ranges[index]
 
 
 @dataclass()
@@ -134,8 +136,10 @@ class NoiseTempPostProc:
     maxs: list[Optional[float]]
     ranges: list[Optional[float]]
 
-    def as_tuple(self, index):
-        return self.avgs[index], self.std_devs[index], self.mins[index], self.maxs[index], self.ranges[index]
+    def as_tuple(self, index: int) -> tuple:
+        """Returns instance as tuple of attributes."""
+        return self.avgs[index], self.std_devs[index], self.mins[index], \
+               self.maxs[index], self.ranges[index]
 
 
 # region Mid level classes.
@@ -419,8 +423,6 @@ def _post_process(freqs, gain: Gain, noise_temperature,
     noise_temperature = np.array(noise_temperature)
     f_gain = np.column_stack((freqs, non_db_gain, db_gain))
     f_nt = np.column_stack((freqs, noise_temperature))
-    gain_full_analyses = []
-    noise_temp_full_analyses = []
 
     bandwidths = [bws.bw_1_min_max, bws.bw_2_min_max, bws.bw_3_min_max,
                   bws.bw_4_min_max, bws.bw_5_min_max]
@@ -569,17 +571,17 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             '', '', '', '',
             '', '', '', '',
             '', '', '', '', '', '', '',
-            'FBW', 'FBW', 'FBW', 'FBW', 'FBW', 
+            'FBW', 'FBW', 'FBW', 'FBW', 'FBW',
             'FBW', 'FBW', 'FBW', 'FBW', 'FBW', '',
-            'BW1', 'BW1', 'BW1', 'BW1', 'BW1', 
+            'BW1', 'BW1', 'BW1', 'BW1', 'BW1',
             'BW1', 'BW1', 'BW1', 'BW1', 'BW1', '',
-            'BW2', 'BW2', 'BW2', 'BW2', 'BW2', 
+            'BW2', 'BW2', 'BW2', 'BW2', 'BW2',
             'BW2', 'BW2', 'BW2', 'BW2', 'BW2', '',
-            'BW3', 'BW3', 'BW3', 'BW3', 'BW3', 
+            'BW3', 'BW3', 'BW3', 'BW3', 'BW3',
             'BW3', 'BW3', 'BW3', 'BW3', 'BW3', '',
-            'BW4', 'BW4', 'BW4', 'BW4', 'BW4', 
+            'BW4', 'BW4', 'BW4', 'BW4', 'BW4',
             'BW4', 'BW4', 'BW4', 'BW4', 'BW4', '',
-            'BW5', 'BW5', 'BW5', 'BW5', 'BW5', 
+            'BW5', 'BW5', 'BW5', 'BW5', 'BW5',
             'BW5', 'BW5', 'BW5', 'BW5', 'BW5']
         return res_ana_log_header
 
@@ -590,35 +592,36 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
             'Date', 'Time', 'Comment', ' ',
             'FBW', 'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
-            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)', 
+            'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
-            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)', 
+            'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
             'Noise Temp Max (K)', 'Noise Temp Range (K)']
         return res_ana_log_col_titles
 
     def results_ana_log_data(self, meas_settings: sc.MeasurementSettings,
                              bias_id: int) -> list:
-        
+        """Returns results analysis log data row."""
+
         fwb = f'{self.freq_array[0]:.2f} -> {self.freq_array[-1]:.2f}'
         bw_1 = self.bw_1_min_max
         bw_2 = self.bw_2_min_max
@@ -638,21 +641,20 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             meas_settings.project_title, meas_settings.lna_id_str,
             str(meas_settings.session_id), str(bias_id),
             self.date_str, self.time_str, meas_settings.comment, None,
-            fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4], 
-            None, *self.gain_post_proc.as_tuple(0), 
+            fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4],
+            None, *self.gain_post_proc.as_tuple(0),
             *self.noise_temp_post_proc.as_tuple(0), None,
-            *self.gain_post_proc.as_tuple(1), 
+            *self.gain_post_proc.as_tuple(1),
             *self.noise_temp_post_proc.as_tuple(1), None,
-            *self.gain_post_proc.as_tuple(2), 
+            *self.gain_post_proc.as_tuple(2),
             *self.noise_temp_post_proc.as_tuple(2), None,
-            *self.gain_post_proc.as_tuple(3), 
+            *self.gain_post_proc.as_tuple(3),
             *self.noise_temp_post_proc.as_tuple(3), None,
-            *self.gain_post_proc.as_tuple(4), 
+            *self.gain_post_proc.as_tuple(4),
             *self.noise_temp_post_proc.as_tuple(4), None,
-            *self.gain_post_proc.as_tuple(5), 
+            *self.gain_post_proc.as_tuple(5),
             *self.noise_temp_post_proc.as_tuple(5), None]
         return col_data
-
 
     @staticmethod
     def std_output_column_titles() -> list[str]:

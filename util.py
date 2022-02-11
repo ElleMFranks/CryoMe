@@ -104,8 +104,8 @@ def safe_query(
     # endregion
 
 
-def safe_write(
-        command: str, buffer_time: float, res_manager: pv.Resource:
+def safe_write(command: str, buffer_time: float,
+               res_manager: pv.Resource) -> None:
     """Writes a command to an instrument and waits the buffer time."""
     # region Write command and then sleep for buffer time.
     res_manager.write(command)

@@ -278,7 +278,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
     """Non-instrument settings for a measurement session.
 
     Attributes:
-        lnas_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under test.
+        lna_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under test.
         lna_id_str (str): String of the LNAs ut IDs for saving results.
         session_id (int): The ID of the measurement session.
         comment (str): User defined string for additional information
@@ -322,13 +322,17 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x{self.lna_ut_ids.lna_2_id}'
+        else:
+            raise Exception('Invalid chain.')
+        self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
+                          f'{self.lna_ut_ids.lna_2_id}'
         self.session_id = None
         self.comment = None
         # endregion
 
     @property
     def lna_ut_ids(self) -> LNAsUTIDs:
+        """The IDs of the LNA/s under test."""
         return self._lna_ut_ids
 
     @lna_ut_ids.setter
@@ -337,6 +341,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def lna_id_str(self) -> str:
+        """The string of the LNA ID/s for the LNA/s under test."""
         return self._lna_id_str
 
     @lna_id_str.setter
@@ -345,7 +350,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def comment(self) -> str:
-        """Gets comment for the measurement session."""
+        """User input comment for the measurement session."""
         return self._comment
 
     @comment.setter
@@ -354,6 +359,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def session_id(self) -> int:
+        """The ID of the measurement session."""
         return self._session_id
 
     @session_id.setter
@@ -365,21 +371,21 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
         # region Chain 1.
         if cryo_chain == 1:
-            self.lnas_ut_ids = LNAsUTIDs(
+            self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_1_lna_1_id,
                 self.lna_ids.chain_1_lna_2_id)
         # endregion
 
         # region Chain 2.
         elif cryo_chain == 2:
-            self.lnas_ut_ids = LNAsUTIDs(
+            self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_2_lna_1_id,
                 self.lna_ids.chain_2_lna_2_id)
         # endregion
 
         # region Chain 3.
         elif cryo_chain == 3:
-            self.lnas_ut_ids = LNAsUTIDs(
+            self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
         # endregion
@@ -389,11 +395,11 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             raise Exception('Cryo chain must be 1, 2, or 3.')
         # endregion
 
-        if self.lnas_ut_ids.lna_2_id is not None:
-            lna_id_str = f'{self.lnas_ut_ids.lna_1_id}x' \
-                         f'{self.lnas_ut_ids.lna_2_id}'
+        if self.lna_ut_ids.lna_2_id is not None:
+            lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
+                         f'{self.lna_ut_ids.lna_2_id}'
         else:
-            lna_id_str = f'{self.lnas_ut_ids.lna_1_id}'
+            lna_id_str = f'{self.lna_ut_ids.lna_1_id}'
 
         self.lna_id_str = lna_id_str
 
@@ -406,7 +412,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             settings_log = np.array(pd.read_csv(
                 file_struc.settings_path, dtype=str))
             if len(settings_log) != 0:
-                for i in settings_log[:,2]:
+                for i in settings_log[:, 2]:
                     if not mt.isnan(float(i)):
                         session_ids.append(int(i))
                 session_id = max(session_ids) + 1

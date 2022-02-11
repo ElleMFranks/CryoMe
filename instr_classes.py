@@ -225,10 +225,10 @@ class PSULimits:
 # region Overall Instrumentation Classes.
 class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
-    """"""
+    """Class containing all signal analyser settings variables."""
     def __init__(
-        self, sa_freq_settings: SpecAnFreqSettings, 
-        sa_bw_settings: SpecAnBWSettings, 
+        self, sa_freq_settings: SpecAnFreqSettings,
+        sa_bw_settings: SpecAnBWSettings,
         sa_ampl_settings: SpecAnAmplSettings,
         sig_an_en: bool) -> None:
         """"""

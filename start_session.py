@@ -5,7 +5,6 @@
 # region Import modules
 from __future__ import annotations
 import csv
-import os
 
 import numpy as np
 import pandas as pd
@@ -17,7 +16,6 @@ import instr_classes as ic
 import lna_classes as lc
 import meas_algorithms as ma
 import settings_classes as scl
-import socket_communication as sc
 import util as ut
 # endregion
 
@@ -36,8 +34,7 @@ def _trigger_algorithm(settings, lna_biases, lna_nominals, res_managers,
     # region All Cold Then All Hot.
     elif meas_settings.measure_method == 'ACTAH':
         ma.all_cold_to_all_hot(
-            settings, lna_biases, lna_nominals, res_managers,
-            trimmed_input_data)
+            settings, lna_biases, res_managers, trimmed_input_data)
     # endregion
 
     # region Manual Entry Measurement.
@@ -157,7 +154,8 @@ def _res_manager_setup(
         if bias_psu_settings.psu_safe_init:
             bc.psu_safe_init(
                 psu_rm, instr_settings.buffer_time,
-                ic.PSULimits(bias_psu_settings.v_step_lim, bias_psu_settings.d_i_lim),
+                ic.PSULimits(bias_psu_settings.v_step_lim,
+                             bias_psu_settings.d_i_lim),
                 bias_psu_settings.g_v_lower_lim)
     # endregion
 
@@ -243,8 +241,8 @@ def start_session(settings: scl.Settings) -> None:
     # endregion
 
     # region Trim loss.
-    untrimmed_loss = np.array(pd.read_csv(settings.file_struc.loss_path))
-    trimmed_loss = _input_trim(untrimmed_loss, freq_array)
+    trimmed_loss = _input_trim(
+        np.array(pd.read_csv(settings.file_struc.loss_path)), freq_array)
 
     # region Save trimmed loss and calibration data as an object.
     trimmed_input_data = scl.TrimmedInputs(trimmed_loss, trimmed_cal_data)
@@ -253,8 +251,8 @@ def start_session(settings: scl.Settings) -> None:
 
     # region Trim sig gen powers.
     if instr_settings.sig_gen_settings.vna_or_sig_gen == 'sig gen':
-        untrimmed_pwr = np.array(pd.read_csv(settings.file_struc.pwr_lvls))
-        trimmed_pwr = _input_trim(untrimmed_pwr, freq_array)
+        trimmed_pwr = _input_trim(
+            np.array(pd.read_csv(settings.file_struc.pwr_lvls)), freq_array)
         instr_settings.sig_gen_settings.set_sig_gen_pwr_lvls(trimmed_pwr)
     # endregion
     # endregion
@@ -266,22 +264,23 @@ def start_session(settings: scl.Settings) -> None:
     # region Trigger measurement with power supply enabled.
     if bias_psu_settings.bias_psu_en:
         _trigger_algorithm(settings, lna_biases, lna_nominals,
-                            res_managers, trimmed_input_data)
+                           res_managers, trimmed_input_data)
     # endregion
     # region If PSU not enabled, trigger measurement without it.
     elif not meas_settings.is_calibration:
         _trigger_algorithm(settings, lna_biases, lna_nominals,
                            res_managers, trimmed_input_data)
     else:
-        _trigger_algorithm(settings, None, None, res_managers, trimmed_input_data)
+        _trigger_algorithm(settings, None, None,
+                           res_managers, trimmed_input_data)
     # endregion
 
     # region Add empty line in logs between sessions.
     if meas_settings.is_calibration:
         with open(settings.file_struc.cal_settings_path, 'a',
                   newline='', encoding='utf-8') as file:
-            writer = csv.writer(
-                file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
+            writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
+                                delimiter=',', escapechar='\\')
             writer.writerow('\n')
     else:
         with open(
@@ -290,9 +289,8 @@ def start_session(settings: scl.Settings) -> None:
             writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                                 delimiter=',', escapechar='\\')
             writer.writerows('\n')
-        with open(
-                settings.file_struc.res_log_path, 'a',
-                newline='', encoding="utf-8") as file:
+        with open(settings.file_struc.res_log_path, 'a',
+                  newline='', encoding="utf-8") as file:
             writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                                 delimiter=',', escapechar='\\')
             writer.writerow('\n')
@@ -302,7 +300,8 @@ def start_session(settings: scl.Settings) -> None:
     if bias_psu_settings.bias_psu_en:
         bc.psu_safe_init(
             res_managers.psu_rm, instr_settings.buffer_time,
-            ic.PSULimits(bias_psu_settings.v_step_lim, bias_psu_settings.d_i_lim),
+            ic.PSULimits(bias_psu_settings.v_step_lim,
+                         bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
     # endregion
 

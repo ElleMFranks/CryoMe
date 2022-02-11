@@ -34,7 +34,6 @@ import settings_classes as sc
 def all_cold_to_all_hot(
         settings: sc.Settings,
         lna_biases: list[lc.LNABiasSet],
-        lna_nominals: lc.NominalLNASettings,
         res_managers: ic.ResourceManagers,
         trimmed_input_data: sc.TrimmedInputs) -> None:
     """Parallel sweep where cold measurements are taken, then hot.
@@ -49,7 +48,6 @@ def all_cold_to_all_hot(
     Args:
         settings:
         lna_biases:
-        lna_nominals:
         res_managers: An object containing the resource managers for the
             instruments used in the measurement.
         trimmed_input_data:
@@ -80,7 +78,6 @@ def all_cold_to_all_hot(
             hot_cold, sweep_settings.lna_sequence,
             sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
             sweep_settings.d_i_sweep)):
-        lna_noms = cp.copy(lna_nominals)
         # region Get iterables from state object.
         temp_ut = state[0]
         lna_ut = state[1]
@@ -289,8 +286,8 @@ def alternating_temps(
             at_pbar.update(i)
             print('Measurement finished, incrementing bias sweep')
             # endregion
-        
-        del lna_noms    
+
+        del lna_noms
         # endregion
 
     at_pbar.finish()

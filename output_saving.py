@@ -98,8 +98,8 @@ def _save_plot(
         bias_row_2 = ['VD / V', *lna_1_bias.lna_d_v_strs(), *lna_2_d_v_data]
         bias_row_3 = ['ID / mA', *lna_1_bias.lna_d_i_strs(), *lna_2_d_i_data]
         bias_table = tb.tabulate(
-            [bias_header, bias_row_1, bias_row_2, bias_row_3], headers="firstrow",
-            disable_numparse=True, tablefmt="plain")
+            [bias_header, bias_row_1, bias_row_2, bias_row_3],
+            headers="firstrow", disable_numparse=True, tablefmt="plain")
         plot_bias_box = osb.AnchoredText(bias_table, loc='lower right')
     # endregion
 

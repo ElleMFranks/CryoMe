@@ -103,6 +103,7 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @property
     def d_i(self) -> float:
+        """Drain current / mA."""
         return self._d_i
 
     @d_i.setter
@@ -111,6 +112,7 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @property
     def target_d_v_at_lna(self) -> float:
+        """Drain voltage at LNA (after loss) / V."""
         return self._target_d_v_at_lna
 
     @target_d_v_at_lna.setter
@@ -121,6 +123,7 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @property
     def d_i_lim(self) -> float:
+        """Drain current limit / mA."""
         return self._d_i_lim
 
     @d_i_lim.setter
@@ -129,6 +132,7 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @property
     def g_v(self) -> float:
+        """Gate voltage / V."""
         return self._g_v
 
     @g_v.setter
@@ -137,6 +141,7 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @property
     def card_chnl(self) -> bc.CardChnl:
+        """Card and channel on power supply."""
         return self._card_chnl
 
     @card_chnl.setter
@@ -155,7 +160,6 @@ class StageBiasSet(IndivBias, StageSettings):
         """Returns the array of bias values for the instance."""
         return [
             f'{self.g_v:+.3f}', f'{self.d_v_at_psu:+3f}', f'{self.d_i:.3f}']
-
 
 
 @dataclass
@@ -236,7 +240,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # endregion
 
         # region Handle possible variable entry error.
-        if not self.lnas_per_chain == 2 and self.lna_position == 'LNA2':
+        if self.lnas_per_chain != 2 and self.lna_position == 'LNA2':
             raise Exception(
                 'LNA2 cannot exist unless there are 2 LNAs per chain.')
         # endregion
@@ -291,6 +295,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
     @property
     def lna_meas_column_data(self):
+        """The power supply measured bias variables."""
         return self._lna_meas_column_data
 
     @lna_meas_column_data.setter
@@ -298,6 +303,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         self._lna_meas_column_data = value
 
     def sweep_setup(self, stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom):
+        """Sets drain current and voltage to either nominal or UT value.
+        """
         if stage_ut == 1:
             self.stage_1.d_i = d_i_ut
             self.stage_1.target_d_v_at_lna = d_v_ut
@@ -327,6 +334,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 self.stage_3.target_d_v_at_lna = d_v_ut
 
     def nominalise(self, d_v_nom, d_i_nom):
+        """Sets drain current and voltage to nominals."""
         self.stage_1.d_i = d_i_nom
         self.stage_1.target_d_v_at_lna = d_v_nom
         if self.stage_2 is not None:
@@ -411,10 +419,9 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         """Return the measured bias conditions of the LNA."""
         # region Measure and return bias conditions, or dummy values.
         meas_col_data = []
-        if psx_rm is not None:
-            # region Measure bias conditions.
-
-            # region Stage 1.
+        # region Measure bias conditions.
+        # region Stage 1.
+        if psx_rm is not None and self.stage_1 is not None:
             meas_col_data.append(ut.safe_query(
                     f'Bias:MEASure:VG:'
                     f'CArd{self.stage_1.card_chnl.card}:'
@@ -434,74 +441,81 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 self.lna_meas_column_data = meas_col_data
                 return
             # endregion
+        # endregion
 
-            # region Stage 2.
-            if self.stage_2 is not None:
-                meas_col_data.append(
-                    ut.safe_query(
-                        f'Bias:MEASure:VG:'
-                        f'CArd{self.stage_2.card_chnl.card}:'
-                        f'CHannel{self.stage_2.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True))
-                meas_col_data.append(
-                    ut.safe_query(
-                        f'Bias:MEASure:VD:'
-                        f'CArd{self.stage_2.card_chnl.card}:'
-                        f'CHannel{self.stage_2.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True))
-                meas_col_data.append(
-                    (ut.safe_query(
-                        f'Bias:MEASure:ID:'
-                        f'CArd{self.stage_2.card_chnl.card}:'
-                        f'CHannel{self.stage_2.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True) * 1000))
-            else:
-                meas_col_data.extend(['NA', 'NA', 'NA'])
-            # endregion
+        # region Stage 2.
+        if psx_rm is not None and self.stage_2 is not None:
+            meas_col_data.append(
+                ut.safe_query(
+                    f'Bias:MEASure:VG:'
+                    f'CArd{self.stage_2.card_chnl.card}:'
+                    f'CHannel{self.stage_2.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True))
+            meas_col_data.append(
+                ut.safe_query(
+                    f'Bias:MEASure:VD:'
+                    f'CArd{self.stage_2.card_chnl.card}:'
+                    f'CHannel{self.stage_2.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True))
+            meas_col_data.append(
+                (ut.safe_query(
+                    f'Bias:MEASure:ID:'
+                    f'CArd{self.stage_2.card_chnl.card}:'
+                    f'CHannel{self.stage_2.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True) * 1000))
+        elif psx_rm is not None and self.stage_2 is None:
+            meas_col_data.extend(['NA', 'NA', 'NA'])
+        # endregion
 
-            # region Stage 3.
-            if self.stage_3 is not None:
+        # region Stage 3.
+        if psx_rm is not None and self.stage_3 is not None:
 
-                meas_col_data.append(ut.safe_query(
-                        f'Bias:MEASure:VG:'
-                        f'CArd{self.stage_3.card_chnl.card}:'
-                        f'CHannel{self.stage_3.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True))
-                meas_col_data.append(ut.safe_query(
-                        f'Bias:MEASure:VD:'
-                        f'CArd{self.stage_3.card_chnl.card}:'
-                        f'CHannel{self.stage_3.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True))
-                meas_col_data.append((ut.safe_query(
-                        f'Bias:MEASure:ID:'
-                        f'CArd{self.stage_3.card_chnl.card}:'
-                        f'CHannel{self.stage_3.card_chnl.chnl}?',
-                        0.5, psx_rm, 'psx', True) * 1000))
-            else:
-                meas_col_data.extend(['NA', 'NA', 'NA'])
-            # endregion
-            # endregion
+            meas_col_data.append(ut.safe_query(
+                    f'Bias:MEASure:VG:'
+                    f'CArd{self.stage_3.card_chnl.card}:'
+                    f'CHannel{self.stage_3.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True))
+            meas_col_data.append(ut.safe_query(
+                    f'Bias:MEASure:VD:'
+                    f'CArd{self.stage_3.card_chnl.card}:'
+                    f'CHannel{self.stage_3.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True))
+            meas_col_data.append((ut.safe_query(
+                    f'Bias:MEASure:ID:'
+                    f'CArd{self.stage_3.card_chnl.card}:'
+                    f'CHannel{self.stage_3.card_chnl.chnl}?',
+                    0.5, psx_rm, 'psx', True) * 1000))
+        elif psx_rm is not None and self.stage_3 is None:
+            meas_col_data.extend(['NA', 'NA', 'NA'])
+        # endregion
+        # endregion
 
-            # region Return measured data.
-            for i, _ in enumerate(meas_col_data):
-                if meas_col_data[i] != 'NA':
-                    meas_col_data[i] = f'{meas_col_data[i]:.3f}'
+        # region Set measured data.
+        for i, _ in enumerate(meas_col_data):
+            if meas_col_data[i] != 'NA':
+                meas_col_data[i] = f'{meas_col_data[i]:.3f}'
 
-            self.lna_meas_column_data = meas_col_data
-            # endregion
-        else:
+        self.lna_meas_column_data = meas_col_data
+        # endregion
+
+        # region Handle no psu resource manager.
+        if psx_rm is None and (is_calibration or
+                               self.lna_position in ['CRBE', 'RTBE']):
             # region Return recognisable dummy values.
             i = 0
-            if is_calibration or self.lna_position in ['CRBE', 'RTBE']:
-                while i < 3:
-                    meas_col_data.append(i)
-                    i += 1
-            else:
-                while i < 9:
-                    meas_col_data.append(i)
-                    i += 1
+            while i < 3:
+                meas_col_data.append(i)
+                i += 1
+            self.lna_meas_column_data = meas_col_data
+        elif psx_rm is None and not (is_calibration or
+                                      self.lna_position in ['CRBE', 'RTBE']):
+            i=0
+            while i < 9:
+                meas_col_data.append(i)
+                i += 1
             self.lna_meas_column_data = meas_col_data
             # endregion
+        # endregion
         # endregion
 
     def lna_header(self) -> list[str]:
@@ -730,7 +744,9 @@ class BackEndLNASettings:
         """Constructor for the BackEndLNASettings class.
 
         Args:
-            d_i_lim: D current limit for the LNA in question.
+            be_lna_biases: Dictionary containing user input BE LNA
+                bias variables.
+            be_d_i_lim: D current limit for the LNA in question.
         """
 
         self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']
