@@ -22,12 +22,11 @@ buffering time.
 # region Import modules.
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional
 import time
 
 import pyvisa as pv
 
-import socket_communication as sc
 import instr_classes as ic
 # endregion
 
@@ -106,8 +105,7 @@ def safe_query(
 
 
 def safe_write(
-        command: str, buffer_time: float,
-        res_manager: pv.Resource:
+        command: str, buffer_time: float, res_manager: pv.Resource:
     """Writes a command to an instrument and waits the buffer time."""
     # region Write command and then sleep for buffer time.
     res_manager.write(command)
