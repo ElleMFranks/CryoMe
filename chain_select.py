@@ -75,7 +75,7 @@ def cryo_chain_switch(
     # endregion
 
     # region Write to switch (need to test if this is required still).
-    switch_write.write([15])
+    #switch_write.write([15])
     # endregion
 
     # region Close switch ports.

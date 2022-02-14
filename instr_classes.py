@@ -278,6 +278,8 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         ut.safe_write(f':CALC:MARK1:FUNC:BAND:SPAN {self.power_bw} MHz',
                       buffer_time, sarm)
         ut.safe_write(f':POW:ATT {self.atten} dB', buffer_time, sarm)
+        ut.safe_write(':POW:GAIN:BAND LOW', buffer_time, sarm)
+        ut.safe_write(':POW:GAIN ON', buffer_time, sarm)
         error_status = ut.safe_query(
             'SYSTem:ERRor?', buffer_time, sarm, 'spec an')
         if error_status != '+0,"No error"':

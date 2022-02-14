@@ -94,7 +94,7 @@ def main():
     freq_span = 25       # MHz
     marker_freq = 0.075  # GHz
     power_bw = 24        # MHz
-    ref_level = -50      # dBm
+    ref_level = -20      # dBm
     res_bw = 8           # MHz
     vid_bw = 10          # Hz
     # endregion
