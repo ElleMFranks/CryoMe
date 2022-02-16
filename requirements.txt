@@ -1,0 +1,10 @@
+###### Requirements ######
+
+numpy
+matplotlib
+tabulate
+pandas
+progressbar2
+pyvisa
+nidaqmx
+pathvalidate
