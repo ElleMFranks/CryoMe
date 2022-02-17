@@ -577,7 +577,7 @@ def _safe_set_stage(
 
     # region Employ adaptive search algorithm to get gate voltage.
     i = 1
-    while i < brd_g_v_range.size:
+    while i < psu_set.num_of_g_v_brd_steps:
         # region Broad level.
         # region Get iteration current.
         d_i = _safe_set_v(
@@ -600,7 +600,7 @@ def _safe_set_stage(
         # endregion
         # endregion
 
-        while j < mid_g_v_range.size:
+        while j < psu_set.num_of_g_v_mid_steps:
             # region Middle level.
             # region Get and append iteration current to meas list.
             mid_d_i_meas.append(
@@ -622,7 +622,7 @@ def _safe_set_stage(
             # endregion
             # endregion
 
-            while k < nrw_g_v_range.size:
+            while k < psu_set.num_of_g_v_nrw_steps::
                 # region Narrow level.
                 # region Get and append iteration current to meas list.
                 nrw_d_i_meas.append(
@@ -669,10 +669,14 @@ def bias_set(
     """
     psu_stg_1_lims = ic.PSULimits(
          psu_set.v_step_lim, target_lna_bias.stage_1.d_i_lim)
-    psu_stg_2_lims = ic.PSULimits(
-        psu_set.v_step_lim, target_lna_bias.stage_2.d_i_lim)
-    psu_stg_3_lims = ic.PSULimits(
-        psu_set.v_step_lim, target_lna_bias.stage_3.d_i_lim, )
+    if hasattr(target_lna_bias, 'stage_2'):
+        if target_lna_bias.stage_2 is not None:
+            psu_stg_2_lims = ic.PSULimits(
+                psu_set.v_step_lim, target_lna_bias.stage_2.d_i_lim)
+    if hasattr(target_lna_bias, 'stage_3'):
+        if target_lna_bias.stage_3 is not None:
+            psu_stg_3_lims = ic.PSULimits(
+                psu_set.v_step_lim, target_lna_bias.stage_3.d_i_lim)
 
     # region Set each stage to target drain voltage and current
     # Return and store gate voltage
