@@ -24,8 +24,8 @@ import progressbar as pb
 import bias_ctrl as bc
 import instr_classes as ic
 import lna_classes as lc
-import measurement as meas
-import output_classes as ocl
+import measurement as ms
+import output_classes as oc
 import output_saving as sv
 import settings_classes as sc
 # endregion
@@ -140,12 +140,12 @@ def all_cold_to_all_hot(
 
         # region Trigger measurement
         if temp_ut == 0:
-            cold_array.append(meas.measurement(
+            cold_array.append(ms.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut,
                 prev_meas_same_temp))
 
         else:
-            hot_array.append(meas.measurement(
+            hot_array.append(ms.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut,
                 prev_meas_same_temp))
 
@@ -162,9 +162,9 @@ def all_cold_to_all_hot(
     # region Analyse and save each set of hot and cold results.
     freq_array = settings.instr_settings.sig_gen_settings.freq_array
     for i, _ in enumerate(hot_array):
-        result = ocl.Results(
-            ocl.LoopPair(cold_array[i], hot_array[i]),
-            ocl.ResultsMetaInfo(
+        result = oc.Results(
+            oc.LoopPair(cold_array[i], hot_array[i]),
+            oc.ResultsMetaInfo(
                 meas_settings.comment, freq_array, meas_settings.order,
                 meas_settings.is_calibration, meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss,
@@ -273,7 +273,7 @@ def alternating_temps(
             # endregion
 
             # region Trigger measurement.
-            standard_results = meas.measurement(
+            standard_results = ms.measurement(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
@@ -334,7 +334,7 @@ def calibration_measurement(
     else:
         raise Exception('Cryostat chain not set.')
 
-    calibration_result = meas.measurement(
+    calibration_result = ms.measurement(
         settings, res_managers, sc.TrimmedInputs(trimmed_loss))
 
     be_biases = [crbe_lna_bias, rtbe_lna_bias]
@@ -367,7 +367,7 @@ def manual_entry_measurement(
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
 
-    standard_results = meas.measurement(
+    standard_results = ms.measurement(
         settings, res_managers, trimmed_input_data)
 
     sv.save_standard_results(

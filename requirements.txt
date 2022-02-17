@@ -1,10 +1,11 @@
 ###### Requirements ######
 
-numpy
 matplotlib
+numpy
 tabulate
 pandas
+pathvalidate
 progressbar2
 pyvisa
+pyyaml
 nidaqmx
-pathvalidate

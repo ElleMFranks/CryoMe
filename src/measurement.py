@@ -21,7 +21,7 @@ import progressbar as pb
 
 import heater_ctrl as hc
 import instr_classes as ic
-import output_classes as ocl
+import output_classes as oc
 import settings_classes as sc
 import util as ut
 # endregion
@@ -48,23 +48,31 @@ def _get_temps(tc_rm, temp_target: float,
     if tc_rm is not None:
         # region Measure and store load, lna, and extra sensor temps.
         tc_rm.write(f'SCAN {ls_settings.load_lsch},0')
-        time.sleep(buffer_time)
+        time.sleep(5)
         load_temp = ut.safe_query(
             f'KRDG? {ls_settings.load_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
+        tc_rm.write(f'SCAN {ls_settings.lna_lsch},0')
+        time.sleep(5)
         lna_temp = ut.safe_query(
             f'KRDG? {ls_settings.lna_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
         if ls_settings.extra_sensors_en:
+            tc_rm.write(f'SCAN {ls_settings.extra_1_lsch},0')
+            time.sleep(5)
             extra_1_temp = ut.safe_query(
                 f'KRDG? {ls_settings.extra_1_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
+            tc_rm.write(f'SCAN {ls_settings.extra_2_lsch},0')
+            time.sleep(5)
             extra_2_temp = ut.safe_query(
                 f'KRDG? {ls_settings.extra_2_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
         else:
             extra_1_temp = 'NA'
             extra_2_temp = 'NA'
+        tc_rm.write(f'SCAN {ls_settings.load_lsch},0')
+        time.sleep(5)
         # endregion
 
     # region Provide dummy temperature measurement values for debugging.
@@ -86,7 +94,7 @@ def _get_temps(tc_rm, temp_target: float,
 def _meas_loop(
         settings: sc.Settings, hot_or_cold: str,
         res_managers: ic.ResourceManagers, prev_meas_same_temp: bool = False
-        ) -> ocl.LoopInstanceResult:
+        ) -> oc.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
     Checks if hot or cold, sets load to target temp, then moves through
@@ -231,9 +239,9 @@ def _meas_loop(
 
     # region Return loop instance result.
     print(f'{hot_or_cold} power measurement complete.')
-    return ocl.LoopInstanceResult(
+    return oc.LoopInstanceResult(
         hot_or_cold, powers, load_temps, lna_temps,
-        ocl.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
+        oc.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
                          pre_loop_extra_1_temps, post_loop_extra_1_temps,
                          pre_loop_extra_2_temps, post_loop_extra_2_temps))
     # endregion
@@ -241,7 +249,7 @@ def _meas_loop(
 
 def _closest_temp_then_other(
         init_temp: float, res_managers: ic.ResourceManagers,
-        settings: sc.Settings) -> list[ocl.LoopInstanceResult]:
+        settings: sc.Settings) -> list[oc.LoopInstanceResult]:
 
     tc_settings = settings.instr_settings.temp_ctrl_settings
     distance_to_hot = abs(init_temp - float(tc_settings.hot_target))
@@ -268,7 +276,7 @@ def measurement(
         trimmed_input_data: sc.TrimmedInputs,
         hot_cold_count: Optional[int] = None,
         prev_meas_same_temp: Optional[bool] = False
-        ) -> Union[ocl.Results, ocl.LoopInstanceResult]:
+        ) -> Union[oc.Results, oc.LoopInstanceResult]:
     """Conducts a full measurement using the chosen algorithm.
 
     Function works differently depending on the measurement method
@@ -330,9 +338,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        standard_results = ocl.Results(
-            ocl.LoopPair(loop_res[1], loop_res[0]),
-            ocl.ResultsMetaInfo(
+        standard_results = oc.Results(
+            oc.LoopPair(loop_res[1], loop_res[0]),
+            oc.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,
@@ -386,9 +394,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        calibration_results = ocl.Results(
-            ocl.LoopPair(loop_res[1], loop_res[0]),
-            ocl.ResultsMetaInfo(
+        calibration_results = oc.Results(
+            oc.LoopPair(loop_res[1], loop_res[0]),
+            oc.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,

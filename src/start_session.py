@@ -15,7 +15,7 @@ import chain_select as cs
 import instr_classes as ic
 import lna_classes as lc
 import meas_algorithms as ma
-import settings_classes as scl
+import settings_classes as sc
 import util as ut
 # endregion
 
@@ -182,7 +182,7 @@ def _res_manager_setup(
     # endregion
 
 
-def start_session(settings: scl.Settings) -> None:
+def start_session(settings: sc.Settings) -> None:
     """Begins a session using the settings passed from Cryome.
 
     Args:
@@ -245,7 +245,7 @@ def start_session(settings: scl.Settings) -> None:
         np.array(pd.read_csv(settings.file_struc.loss_path)), freq_array)
 
     # region Save trimmed loss and calibration data as an object.
-    trimmed_input_data = scl.TrimmedInputs(trimmed_loss, trimmed_cal_data)
+    trimmed_input_data = sc.TrimmedInputs(trimmed_loss, trimmed_cal_data)
     # endregion
     # endregion
 

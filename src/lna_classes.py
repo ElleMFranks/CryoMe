@@ -28,7 +28,7 @@ import copy as cp
 import pyvisa as pv
 
 import bias_ctrl as bc
-import settings_classes as scl
+import settings_classes as sc
 import util as ut
 # endregion
 
@@ -302,12 +302,15 @@ class LNABiasSet(LNACryoLayout, LNAStages):
     def lna_meas_column_data(self, value):
         self._lna_meas_column_data = value
 
-    def sweep_setup(self, stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom):
+    def sweep_setup(self, stage_ut, lna_d_v_ut, d_i_ut, d_v_nom, d_i_nom):
         """Sets drain current and voltage to either nominal or UT value.
         """
+
         if stage_ut == 1:
+            self.stage_1.d_v_at_psu = lna_d_v_ut + (
+                self.stage_1.d_resistance * d_i_ut)
             self.stage_1.d_i = d_i_ut
-            self.stage_1.target_d_v_at_lna = d_v_ut
+            self.stage_1.target_d_v_at_lna = lna_d_v_ut
             if self.stage_2 is not None:
                 self.stage_2.d_i = d_i_nom
                 self.stage_2.target_d_v_at_lna = d_v_nom
@@ -318,8 +321,10 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             self.stage_1.d_i = d_i_nom
             self.stage_1.target_d_v_at_lna = d_v_nom
             if self.stage_2 is not None:
+                self.stage_2.d_v_at_psu = lna_d_v_ut + (
+                    self.stage_2.d_resistance * d_i_ut)
                 self.stage_2.d_i = d_i_ut
-                self.stage_2.target_d_v_at_lna = d_v_ut
+                self.stage_2.target_d_v_at_lna = lna_d_v_ut
             if self.stage_3 is not None:
                 self.stage_3.d_i = d_i_nom
                 self.stage_3.target_d_v_at_lna = d_v_nom
@@ -330,8 +335,12 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 self.stage_2.d_i = d_i_nom
                 self.stage_2.target_d_v_at_lna = d_v_nom
             if self.stage_3 is not None:
+                self.stage_3.d_v_at_psu = lna_d_v_ut + (
+                    self.stage_3.d_resistance * d_i_ut)
                 self.stage_3.d_i = d_i_ut
-                self.stage_3.target_d_v_at_lna = d_v_ut
+                self.stage_3.target_d_v_at_lna = lna_d_v_ut
+        else:
+            raise Exception('')
 
     def nominalise(self, d_v_nom, d_i_nom):
         """Sets drain current and voltage to nominals."""
@@ -375,35 +384,40 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 or is_calibration:
 
             # region Stage 1.
+            column_data = []
             if self.stage_1.g_v is None:
                 self.stage_1.g_v = 'NA'
-            column_data = [f'{self.stage_1.g_v}',
-                           f'{self.stage_1.target_d_v_at_lna:+.3f}',
-                           f'{self.stage_1.d_i:+.3f}']
+                column_data.append(f'{self.stage_1.g_v}')
+            elif self.stage_1.g_v == 'NA':
+                column_data.append(f'{self.stage_1.g_v}')
+            else:
+                column_data.append(f'{self.stage_1.g_v:+.3f}')
+            column_data.extend((f'{self.stage_1.target_d_v_at_lna:+.3f}',
+                               f'{self.stage_1.d_i:+.3f}'))
             if is_calibration or self.lna_position in ['CRBE', 'RTBE']:
                 return column_data
             # endregion
 
             # region Stage 2.
             if self.stage_2 is None:
-                column_data.append('NA')
-                column_data.append('NA')
-                column_data.append('NA')
-            else:
+                column_data.extend(('NA', 'NA', 'NA'))
+            elif self.stage_2.g_v == 'NA':
                 column_data.append(f'{self.stage_2.g_v}')
-                column_data.append(f'{self.stage_2.target_d_v_at_lna:+.3f}')
-                column_data.append(f'{self.stage_2.d_i:+.3f}')
+            else:
+                column_data.extend((f'{self.stage_2.g_v:+.3f}',
+                                    f'{self.stage_2.target_d_v_at_lna:+.3f}',
+                                    f'{self.stage_2.d_i:+.3f}'))
             # endregion
 
             # region Stage 3.
             if self.stage_3 is None:
-                column_data.append('NA')
-                column_data.append('NA')
-                column_data.append('NA')
-            else:
+                column_data.extend(('NA', 'NA', 'NA'))
+            elif self.stage_3.g_v == 'NA':
                 column_data.append(f'{self.stage_3.g_v}')
-                column_data.append(f'{self.stage_3.target_d_v_at_lna:+.3f}')
-                column_data.append(f'{self.stage_3.d_i:+.3f}')
+            else:
+                column_data.extend((f'{self.stage_3.g_v:+.3f}'
+                                    f'{self.stage_3.target_d_v_at_lna:+.3f}'
+                                    f'{self.stage_3.d_i:+.3f}'))
             # endregion
 
             return column_data
@@ -581,7 +595,10 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Construct/return gate V strs dep on existing stages.
         if (self.lnas_per_chain == 2 and self.lna_position == 'LNA2') \
                 or (self.lna_position == 'LNA1'):
-            g_v_str_data = [f'{self.stage_1.g_v}']
+            if self.stage_1.g_v == 'NA':
+                g_v_str_data = [f'{self.stage_1.g_v}']
+            else:
+                g_v_str_data = [f'{self.stage_1.g_v:+.3f}']
 
             # region Stage 2.
             if self.stage_2 is not None:
@@ -701,7 +718,7 @@ class ManualLNASettings:
 
 class NominalLNASettings:
     """Nominal LNA drain and gate voltages set to LNA objects."""
-    def __init__(self, settings: scl.Settings) -> None:
+    def __init__(self, settings: sc.Settings) -> None:
         """Constructor for the NominalLNASettings class."""
         meas_settings = settings.meas_settings
         d_i_lim = settings.instr_settings.bias_psu_settings.d_i_lim
