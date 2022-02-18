@@ -337,7 +337,7 @@ def _safe_set_v(
                   f'Drain Current (Measured): {d_i_status:+.3f}mA')
         else:
             print(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
-                  f'Target is {v_target}V    '
+                  f'Target is {v_target:+.3f}V    '
                   f'Drain Current = {d_i_status:+.3f}mA')
         # endregion
 
@@ -370,7 +370,7 @@ def _safe_set_v(
     # endregion
 
     # region Report status in console and return drain current.
-    print(f'Set {gate_or_drain}V to {v_set_status:+.3f}V    '
+    print(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
           f'Drain Current = {d_i_status:+.3f}mA')
     print('COMPLETED SAFE VOLTAGE SET\n')
     return d_i_status
@@ -407,6 +407,7 @@ def _adapt_search_stage(
         the target than the previous.
     """
     index = len(d_i_meas_arr) - 1
+    is_g_v_range_increasing = bool(g_v_range[1] - g_v_range[0] > 0)
 
     # region Check if current now over limit and handle.
     # If current is over limit, make sure next search is low to high. Do
@@ -439,8 +440,12 @@ def _adapt_search_stage(
         print('\nENTERING NEXT ADAPTIVE SEARCH LAYER')
 
         # region Setup next layer range
-        next_g_v_low_lim = g_v_range[index - 1]
-        next_g_v_up_lim = g_v_range[index]
+        if is_g_v_range_increasing:
+            next_g_v_low_lim = g_v_range[index - 1]
+            next_g_v_up_lim = g_v_range[index]
+        else:
+            next_g_v_low_lim = g_v_range[index]
+            next_g_v_up_lim = g_v_range[index - 1]
         next_g_v_rng = np.linspace(
             next_g_v_low_lim, next_g_v_up_lim, next_g_v_steps)
 
@@ -449,15 +454,24 @@ def _adapt_search_stage(
         # array, otherwise make previous broad current measurement as
         # first in mid-current measurement array.
         next_d_i_meas = []
-        if pres_closer_than_prev:
+        if pres_closer_than_prev and is_g_v_range_increasing:
             next_g_v_rng = next_g_v_rng[::-1]
             next_d_i_meas.append(d_i_meas_arr[index])
-        else:
+
+        elif not pres_closer_than_prev and is_g_v_range_increasing:
             next_d_i_meas.append(d_i_meas_arr[index - 1])
+
+        elif pres_closer_than_prev and not is_g_v_range_increasing:
+            next_d_i_meas.append(d_i_meas_arr[index])
+        
+        elif not pres_closer_than_prev and not is_g_v_range_increasing:
+            next_g_v_rng = next_g_v_rng[::-1]
+            next_d_i_meas.append(d_i_meas_arr[index - 1])
+
 
         # Remove first and last gate voltages to test as already
         # measured current for these.
-        next_g_v_rng = next_g_v_rng[1:-1]
+        #next_g_v_rng = next_g_v_rng[1:-1]
         # endregion
         # endregion
 
@@ -562,6 +576,7 @@ def _safe_set_stage(
                        GOrDVTarget('g', g_v_range[index]))
             time.sleep(buffer_time)
             _d_i = _get_psu_d_i(psu_rm, card_chnl, buffer_time)
+            print(f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}')
         # endregion
 
         # region Final val of g_v_range already measured in outer loop.
@@ -577,7 +592,7 @@ def _safe_set_stage(
 
     # region Employ adaptive search algorithm to get gate voltage.
     i = 1
-    while i < psu_set.num_of_g_v_brd_steps:
+    while i < psu_set.num_of_g_v_brd_steps + 1:
         # region Broad level.
         # region Get iteration current.
         d_i = _safe_set_v(
@@ -600,7 +615,7 @@ def _safe_set_stage(
         # endregion
         # endregion
 
-        while j < psu_set.num_of_g_v_mid_steps:
+        while j < psu_set.num_of_g_v_mid_steps + 1:
             # region Middle level.
             # region Get and append iteration current to meas list.
             mid_d_i_meas.append(
@@ -622,7 +637,7 @@ def _safe_set_stage(
             # endregion
             # endregion
 
-            while k < psu_set.num_of_g_v_nrw_steps::
+            while k < psu_set.num_of_g_v_nrw_steps + 1:
                 # region Narrow level.
                 # region Get and append iteration current to meas list.
                 nrw_d_i_meas.append(
@@ -634,6 +649,9 @@ def _safe_set_stage(
                                                 nrw_g_v_range, 0, True)
 
                 if g_v_final[0] is not None:
+                    if not g_v_final[3]:
+                        _set_psu_v(psu_rm, card_chnl, buffer_time,
+                                   GOrDVTarget('g', g_v_final[0]))
                     return g_v_final[0]
                 # endregion
                 # endregion

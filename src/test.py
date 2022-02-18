@@ -1,4 +1,11 @@
-a = []
+a = 1
 
-a.extend((1,2,3))
-print(a)
+b = 5
+
+c = False
+
+
+if not c and (a == 2 or b == 3 or b == 5):
+    print('Catch')
+    
+print('end')

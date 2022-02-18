@@ -65,6 +65,7 @@ def all_cold_to_all_hot(
     hot_cold = [0, 1]
     lna_1_array = []
     lna_2_array = []
+    prev_lna_ut = 0
     prev_temp_ut = None
     # endregion
 
@@ -84,6 +85,7 @@ def all_cold_to_all_hot(
         stage_ut = state[2]
         d_v_ut = state[3]
         d_i_ut = state[4]
+        
 
         prev_meas_same_temp = bool(prev_temp_ut == temp_ut)
         # endregion
@@ -110,7 +112,7 @@ def all_cold_to_all_hot(
         # endregion
 
         # region Set and store LNA 1 PSU settings.
-        if res_managers.psu_rm is not None:
+        if res_managers.psu_rm is not None and (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
             bc.bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
@@ -124,7 +126,7 @@ def all_cold_to_all_hot(
 
         # region Set and store LNA 2 PSU settings.
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-            if res_managers.psu_rm is not None:
+            if res_managers.psu_rm is not None and (lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
                 bc.bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -154,6 +156,7 @@ def all_cold_to_all_hot(
               f'DV:{d_v_ut:.2f} DI:{d_i_ut:.2f}')
 
         prev_temp_ut = temp_ut
+        prev_lna_ut = lna_ut
         # endregion
 
     actah_pbar.finish()
@@ -252,7 +255,7 @@ def alternating_temps(
 
             # region Set and enable power supply.
             # region LNA 1.
-            if res_managers.psu_rm is not None:
+            if res_managers.psu_rm is not Noneand (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
                 bc.bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -263,7 +266,7 @@ def alternating_temps(
 
             # region LNA 2.
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-                if res_managers.psu_rm is not None:
+                if res_managers.psu_rm is not None and (lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
                     bc.bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,

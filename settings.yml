@@ -1,26 +1,26 @@
 ---
 measurement_settings:
-  comment_en: false       # true prompts user input session comment.
-  dark_mode_plot: true    # true saves plots in dark mode palette.
-  in_cal_file_id: 1       # decides which calibration file to use.
+  comment_en: False       # True prompts user input session comment.
+  dark_mode_plot: True    # True saves plots in dark mode palette.
+  in_cal_file_id: 5       # decides which calibration file to use.
   instr_buffer_time: 0.3  # seconds to wait between isntr commands.
   inter_freq_factor: 8    # multiplier factor from sig gen.
-  is_calibration: false    # enables calibration handling.
-  lnas_per_chain: 1       # how many lnas per chain?
+  is_calibration: False    # enables calibration handling.
+  lnas_per_chain: 2       # how many lnas per chain?
   order: 1                # leave as 1 unless explicitly known why.
-  project_title: 'test om'   # becomes folder title.
-  psu_safe_init: true
-  stage_1_2_same: false   # if true l1s1: l1s2 and l2s1: l2s2
-  stage_2_3_same: false   # if true l1s2: l1s3 and l2s2: l2s3
-  stages_per_lna: 3       # how many stages per lna?
+  project_title: 'ESO LNAs'   # becomes folder title.
+  psu_safe_init: True
+  stage_1_2_same: False   # if True l1s1: l1s2 and l2s1: l2s2
+  stage_2_3_same: False   # if True l1s2: l1s3 and l2s2: l2s3
+  stages_per_lna: 2       # how many stages per lna?
   # for measure_method:
   # allcoldtoallhot: 'ACTAH', manualentrymeasure: 'MEM',
   # alternatingtemps: 'AT',  calibration: 'Calibration'
   measure_method: 'ACTAH'  # chooses the measurement algorithm.
 
 lna_ids:
-  chain_1_lna_1_id: 50     # lna id number for 1st lna in chain 1.
-  chain_1_lna_2_id: 51     # lna id number for 2nd lna in chain 1.
+  chain_1_lna_1_id: 21     # lna id number for 1st lna in chain 1.
+  chain_1_lna_2_id: 25     # lna id number for 2nd lna in chain 1.
   chain_2_lna_1_id: 52     # lna id number for 1st lna in chain 2.
   chain_2_lna_2_id: 53     # lna id number for 2nd lna in chain 2.
   chain_3_lna_1_id: 54     # lna id number for 1st lna in chain 3.
@@ -35,14 +35,13 @@ bias_sweep_settings:
   stage_sequence:          # which order to sweep stages in.
     - 1
     - 2
-    - 3
-  d_i_max: 6               # ma
-  d_i_min: 4               # ma
-  d_i_nominal: 4.0         # ma
-  d_v_max: 1.1             # v
-  d_v_min: 0.7             # v
-  d_v_nominal: 1.0         # v
-  num_of_d_i: 2            # v
+  d_i_max: 5               # ma
+  d_i_min: 5               # ma
+  d_i_nominal: 6.0         # ma
+  d_v_max: 1             # v
+  d_v_min: 0.8             # v
+  d_v_nominal: 0.9         # v
+  num_of_d_i: 1            # v
   num_of_d_v: 2            # v
   
 bias_psu_settings:
@@ -65,7 +64,7 @@ signal_analyser_settings:
   vid_bw: 10          # hz
   
 signal_generator_settings:
-  freq_step_size: 0.2      # ghz
+  freq_step_size: 1      # ghz
   max_freq: 116          # ghz
   min_freq: 67           # ghz
   vna_or_sig_gen: 'vna'  # either 'vna' or 'sig gen'
@@ -74,12 +73,12 @@ temperature_controller_settings:
   # sensor channel variables named in format:
   # lakeshore_chain1/2/3/all_lna/load_channel
   allchn_load_lsch: '08'
-  chn1_lna_lsch: '07'
-  chn2_lna_lsch: '09'
-  chn3_lna_lsch: '10'
-  extra_sensors_en: false
+  chn1_lna_lsch: '10'
+  chn2_lna_lsch: '07'
+  chn3_lna_lsch: '06'
+  extra_sensors_en: True
   t_cold_target: 20.2    # kelvin - to give 20k
-  t_hot_target: 50.7     # 60.9k - to give 60k
+  t_hot_target: 60.9     # 60.9k - to give 60k
   
 back_end_lna_settings: # cryo/room-temp_backend_all/chain#_drain_voltage/current
   be_d_i_limit: 20       # ma
@@ -127,8 +126,8 @@ analysis_bandwidths:
   ana_bw_5_min_max: [] # If not required then []
 
 available_instruments:
-  bias_psu_en: false
-  sig_an_en: false
-  sig_gen_en: false
-  switch_en: false
-  temp_ctrl_en: false
+  bias_psu_en: True
+  sig_an_en: False
+  sig_gen_en: False
+  switch_en: False
+  temp_ctrl_en: False

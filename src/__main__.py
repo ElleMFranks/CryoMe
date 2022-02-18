@@ -67,7 +67,7 @@ def main():
         sa_bw_settings = ic.SpecAnBWSettings(
             config['signal_analyser_settings']['vid_bw'],
             config['signal_analyser_settings']['res_bw'],
-            config['signal_analyser_settings']['power_bw']))
+            config['signal_analyser_settings']['power_bw'])
         sa_freq_settings = ic.SpecAnFreqSettings(
             config['signal_analyser_settings']['center_freq'],
             config['signal_analyser_settings']['marker_freq'],
@@ -182,7 +182,7 @@ def main():
         # endregion
 
         # region Manual LNA Settings.
-        if config['measurement_settings']['measure_method'] == 'MEM'
+        if config['measurement_settings']['measure_method'] == 'MEM':
             manual_lna_settings = lc.ManualLNASettings(
                 config['manual_entry_lna_settings'], 
                 lna_cryo_layout, 

@@ -111,14 +111,23 @@ class StageBiasSet(IndivBias, StageSettings):
         self._d_i = value
 
     @property
+    def d_v_at_psu(self) -> float:
+        """Drain voltage at PSU before cable loss / V."""
+        return self._d_v_at_psu
+    
+    @d_v_at_psu.setter
+    def d_v_at_psu(self, value) -> None:
+        self._d_v_at_psu = value
+
+    @property
     def target_d_v_at_lna(self) -> float:
         """Drain voltage at LNA (after loss) / V."""
         return self._target_d_v_at_lna
 
     @target_d_v_at_lna.setter
     def target_d_v_at_lna(self, value) -> None:
-        self._d_v_at_psu = (
-            value + (self.d_resistance * self.d_i))
+        self.d_v_at_psu = (
+            value + (self.d_resistance * (self.d_i / 1000)))
         self._target_d_v_at_lna = value
 
     @property
@@ -306,9 +315,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         """Sets drain current and voltage to either nominal or UT value.
         """
 
+        # Due to how the setter works, you must set current before voltage.
         if stage_ut == 1:
-            self.stage_1.d_v_at_psu = lna_d_v_ut + (
-                self.stage_1.d_resistance * d_i_ut)
             self.stage_1.d_i = d_i_ut
             self.stage_1.target_d_v_at_lna = lna_d_v_ut
             if self.stage_2 is not None:
@@ -321,8 +329,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             self.stage_1.d_i = d_i_nom
             self.stage_1.target_d_v_at_lna = d_v_nom
             if self.stage_2 is not None:
-                self.stage_2.d_v_at_psu = lna_d_v_ut + (
-                    self.stage_2.d_resistance * d_i_ut)
                 self.stage_2.d_i = d_i_ut
                 self.stage_2.target_d_v_at_lna = lna_d_v_ut
             if self.stage_3 is not None:
@@ -335,11 +341,9 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 self.stage_2.d_i = d_i_nom
                 self.stage_2.target_d_v_at_lna = d_v_nom
             if self.stage_3 is not None:
-                self.stage_3.d_v_at_psu = lna_d_v_ut + (
-                    self.stage_3.d_resistance * d_i_ut)
                 self.stage_3.d_i = d_i_ut
                 self.stage_3.target_d_v_at_lna = lna_d_v_ut
-        else:
+        if stage_ut not in [1, 2, 3]:
             raise Exception('')
 
     def nominalise(self, d_v_nom, d_i_nom):

@@ -518,7 +518,7 @@ class FileStructure:
         """
 
         # region Set attributes from args.
-        cwd = os.path.dirname(os.getcwd())
+        cwd = os.getcwd()
         self.results_directory = pl.Path(
             str(cwd) + f'\\results\\{project_title}')
         self.cal_directory = pl.Path(
