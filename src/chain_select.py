@@ -30,8 +30,10 @@ def cryo_chain_switch(
             a command.
         meas_settings: The measurement settings for the session.
     """
+    # region Set up logging and unpack objects.
     log = logging.getLogger(__name__)
     chain = meas_settings.lna_cryo_layout.cryo_chain
+    # endregion
 
     # region Set up ni daq
     switch_read = ni.Task()
@@ -92,7 +94,7 @@ def back_end_lna_setup(
     """Safely sets back end LNA biases for requested cryostat chain.
 
     Args:
-        settings:
+        settings: Settings for the session.
         psu_rm: The biasing power supply resource manager.
         direct_set: Whether to direct set the biasing stages instead of
             safe set. Direct set is quicker, does not account for cable

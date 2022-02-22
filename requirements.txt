@@ -1,11 +1,11 @@
 ###### Requirements ######
 
 matplotlib
+nidaqmx
 numpy
-tabulate
 pandas
 pathvalidate
 pyvisa
 pyyaml
+tabulate
 tqdm
-nidaqmx

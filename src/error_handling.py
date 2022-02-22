@@ -13,13 +13,13 @@ import settings_classes as sc
 # endregion
 
 
+# region Measurement settings.
 def check_lna_sequence(lna_sequence: list, lnas_per_chain: int) -> None:
     """Ensures you can't put a non existent LNA in LNA Sequence."""
     if lnas_per_chain == 1 and 2 in lna_sequence:
         raise Exception('If 2 is in lna_sequence, lnas_per_chain must = 2.')
 
 
-# region Measurement settings.
 def check_lna_info(lna_info: sc.LNAInfo) -> None:
     """LNA info error handling."""
     if lna_info.lna_cryo_layout.cryo_chain not in [1, 2, 3]:
@@ -67,7 +67,6 @@ def check_session_info(session_info: sc.SessionInfo) -> None:
 # region Sweep settings.
 def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
     """Measurement sequence error handling."""
-    # region Measurement sequence error handling.
     if (any(meas_sequence.stage_sequence) not in [1, 2, 3]) \
             or (0 >= len(meas_sequence.stage_sequence) > 3):
         if meas_sequence.stage_sequence:
@@ -77,12 +76,10 @@ def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
             or (0 > len(meas_sequence.lna_sequence) > 2):
         if meas_sequence.lna_sequence:
             raise Exception('Invalid LNA sequence.')
-    # endregion
 
 
 def check_nominals(nominal_bias: sc.NominalBias) -> None:
     """Nominal bias error handling."""
-    # region Nominal bias error handling.
     if nominal_bias is not None:
         if 3 > nominal_bias.d_i_nominal > 9 and nominal_bias is not None:
             ut.yes_no('Nominal Drain Current', nominal_bias.d_i_nominal,
@@ -91,12 +88,10 @@ def check_nominals(nominal_bias: sc.NominalBias) -> None:
         if 0.5 > nominal_bias.d_v_nominal > 1.3 and nominal_bias is not None:
             ut.yes_no('Nominal Drain Voltage', nominal_bias.d_v_nominal,
                       'V')
-    # endregion
 
 
 def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
     """Sweep setup variable error handling."""
-    # region Sweep setup variable error handling.
     if sweep_setup_vars.num_of_d_v > 6:
         ut.yes_no('Number of Drain Voltage Points',
                   sweep_setup_vars.num_of_d_v, '')
@@ -126,7 +121,6 @@ def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
     if sweep_setup_vars.alt_temp_sweep_skips < 0 or not isinstance(
             sweep_setup_vars.alt_temp_sweep_skips, int):
         raise Exception('Incorrectly specified alt_temp_sweep_skips.')
-    # endregion
 # endregion
 
 

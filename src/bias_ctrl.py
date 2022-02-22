@@ -59,7 +59,7 @@ def psu_safe_init(
         psu_rm: Resource manager for the bias power supply.
         buffer_time: This is how long to wait in seconds after each
             command which is sent to any of the instruments.
-        psu_lims:
+        psu_lims: Power supply drain current and gate voltage step lim.
         g_v_low_lim: The lower limit for the gate voltage.
     """
 
@@ -196,14 +196,15 @@ def direct_set_stage(
     # region Safely set drain and then gate voltages using _safe_set_v.
     g_v_target = g_d_vs[0]
     d_v_target = g_d_vs[1]
-
     _safe_set_v(psu_rm, card_chnl, d_v_target, psu_lims, buffer_time)
     _safe_set_v(psu_rm, card_chnl, g_v_target, psu_lims, buffer_time)
     # endregion
 
 
-def _get_step_to_target(v_set_diff, v_step_lim, v_set_status):
-    # region Return direction and amount to step towards target.
+def _get_step_to_target(v_set_diff: float, v_step_lim: float,
+                        v_set_status: float) -> float:
+    """Return direction and amount to step voltage towards target."""
+    # region Return direction and amount to step voltage towards target.
     # region Define boolean conditions for readability.
     pos_targ_oof_rng = bool(
         abs(v_set_diff) > v_step_lim and v_set_diff > 0)
@@ -247,7 +248,10 @@ def _safe_set_v(
 
     Args:
         psu_rm: Resource manager for the psu.
-        card_chnl:
+        card_chnl: The card and channel to set to.
+        g_or_d_v_target: 'g' or 'd' whether a gate or drain voltage is
+            being set.
+        psu_lims: The power supply drain current and voltage step lims.
         buffer_time: This is how long to wait in seconds after each
             command which is sent to any of the instruments.
 
@@ -530,18 +534,18 @@ def _safe_set_stage(
         stage_bias: Bias variables (target voltages and currents).
         psu_set: Psu settings, contains the current limit, gate voltage
             limits, and wide/narrow voltage step sizes.
-        card_chnl:
-        psu_lims:
+        card_chnl: The card and channel of the power supply to set.
+        psu_lims: Drain current and voltage step psu limits.
 
     Returns:
         Gate voltage which with the specified drain voltage will produce
         the specified drain current.
     """
+
+    # region Set up logging, instantiate arrays, and unpack objects.
     log = logging.getLogger(__name__)
     brd_d_i_meas = []
     buffer_time = psu_set.buffer_time
-
-    # region Get target drain current
     d_i_target = stage_bias.d_i
     # endregion
 
@@ -572,6 +576,7 @@ def _safe_set_stage(
     # region Define inner current measurement function.
     def _mid_nrw_get_d_i(g_v_range: list[float], outer_d_i_meas: list[float],
                          index: int, outer_index: int) -> float:
+        """Measures the current based on passed inner loop values."""
         # region Measure unmeasured currents.
         if index < len(g_v_range) - 1:
             # No _safe_set_v as know upper bound within current limit.
@@ -688,6 +693,8 @@ def bias_set(
         buffer_time: This is how long to wait in seconds after each
             command which is sent to any of the instruments.
     """
+
+    # region Get power supply limits.
     psu_stg_1_lims = ic.PSULimits(
          psu_set.v_step_lim, target_lna_bias.stage_1.d_i_lim)
     if hasattr(target_lna_bias, 'stage_2'):
@@ -698,6 +705,7 @@ def bias_set(
         if target_lna_bias.stage_3 is not None:
             psu_stg_3_lims = ic.PSULimits(
                 psu_set.v_step_lim, target_lna_bias.stage_3.d_i_lim)
+    # endregion
 
     # region Set each stage to target drain voltage and current
     # Return and store gate voltage

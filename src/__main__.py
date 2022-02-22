@@ -6,6 +6,8 @@ set, and the required measurement algorithm is called. For more
 information on the package as a whole, see the Documentation folder in
 the code directory.
 
+Settings are in settings.yml, edit there to change operation of program.
+
 Use of __future__ import to avoid problems with type hinting and
 circular importing mean that this code will only work with Python 3.7 or
 higher.
@@ -14,7 +16,6 @@ Todo:
     * Documentation
         * Write detail paragraph for module docstrings.
         * Check project docstrings.
-    * Features
 """
 
 # region Import modules
@@ -36,7 +37,10 @@ import start_session as ss
 
 def main():
     """Main for CryoMe."""
+
+    # region Fix system path to make it consistent wherever linked from.
     os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))
+    # endregion
 
     # region Set up logging.
     stream_format = logging.Formatter(
@@ -46,12 +50,11 @@ def main():
         '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
 
     logging.addLevelName(15, "CDEBUG")
-
     def cdebug(self, message, *args, **kws):
         """Logging level setup."""
         self._log(15, message, args, **kws)
-
     logging.Logger.cdebug = cdebug
+
     logstream = logging.StreamHandler()
     logstream.setLevel(logging.INFO)
     logstream.setFormatter(stream_format)
