@@ -606,20 +606,20 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
             # region Stage 2.
             if self.stage_2 is not None:
-                if self.stage_2.g_v is not None:
+                if self.stage_2.g_v == 'NA':
                     g_v_str_data.append(f'{self.stage_2.g_v}')
                 else:
-                    g_v_str_data.append('NA')
+                    g_v_str_data.append(f'{self.stage_2.g_v:+.3f}')
             else:
                 g_v_str_data.append('NA')
             # endregion
 
             # region Stage 3.
             if self.stage_3 is not None:
-                if self.stage_3.g_v is not None:
+                if self.stage_3.g_v == 'NA':
                     g_v_str_data.append(f'{self.stage_3.g_v}')
                 else:
-                    g_v_str_data.append('NA')
+                    g_v_str_data.append(f'{self.stage_3.g_v:+.3f}')
             else:
                 g_v_str_data.append('NA')
             # endregion

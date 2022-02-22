@@ -9,11 +9,12 @@ Calibration>Chain folder.
 
 # region Import modules.
 from __future__ import annotations
+from time import sleep
 from typing import Optional
 import csv
+import logging
 import os
 import pathlib as pl
-import time
 
 import matplotlib.offsetbox as ob
 import matplotlib.pyplot as pp
@@ -53,7 +54,6 @@ def _save_plot(
     # endregion
 
     # region Set plot variables.
-    print('Plotting results...')
     lab_font = 12
     pixel_line_width = 0.7
     dark = '#181818'
@@ -178,9 +178,9 @@ def _save_plot(
     # region Save and close plots.
     fig.savefig(save_path)
     # fig.show()
-    time.sleep(0.5)  # Pause before/after close - box glitch.
+    sleep(0.5)  # Pause before/after close - box glitch.
     pp.close('all')
-    time.sleep(0.5)
+    sleep(0.5)
     # endregion
 
 
@@ -198,6 +198,8 @@ def save_standard_results(
         lna_1_bias: The LNA settings for the first measured LNA.
         lna_2_bias: The LNA settings for the second measured LNA.
     """
+    # region Unpack objects and set up logging.
+    log = logging.getLogger(__name__)
     meas_settings = settings.meas_settings
     instr_settings = settings.instr_settings
     file_struc = settings.file_struc
@@ -208,8 +210,10 @@ def save_standard_results(
     if meas_settings.lna_cryo_layout.cryo_chain == 3:
         crbe_lna = meas_settings.direct_lnas.be_lna_settings.crbe_chain_3_lna
     rtbe_lna = meas_settings.direct_lnas.be_lna_settings.rtbe_chain_a_lna
-    print('Updating settings log...')
+    # endregion
 
+    # region Update settings log.
+    log.info('Updating settings log...')
     # region Set up data to input to settings log.
     if lna_2_bias is not None:
         set_col_data = [
@@ -249,28 +253,33 @@ def save_standard_results(
                             delimiter=',', escapechar='\\')
         writer.writerow(set_col_data)
     # endregion
-
-    print('Settings log updated')
-    print('Saving raw results to be processed')
+    log.info('Settings log updated.')
+    # endregion
 
     # region Update results log.
+    log.info('Updating results log...')
     res_log_data = results.results_ana_log_data(meas_settings, bias_id)
-
     with open(
             file_struc.res_log_path, 'a',
             newline='', encoding="utf-8") as file:
         writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                             delimiter=',', escapechar='\\')
         writer.writerow(res_log_data)
+    log.info('Results log updated.')
     # endregion
 
-    # region Setup and save plot
+    # region Setup and save plot.
+    log.info('Saving plot...')
     lna_biases = [lna_1_bias, lna_2_bias]
     _save_plot(results, meas_settings, lna_biases,
                results.output_file_path(file_struc.results_directory,
                                         meas_settings, bias_id, 'png'),
                bias_id)
+    log.info('Plot saved.')
     # endregion
+
+    # region Save results as csv.
+    log.info('Saving raw results to be processed...')
 
     # region Figure out output file name.
     # Create file name in format: Raw Meas# LNA# Bias#.csv/png.
@@ -327,8 +336,8 @@ def save_standard_results(
         writer.writerows(results_csv_data)
     # endregion
 
-    print('Results saved')
-
+    log.info('Results pre-analysed, plotted, and saved.\n')
+    # endregion
 
 def save_calibration_results(
         be_biases: list[lc.LNABiasSet], be_stages: list[lc.StageBiasSet],
@@ -341,15 +350,18 @@ def save_calibration_results(
         settings: The measurement settings for the session.
         results: The results to save.
     """
+    # region Unpack objects and set up logging.
+    log = logging.getLogger(__name__)
     meas_settings = settings.meas_settings
     cryo_chain = settings.meas_settings.lna_cryo_layout.cryo_chain
     crbe_lna_bias = be_biases[0]
     rtbe_lna_bias = be_biases[1]
     crbe_stg = be_stages[0]
     rtbe_stg = be_stages[1]
+    # endregion
 
-    # region Figure out calibration ID/prepare cal settings log.
-    # Read settings log, and increment from max cal ID for chain.
+    # region Read settings log, increment from max cal ID for chain.
+    log.cdebug('Getting calibration ID.')
     cal_settings_log = pd.read_csv(settings.file_struc.cal_settings_path)
     cal_settings_log = np.array(cal_settings_log)
     chain_list = cal_settings_log[:, 1]
@@ -359,13 +371,14 @@ def save_calibration_results(
         if cryo_chain == chain_list[entry]:
             trim_cal_id_list.append(cal_id_list[entry])
     if len(trim_cal_id_list) != 0:
-        cal_id = 1 + max(trim_cal_id_list)
+        cal_id = int(1 + max(trim_cal_id_list))
     else:
         cal_id = 1
-
+    log.cdebug(f'Calibration ID = {cal_id}')
     # endregion
 
     # region Set file names for csv and plot.
+    log.cdebug('Setting file names for csv and plot.')
     cal_output_path = pl.Path(
         str(settings.file_struc.cal_directory) +
         f'\\Chain {cryo_chain}')
@@ -379,12 +392,15 @@ def save_calibration_results(
     # endregion
 
     # region Send results to be plotted and saved.
+    log.info('Saving plot...')
     _save_plot(
         results, settings.meas_settings, be_biases, cal_png_path,
         calibration_id=cal_id)
+    log.info('Plot saved.')
     # endregion
 
-    # region Add cal measurement settings to the cal settings log
+    # region Add cal measurement settings to the cal settings log.
+    log.info('Saving calibration settings...')
     cal_settings_col_data = [
         meas_settings.project_title, cryo_chain, str(cal_id),
         results.date_str, results.time_str, meas_settings.comment, None,
@@ -399,8 +415,11 @@ def save_calibration_results(
         writer = csv.writer(
             file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
         writer.writerow(cal_settings_col_data)
+    log.info('Calibration settings saved.')
     # endregion
 
+    # region Save calibration results.
+    log.info('Saving results...')
     # region Set up cal results csv header.
     cal_results_header_1 = [
         f'Chain {cryo_chain} - Calibration: {cal_id}' +
@@ -427,6 +446,6 @@ def save_calibration_results(
     with open(cal_csv_path, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
         writer.writerows(cal_results_csv_data)
+    log.info('Results plotted and saved.\n')
     # endregion
-
-    print('Calibration saved')
+    # endregion

@@ -8,7 +8,7 @@ measurement_settings:
   is_calibration: False    # enables calibration handling.
   lnas_per_chain: 2       # how many lnas per chain?
   order: 1                # leave as 1 unless explicitly known why.
-  project_title: 'ESO LNAs'   # becomes folder title.
+  project_title: 'Tebsy'   # becomes folder title.
   psu_safe_init: True
   stage_1_2_same: False   # if True l1s1: l1s2 and l2s1: l2s2
   stage_2_3_same: False   # if True l1s2: l1s3 and l2s2: l2s3
@@ -126,7 +126,7 @@ analysis_bandwidths:
   ana_bw_5_min_max: [] # If not required then []
 
 available_instruments:
-  bias_psu_en: True
+  bias_psu_en: False
   sig_an_en: False
   sig_gen_en: False
   switch_en: False

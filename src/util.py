@@ -23,7 +23,8 @@ buffering time.
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
-import time
+from time import sleep
+import logging
 
 import pyvisa as pv
 
@@ -59,6 +60,7 @@ def safe_query(
     again. Only need to send equipment settings with a spec an query.
     """
     # region Keep trying query until it works or too many tries.
+    log = logging.getLogger(__name__)
     i = 0
     while True:
         try:
@@ -68,11 +70,11 @@ def safe_query(
                 output = float(output)
             elif str_req:
                 output = str(output)
-            time.sleep(buffer_time)
+            sleep(buffer_time)
             return output
-        except Exception as _e:
-            print('Error')
-            time.sleep(5)
+        except Exception as e:
+            logging.error(f'Safe query failed. Error: {e}')
+            sleep(5)
             # region Handle retries for each instrument.
             i += 1
             if i > 10:
@@ -83,21 +85,21 @@ def safe_query(
                         instr_settings.sig_an_settings.spec_an_init(
                             res_manager, buffer_time)
                     if i > 15:
-                        raise Exception('Spec An Error') from _e
+                        logging.exception('Spec An Error')
 
                 if instr == 'lakeshore':
-                    raise Exception('Lakeshore Error.') from _e
+                    logging.exception('Lakeshore Error.')
 
                 if instr == 'vna':
-                    raise Exception('VNA Error.') from _e
+                    logging.exception('VNA Error.')
 
                 if instr == 'sig gen':
-                    raise Exception('Sig Gen Error.') from _e
+                    logging.exception('Sig Gen Error.')
 
                 if instr == 'psx':
-                    raise Exception('PSX Error.') from _e
+                    logging.exception('PSX Error.')
 
-                raise Exception('') from _e
+                logging.exception('Other Error.')
 
             # endregion
             continue
@@ -109,5 +111,5 @@ def safe_write(command: str, buffer_time: float,
     """Writes a command to an instrument and waits the buffer time."""
     # region Write command and then sleep for buffer time.
     res_manager.write(command)
-    time.sleep(buffer_time)
+    sleep(buffer_time)
     # endregion

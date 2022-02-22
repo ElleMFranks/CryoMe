@@ -9,7 +9,8 @@ a direct set method, or a safe set method.
 
 # region Import modules.
 from __future__ import annotations
-import time
+import logging
+from time import sleep
 
 import nidaqmx as ni
 import pyvisa as pv
@@ -29,6 +30,7 @@ def cryo_chain_switch(
             a command.
         meas_settings: The measurement settings for the session.
     """
+    log = logging.getLogger(__name__)
     chain = meas_settings.lna_cryo_layout.cryo_chain
 
     # region Set up ni daq
@@ -57,17 +59,17 @@ def cryo_chain_switch(
 
     # region Set channel.
     switch_write.write([switch_position])
-    time.sleep(buffer_time)
+    sleep(buffer_time)
     # endregion
 
     # region Report cryostat status.
     switch_read_position = switch_read.read()
     if switch_read_position == 64:
-        print('Cryostat chain 1 activated.')
+        log.info('Cryostat chain 1 activated.')
     elif switch_read_position == 32:
-        print('Cryostat chain 2 activated.')
+        log.info('Cryostat chain 2 activated.')
     elif switch_read_position == 16:
-        print('Cryostat chain 3 activated.')
+        log.info('Cryostat chain 3 activated.')
     elif switch_read_position == 0:
         raise Exception('Switch not powered.')
     else:

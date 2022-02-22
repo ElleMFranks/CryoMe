@@ -15,13 +15,14 @@ Todo:
         * Write detail paragraph for module docstrings.
         * Check project docstrings.
     * Features
-        * Change print statements to logging
 """
 
 # region Import modules
 from __future__ import annotations
+import logging
 import os
 import pathlib as pl
+import sys
 
 import yaml as ym
 
@@ -35,10 +36,31 @@ import start_session as ss
 
 def main():
     """Main for CryoMe."""
+    os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))
+    
+    # region Set up logging.
+    stream_format = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(name)s - %(message)s', 
+        '%m-%d %H:%M:%S')
+    file_format = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
+    CDEBUG = 15
+    logging.addLevelName(CDEBUG, "CDEBUG")
+    def cdebug(self, message, *args, **kws):
+        """Logging level setup."""
+        self._log(CDEBUG, message, args, **kws)
+    logging.Logger.cdebug = cdebug
+    logstream = logging.StreamHandler()
+    logstream.setLevel(logging.INFO)
+    logstream.setFormatter(stream_format)
+    log = logging.getLogger()
+    log.addHandler(logstream)
+    log.setLevel(logging.DEBUG)
+    # endregion
+
     # region Measure each chain as requested.
     with open(pl.Path(str(os.getcwd()) + '\\settings.yml')) as f:
 	    config = ym.safe_load(f)
-
 
     for index, cryo_chain in enumerate(
         config['bias_sweep_settings']['chain_sequence']):
@@ -238,9 +260,23 @@ def main():
         # endregion
         # endregion
 
-        # region Trigger measurement
-        ss.start_session(settings)
+        # region Get/set session ID and config log file writer.
+        meas_settings.config_session_id(file_struc)
+        log_path = file_struc.get_log_path(meas_settings.session_id)
+        file_handler = logging.FileHandler(log_path, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(file_format)
+        log.addHandler(file_handler)
         # endregion
+        
+        # region Trigger measurement
+        try:
+            ss.start_session(settings)
+        except:
+            log.exception(sys.exc_info()[0])
+        # endregion
+
+    input('Press Enter to exit...')
     # endregion
 
 if __name__ == '__main__':

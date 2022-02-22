@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\src"
   ],
-  "SelectedNode": "\\cryome.sln",
+  "SelectedNode": "\\src\\__main__.py",
   "PreviewInSolutionExplorer": false
 }

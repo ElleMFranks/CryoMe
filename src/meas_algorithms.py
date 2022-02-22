@@ -18,8 +18,9 @@ the back end LNAs present.
 from __future__ import annotations
 from itertools import product
 import copy as cp
+import logging
 
-import progressbar as pb
+import tqdm as tq
 
 import bias_ctrl as bc
 import instr_classes as ic
@@ -52,14 +53,15 @@ def all_cold_to_all_hot(
             instruments used in the measurement.
         trimmed_input_data:
     """
+
+    # region Unpack objects, instatiate arrays, and set up logging.
+    log = logging.getLogger(__name__)
     sweep_settings = settings.sweep_settings
     meas_settings = settings.meas_settings
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
     d_v_nom = settings.sweep_settings.d_v_nominal
     d_i_nom = settings.sweep_settings.d_i_nominal
-
-    # region Instantiate arrays.
     hot_array = []
     cold_array = []
     hot_cold = [0, 1]
@@ -67,30 +69,37 @@ def all_cold_to_all_hot(
     lna_2_array = []
     prev_lna_ut = 0
     prev_temp_ut = None
+    states = list(product(hot_cold, sweep_settings.lna_sequence,
+                     sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
+                     sweep_settings.d_i_sweep))
     # endregion
 
-    # region Iterate measuring lna/stage/bias value states.
-    actah_pbar = pb.ProgressBar(max_value=len(list(product(
-            hot_cold, sweep_settings.lna_sequence,
-            sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
-            sweep_settings.d_i_sweep)))).start()
+    # region Loop through states measuring at each.
+    print('')
+    for i, state in enumerate(tq.tqdm(
+        states, ncols=110, leave=False, desc="Sweep Prog",
+        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} [Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
-    for i, state in enumerate(product(
-            hot_cold, sweep_settings.lna_sequence,
-            sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
-            sweep_settings.d_i_sweep)):
-        # region Get iterables from state object.
+        # region Unpack state object and set additional variable.
         temp_ut = state[0]
         lna_ut = state[1]
         stage_ut = state[2]
         d_v_ut = state[3]
         d_i_ut = state[4]
-        
-
         prev_meas_same_temp = bool(prev_temp_ut == temp_ut)
         # endregion
 
+        # region Log measurement state.
+        if temp_ut == 0:
+            log.info(f'Measurement: {i + 1} - HotOrCold: Cold - LNA: {lna_ut} '
+                  f'- DV: {d_v_ut:.2f} V - DI: {d_i_ut:.2f} mA.')
+        else:
+            log.info(f'Measurement: {i + 1} - HotOrCold: Hot - LNA:{lna_ut} '
+                  f'- DV:{d_v_ut:.2f} V - DI:{d_i_ut:.2f} mA.')
+        # endregion
+
         # region Configure LNA biasing settings to send to bias control.
+
         # region LNA 1.
         if lna_ut == 1:
             lna_1_bias.sweep_setup(
@@ -151,18 +160,19 @@ def all_cold_to_all_hot(
                 settings, res_managers, trimmed_input_data, temp_ut,
                 prev_meas_same_temp))
 
-        actah_pbar.update(i)
-        print(f'Measurement: {i} HotOrCold:{temp_ut} LNA:{lna_ut} '
-              f'DV:{d_v_ut:.2f} DI:{d_i_ut:.2f}')
+        print('\n')
+
+        
 
         prev_temp_ut = temp_ut
         prev_lna_ut = lna_ut
         # endregion
-
-    actah_pbar.finish()
+    print('')
+    
     # endregion
 
     # region Analyse and save each set of hot and cold results.
+    log.info('Starting results saving.')
     freq_array = settings.instr_settings.sig_gen_settings.freq_array
     for i, _ in enumerate(hot_array):
         result = oc.Results(
@@ -175,6 +185,7 @@ def all_cold_to_all_hot(
 
         sv.save_standard_results(
             settings, result, i + 1, lna_1_array[i], lna_2_array[i])
+    log.info('All results saved.')
     # endregion
 
 
@@ -204,23 +215,25 @@ def alternating_temps(
             instruments used in the measurement.
         trimmed_input_data:
     """
-
-    # region Unpack classes.
+    
+    # region Unpack classes and set up logging.
+    log = logging.getLogger(__name__)
     sweep_settings = settings.sweep_settings
     meas_settings = settings.meas_settings
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
     d_v_nom = settings.sweep_settings.d_v_nominal
     d_i_nom = settings.sweep_settings.d_i_nominal
+    states = list(product(
+            sweep_settings.lna_sequence, sweep_settings.stage_sequence,
+            sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
     # endregion
-
+   
     # region Iterate measuring and saving lna/stage/bias value states.
-    at_pbar = pb.ProgressBar(max_value=len(list(product(
-            sweep_settings.lna_sequence, sweep_settings.stage_sequence,
-            sweep_settings.d_v_sweep, sweep_settings.d_i_sweep)))).start()
-    for i, state in enumerate(product(
-            sweep_settings.lna_sequence, sweep_settings.stage_sequence,
-            sweep_settings.d_v_sweep, sweep_settings.d_i_sweep)):
+    print('')
+    for i, state in tq.tqdm(enumerate(
+        states, ncols=110, leave=False, desc="Sweep Prog",
+        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} [Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
         lna_noms = cp.deepcopy(lna_nominals)
 
@@ -255,7 +268,7 @@ def alternating_temps(
 
             # region Set and enable power supply.
             # region LNA 1.
-            if res_managers.psu_rm is not Noneand (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+            if res_managers.psu_rm is not None and (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
                 bc.bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -286,16 +299,12 @@ def alternating_temps(
             # endregion
 
             # region Update status and continue sweep.
-            at_pbar.update(i)
-            print('Measurement finished, incrementing bias sweep')
+            log.info('Measurement finished, incrementing bias sweep')
             # endregion
 
+        log.info('All results saved.')
         del lna_noms
         # endregion
-
-    at_pbar.finish()
-    # endregion
-
 
 def calibration_measurement(
         settings: sc.Settings, res_managers: ic.ResourceManagers,

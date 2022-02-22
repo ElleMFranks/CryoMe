@@ -52,6 +52,7 @@ trying to access an instrument.
 # region Import modules.
 from __future__ import annotations
 from dataclasses import dataclass
+import logging
 from typing import Optional
 
 import numpy as np
@@ -239,7 +240,6 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         eh.check_sa_ampl_settings(sa_ampl_settings)
 
         if not isinstance(sig_an_en, bool):
-            print(type(sig_an_en))
             raise Exception('sig_an_en must be True or False.')
         # endregion
 
@@ -260,11 +260,12 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
             self, spec_an_rm: pv.Resource, buffer_time: float) -> None:
         """Initialises the spectrum analyser to instance settings."""
         # region Send setup commands to Spectrum Analyser.
+        log = logging.getLogger(__name__)
         sarm = spec_an_rm
         ut.safe_write('*RST', buffer_time, sarm)
         ut.safe_query('*OPC?', buffer_time, sarm, 'spec an')
         ut.safe_write('*CLS', buffer_time, sarm)
-        print(str(sarm.query('*IDN?'))[:-2])
+        log.info(str(sarm.query('*IDN?'))[:-2])
         ut.safe_write(f':FREQ:CENT {self.center_freq} GHz', buffer_time, sarm)
         ut.safe_write(
             f':CALC:MARK1:X {self.marker_freq} Ghz', buffer_time, sarm)
@@ -285,6 +286,7 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         if error_status != '+0,"No error"':
             raise Exception(f'Spec An Error Code {error_status}')
         ut.safe_query('*OPC?', buffer_time, sarm, 'spec an')
+        log.info('Spectrum analyser initialised successfully.')
         # endregion
 
     def header(self):
@@ -370,8 +372,9 @@ class SignalGeneratorSettings(FreqSweepSettings):
     def vna_init(sig_gen_rm, buffer_time: float):
         """Initialise the PNA-X N5245A VNA to 10GHz CW"""
         # region Print VNA ID and set it to CW mode at 10GHz.
+        log = logging.getLogger(__name__)
         ut.safe_write('*CLS', buffer_time, sig_gen_rm)
-        print(ut.safe_query(
+        log.info(ut.safe_query(
             "*IDN?", buffer_time, sig_gen_rm, 'vna', False, True)[:-2])
         ut.safe_write('SENS:SWEEP:TYPE CW', buffer_time, sig_gen_rm)
         ut.safe_write('SENS:FREQ:CW 10 GHz', buffer_time, sig_gen_rm)
@@ -379,6 +382,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
             'SYST:ERR?', buffer_time, sig_gen_rm, 'sig gen')
         if error_status != '+0,"No error"':
             raise Exception(f'VNA Error Code {error_status}')
+        log.info("VNA initialised succesfully.")
         # endregion
 
     def set_sig_gen_pwr_lvls(self, trimmed_pwr_lvls: list) -> None:
@@ -447,7 +451,8 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
                        sample_or_warm_up: str = 'warm up') -> None:
         """Initialise the lakeshore to correct channels."""
         # region Print Lakeshore ID
-        print(ut.safe_query(
+        log = logging.getLogger(__name__)
+        log.info(ut.safe_query(
             '*IDN?', buffer_time, lakeshore_rm, 'lakeshore', False, True)[:-2])
         # endregion
 
@@ -463,6 +468,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
             hc.heater_setup(lakeshore_rm, self.load_lsch, 'warmup')
         else:
             raise Exception('must be either "sample" or "warm up".')
+        log.info("Lakeshore initialised.")
         # endregion
 
 
@@ -518,6 +524,7 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
             init_d_v: The initial drain voltage in volts.
             init_g_v: The initial gate voltage in volts.
         """
+        log = logging.getLogger(__name__)
 
         # region Send commands to set all channels to Vd=0 Vg=-0.25
         # Initialise into CV mode, all channels drain to 0v
@@ -539,8 +546,8 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         ut.safe_write("BIAS:ENable:CArd2 0", buffer_time, psx_rm)
         ut.safe_write("BIAS:ENable:CArd3 0", buffer_time, psx_rm)
         ut.safe_write("BIAS:ENable:SYStem 1", buffer_time, psx_rm)
-        print(ut.safe_query('*IDN?', buffer_time, psx_rm, 'psx'))
-        print("PSX initialised. Global Enabled.")
+        log.info(ut.safe_query('*IDN?', buffer_time, psx_rm, 'psx'))
+        log.info("PSX initialised. Global Enabled.")
         # endregion
 
 

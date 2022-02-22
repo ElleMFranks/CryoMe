@@ -448,6 +448,8 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
         eh.check_meas_sequence(meas_sequence)
         eh.check_nominals(nominal_bias)
         eh.check_sweep_setup_vars(sweep_setup_vars)
+        eh.check_lna_sequence(meas_sequence.lna_sequence, 
+                              lna_cryo_layout.lnas_per_chain)
         # endregion
 
         # region Set args to attributes.
@@ -550,6 +552,15 @@ class FileStructure:
         self._settings_log_setup()
         self._results_log_setup()
         # endregion
+
+    def get_log_path(self, session_id:int) -> pl.Path:
+        """Sets the directory for & returns the path of the log file.
+        """
+        log_path = pl.Path(str(self.results_directory)
+                           + f'\\Session Logs\\Session {session_id}')
+        os.makedirs(log_path, exist_ok = True)
+        log_path = pl.Path(str(log_path) + f'\\session_{session_id}.log')
+        return log_path
 
     def _settings_log_setup(self):
         """Sets up the normal and calibration settings logs."""

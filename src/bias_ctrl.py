@@ -11,8 +11,9 @@ psu_safe_init.
 from __future__ import annotations
 from dataclasses import dataclass
 from itertools import product
+import logging
 from typing import Union
-import time
+from time import sleep
 
 import numpy as np
 import pyvisa as pv
@@ -63,6 +64,7 @@ def psu_safe_init(
     """
 
     # region Define channels and cards on psu and set global enable on.
+    log = logging.getLogger(__name__)
     channel = [1, 2, 3, 4, 5, 6, 7, 8]
     card = [1, 2, 3]
     global_bias_en(psu_rm, buffer_time, 1)
@@ -89,12 +91,12 @@ def psu_safe_init(
                           buffer_time, psu_rm)
         # endregion
 
-        print(f'Card {state[0]} Channel {state[1]} safe')
+        log.info(f'Card {state[0]} Channel {state[1]} safe.')
     # endregion
 
     # region Disable supply
     global_bias_en(psu_rm, buffer_time, 0)
-    print('Bias disabled\n')
+    log.info('Bias disabled\n')
     # endregion
 
 
@@ -208,7 +210,7 @@ def _get_step_to_target(v_set_diff, v_step_lim, v_set_status):
     neg_targ_oof_rng = bool(
         abs(v_set_diff) > v_step_lim and v_set_diff < 0)
     neg_targ_in_rng = bool(
-        abs(v_set_diff) < v_step_lim and v_set_diff < 0)
+        abs(v_set_diff) <= v_step_lim and v_set_diff < 0)
     # endregion
 
     # region Depending on above, figure out step towards target.
@@ -257,16 +259,19 @@ def _safe_set_v(
         off and the current was still too high.  Power supply is turned
         off globally to prevent further damage at this point.
     """
+    # region Unpack objects and set up logging.
+    log = logging.getLogger(__name__)
     v_target = g_or_d_v_target.v_target
     g_or_d = g_or_d_v_target.g_or_d
     d_i_lim = psu_lims.d_i_lim
     v_step_lim = psu_lims.v_step_lim
+    # endregion
 
     # region Enable channel to be set.
     _local_bias_en(psu_rm, card_chnl, 1, buffer_time)
     # endregion
 
-    # region Get gate or drain string from g_or_d for print functions.
+    # region Get gate or drain string from g_or_d for logging.
     if g_or_d == 'g':
         gate_or_drain = 'gate'
     elif g_or_d == 'd':
@@ -275,9 +280,9 @@ def _safe_set_v(
         raise Exception('Invalid g_or_d argument.')
     # endregion
 
-    print(f'\nSTARTED SAFE VOLTAGE SET: '
-          f'Chain {card_chnl.card} Channel {card_chnl.chnl} - '
-          f'TARGET {gate_or_drain} V: {v_target:+.3f}V')
+    log.cdebug(f'\nSTARTED SAFE VOLTAGE SET: '
+               f'Chain {card_chnl.card} Channel {card_chnl.chnl} - '
+               f'TARGET {gate_or_drain} V: {v_target:+.3f}V')
 
     # region Get initial measured current and measured/set voltages.
     v_meas_status = _get_psu_v(psu_rm, g_or_d, card_chnl, buffer_time, 'meas')
@@ -311,7 +316,7 @@ def _safe_set_v(
         # region Send command to set voltage to new voltage status.
         _set_psu_v(
             psu_rm, card_chnl, buffer_time, GOrDVTarget(g_or_d, v_set_status))
-        time.sleep(1)
+        sleep(1)
         # endregion
 
         # region Remeasure set/meas status and recalculate differences.
@@ -329,14 +334,14 @@ def _safe_set_v(
         # Notify if psu set and measured voltages are different and
         # provide more detail.  Otherwise, provide more concise detail.
         if abs(v_psu_diff) > 0.1:
-            print(
+            log.warn(
                 'Significant difference between set and measured V detected:')
-            print(f'Set {gate_or_drain} V: {v_set_status:+.3f}V    '
+            log.info(f'Set {gate_or_drain} V: {v_set_status:+.3f}V    '
                   f'Measured: {v_meas_status:+.3f}V    '
                   f'Difference: {v_psu_diff:+.3f}V    '
                   f'Drain Current (Measured): {d_i_status:+.3f}mA')
         else:
-            print(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
+            log.cdebug(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
                   f'Target is {v_target:+.3f}V    '
                   f'Drain Current = {d_i_status:+.3f}mA')
         # endregion
@@ -370,9 +375,9 @@ def _safe_set_v(
     # endregion
 
     # region Report status in console and return drain current.
-    print(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
+    log.cdebug(f'Set {gate_or_drain} V to {v_set_status:+.3f}V    '
           f'Drain Current = {d_i_status:+.3f}mA')
-    print('COMPLETED SAFE VOLTAGE SET\n')
+    log.cdebug('COMPLETED SAFE VOLTAGE SET\n')
     return d_i_status
     # endregion
 
@@ -406,6 +411,7 @@ def _adapt_search_stage(
         not); whether the present drain current measured is closer to
         the target than the previous.
     """
+    log = logging.getLogger(__name__)
     index = len(d_i_meas_arr) - 1
     is_g_v_range_increasing = bool(g_v_range[1] - g_v_range[0] > 0)
 
@@ -437,7 +443,7 @@ def _adapt_search_stage(
         pres_closer_than_prev = bool(
             abs(prev_dist_from_targ) > abs(pres_dist_from_targ))
 
-        print('\nENTERING NEXT ADAPTIVE SEARCH LAYER')
+        log.cdebug('\nENTERING NEXT ADAPTIVE SEARCH LAYER')
 
         # region Setup next layer range
         if is_g_v_range_increasing:
@@ -482,18 +488,18 @@ def _adapt_search_stage(
         # region Report and return closest to target gate voltage
         # region If present closest, return present gate voltage.
         if abs(prev_dist_from_targ) > abs(pres_dist_from_targ):
-            print(f'COMPLETED STAGE SET\n'
-                  f'TARGET: {d_i_target:.3f}mA - '
-                  f'ACHIEVED: {d_i_meas_arr[index]:.3f}mA - '
-                  f'GATE VOLTAGE: {g_v_range[index]:.3f}V\n')
+            log.info(f'COMPLETED STAGE SET\n'
+                  f'TARGET: {d_i_target:.3f} mA - '
+                  f'ACHIEVED: {d_i_meas_arr[index]:.3f} mA - '
+                  f'GATE VOLTAGE: {g_v_range[index]:.3f} V.\n')
             return g_v_range[index], None, None, True, d_i_meas_arr
         # endregion
 
         # region If previous closest, return previous gate voltage.
-        print(f'COMPLETED STAGE SET\n'
-              f'TARGET DI: {d_i_target:.3f}mA - '
-              f'ACHIEVED DI: {d_i_meas_arr[index - 1]:.3f}mA - '
-              f'GATE VOLTAGE: {g_v_range[index - 1]:.3f}V\n')
+        log.info(f'COMPLETED STAGE SET\n'
+              f'TARGET DI: {d_i_target:.3f} mA - '
+              f'ACHIEVED DI: {d_i_meas_arr[index - 1]:.3f} mA - '
+              f'GATE VOLTAGE: {g_v_range[index - 1]:.3f} V.\n')
         return g_v_range[index - 1], None, None, False, d_i_meas_arr
         # endregion
         # endregion
@@ -535,6 +541,7 @@ def _safe_set_stage(
         Gate voltage which with the specified drain voltage will produce
         the specified drain current.
     """
+    log = logging.getLogger(__name__)
     brd_d_i_meas = []
     buffer_time = psu_set.buffer_time
 
@@ -549,9 +556,9 @@ def _safe_set_stage(
     # endregion
 
     # region Report drain current status.
-    print(f'\nSTARTED STAGE SET '
-          f'- PSU CARD {card_chnl.card} CHANNEL {card_chnl.chnl} '
-          f'- TARGET DRAIN CURRENT: {d_i_target:+.3f}mA')
+    log.cdebug(f'\nSTARTED STAGE SET '
+               f'- PSU CARD {card_chnl.card} CHANNEL {card_chnl.chnl} '
+               f'- TARGET DRAIN CURRENT: {d_i_target:+.3f}mA')
     # endregion
 
     # region Get initial d_i measurement from first g_v setting.
@@ -574,9 +581,9 @@ def _safe_set_stage(
             # No _safe_set_v as know upper bound within current limit.
             _set_psu_v(psu_rm, card_chnl, buffer_time,
                        GOrDVTarget('g', g_v_range[index]))
-            time.sleep(buffer_time)
+            sleep(buffer_time)
             _d_i = _get_psu_d_i(psu_rm, card_chnl, buffer_time)
-            print(f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}')
+            log.cdebug(f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}')
         # endregion
 
         # region Final val of g_v_range already measured in outer loop.

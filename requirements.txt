@@ -5,7 +5,7 @@ numpy
 tabulate
 pandas
 pathvalidate
-progressbar2
 pyvisa
 pyyaml
+tqdm
 nidaqmx

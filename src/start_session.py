@@ -5,6 +5,7 @@
 # region Import modules
 from __future__ import annotations
 import csv
+import logging
 
 import numpy as np
 import pandas as pd
@@ -22,10 +23,16 @@ import util as ut
 
 def _trigger_algorithm(settings, lna_biases, lna_nominals, res_managers,
                        trimmed_input_data):
+    """Triggers the requested measurement algorithm."""
+
+    # region Unpack objects and set up logging.
+    log = logging.getLogger(__name__)
     meas_settings = settings.meas_settings
+    # endregion
 
     # region Alternating Temperatures.
     if meas_settings.measure_method == 'AT':
+        log.info('Triggered alternating temperature measurement.')
         ma.alternating_temps(
             settings, lna_biases, lna_nominals, res_managers,
             trimmed_input_data)
@@ -33,12 +40,14 @@ def _trigger_algorithm(settings, lna_biases, lna_nominals, res_managers,
 
     # region All Cold Then All Hot.
     elif meas_settings.measure_method == 'ACTAH':
+        log.info('Triggered all cold then all hot measurement.')
         ma.all_cold_to_all_hot(
             settings, lna_biases, res_managers, trimmed_input_data)
     # endregion
 
     # region Manual Entry Measurement.
     elif meas_settings.measure_method == 'MEM':
+        log.info('Triggered manual entry measurement.')
         # region Set and measure manual LNA biases.
         # region Set up LNA1.
         lna_1_man = meas_settings.direct_lnas.manual_lna_settings.lna_1_man
@@ -70,6 +79,7 @@ def _trigger_algorithm(settings, lna_biases, lna_nominals, res_managers,
 
     # region Calibration.
     elif meas_settings.measure_method == 'Calibration':
+        log.info('Triggered calibration measurement.')
         ma.calibration_measurement(
             settings, res_managers, trimmed_input_data.trimmed_loss)
     # endregion
@@ -79,6 +89,8 @@ def _input_trim(
         untrimmed_data: np.ndarray, freq_array: list,
         is_cal_data: bool = False) -> list:
     """Trims data to the requested frequency points."""
+
+    # region Trim and return input data.
     trimmed_data = []
     for freq in freq_array:
         freq_diff = []
@@ -90,15 +102,16 @@ def _input_trim(
         else:
             trimmed_data.append(untrimmed_data[np.argmin(freq_diff), 1])
     return trimmed_data
+    # endregion
 
 
 def _comment_handling(comment_en: bool) -> str:
     """Handles optional user entry comment."""
+
     # region Measurement comments handling
     if comment_en:
         comment = input("Please input measurement comment: ")
     else:
-        print('Measurement comment not enabled')
         comment = 'NA'
     return comment
     # endregion
@@ -107,6 +120,7 @@ def _comment_handling(comment_en: bool) -> str:
 def _res_manager_setup(
         instr_settings: ic.InstrumentSettings) -> ic.ResourceManagers:
     """Sets up resource managers for instrumentation."""
+
     # region Unpack settings
     sig_an_settings = instr_settings.sig_an_settings
     sig_gen_settings = instr_settings.sig_gen_settings
@@ -119,10 +133,12 @@ def _res_manager_setup(
     res_manager.list_resources()
     # endregion
 
+    # region Default resource managers to None.
     sig_an_rm = None
     sig_gen_rm = None
     temp_ctrl_rm = None
     psu_rm = None
+    # endregion
 
     # region Set up spectrum analyser.
     if sig_an_settings.sig_an_en:
@@ -136,8 +152,6 @@ def _res_manager_setup(
     elif sig_gen_settings.sig_gen_en and \
             sig_gen_settings.vna_or_sig_gen == 'sig gen':
         sig_gen_rm = res_manager.open_resource('GPIB1::8::INSTR')
-        print(ut.safe_query(
-            'OI', instr_settings.buffer_time, sig_gen_rm, 'sig gen'))
     # endregion
 
     # region Set up lakeshore temperature controller.
@@ -174,8 +188,6 @@ def _res_manager_setup(
             psu_rm, instr_settings.buffer_time, 0,
             bias_psu_settings.g_v_lower_lim)
     # endregion
-    print('Instrumentation initialised')
-    # endregion
 
     # region Create class instance to keep ResourceManagers together.
     return ic.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
@@ -188,34 +200,47 @@ def start_session(settings: sc.Settings) -> None:
     Args:
         settings: Contains all the settings for the session.
     """
-    # region Unpack classes.
+
+    # region Unpack classes and set up logging.
+    log = logging.getLogger(__name__)
     instr_settings = settings.instr_settings
     bias_psu_settings = instr_settings.bias_psu_settings
     meas_settings = settings.meas_settings
     # endregion
 
-    # region Measurement comments handling
+    # region Measurement comments handling.
     meas_settings.comment = _comment_handling(meas_settings.comment_en)
     # endregion
 
-    # region Initialise instrumentation
-    print('Initialising instrumentation...')
+    # region Initialise instrumentation.
+    log.info('Initialising instrumentation...')
 
     # region Ensure correct cryostat channel is set
     if instr_settings.switch_settings.switch_en:
         cs.cryo_chain_switch(0.5, meas_settings)
+        log.info('Switch set.')
+    # endregion
+
+    # region Set LNA IDs.
     meas_settings.lna_ids = meas_settings.lna_cryo_layout.cryo_chain
     # endregion
 
     # region Initialise resource managers.
     res_managers = _res_manager_setup(instr_settings)
+    log.info('Resource managers set up.')
+    # endregion
+
+    log.info('Instrumentation initialised.')
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
+    log.info('Setting up back end LNAs...')
     cs.back_end_lna_setup(settings, res_managers.psu_rm)
+    log.info('Back end LNAs set up.')
     # endregion
 
     # region Set up nominal LNA bias points.
+    log.cdebug('Setting up nominal LNA bias objects...')
     # Initialise LNA biases to nominal points before sweeping stages and
     # set up back end LNAs. Defined nominal stages as two separate LNAs
     # in case of different voltage drops across wires.
@@ -225,17 +250,22 @@ def start_session(settings: sc.Settings) -> None:
     else:
         lna_nominals = None
         lna_biases = None
+    log.cdebug('Nominal LNA bias objects set up.')
+    #endregion
+
+    # region Trim input data.
+    log.info('Trimming input data...')
 
     # region Trim loss/cal/sig gen power arrays for requested frequency.
     # Ensure loss, calibration, and sig gen power arrays are correct for
     # number of frequency points.
-
     # region Trim input calibration data.
     freq_array = instr_settings.sig_gen_settings.freq_array
     if not meas_settings.is_calibration:
         untrimmed_cal_data = np.array(
             pd.read_csv(settings.file_struc.in_cal_file_path, header=3))
         trimmed_cal_data = _input_trim(untrimmed_cal_data, freq_array, True)
+        log.cdebug('Calibration data trimmed.')
     else:
         trimmed_cal_data = None
     # endregion
@@ -243,10 +273,13 @@ def start_session(settings: sc.Settings) -> None:
     # region Trim loss.
     trimmed_loss = _input_trim(
         np.array(pd.read_csv(settings.file_struc.loss_path)), freq_array)
+    log.cdebug('Loss trimmed.')
 
     # region Save trimmed loss and calibration data as an object.
     trimmed_input_data = sc.TrimmedInputs(trimmed_loss, trimmed_cal_data)
     # endregion
+    # endregion
+
     # endregion
 
     # region Trim sig gen powers.
@@ -254,18 +287,20 @@ def start_session(settings: sc.Settings) -> None:
         trimmed_pwr = _input_trim(
             np.array(pd.read_csv(settings.file_struc.pwr_lvls)), freq_array)
         instr_settings.sig_gen_settings.set_sig_gen_pwr_lvls(trimmed_pwr)
-    # endregion
-    # endregion
-
-    # region Get/set session ID.
-    meas_settings.config_session_id(settings.file_struc)
+        log.cdebug('Signal generator input powers trimmed.')
     # endregion
 
+    log.info('Input data trimmed.')
+    # endregion
+
+    # region Trigger measurement.
+    log.info('Triggering measurement...')
     # region Trigger measurement with power supply enabled.
     if bias_psu_settings.bias_psu_en:
         _trigger_algorithm(settings, lna_biases, lna_nominals,
                            res_managers, trimmed_input_data)
     # endregion
+
     # region If PSU not enabled, trigger measurement without it.
     elif not meas_settings.is_calibration:
         _trigger_algorithm(settings, lna_biases, lna_nominals,
@@ -273,6 +308,7 @@ def start_session(settings: sc.Settings) -> None:
     else:
         _trigger_algorithm(settings, None, None,
                            res_managers, trimmed_input_data)
+    # endregion
     # endregion
 
     # region Add empty line in logs between sessions.
@@ -282,6 +318,7 @@ def start_session(settings: sc.Settings) -> None:
             writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                                 delimiter=',', escapechar='\\')
             writer.writerow('\n')
+        log.info('Empty row inserted into calibration settings log.')
     else:
         with open(
                 settings.file_struc.settings_path, 'a',
@@ -294,15 +331,18 @@ def start_session(settings: sc.Settings) -> None:
             writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                                 delimiter=',', escapechar='\\')
             writer.writerow('\n')
+        log.info('Empty row inserted into settings/results log.')
     # endregion
 
-    # region Turn PSX off safely
+    # region Turn PSX off safely.
+    log.info('Turning off PSU...')
     if bias_psu_settings.bias_psu_en:
         bc.psu_safe_init(
             res_managers.psu_rm, instr_settings.buffer_time,
             ic.PSULimits(bias_psu_settings.v_step_lim,
                          bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
+    log.info('PSU turned off.')
     # endregion
 
     # region Close resource managers.
