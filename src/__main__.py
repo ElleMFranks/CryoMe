@@ -280,6 +280,7 @@ def main():
             ss.start_session(settings)
         except:
             log.exception(sys.exc_info()[0])
+            input('Error logged, press Enter to exit...')
         # endregion
 
     input('Press Enter to exit...')
