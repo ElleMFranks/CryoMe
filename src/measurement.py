@@ -96,32 +96,36 @@ def _get_temps(tc_rm, temp_target: float,
     # endregion
 
 
-def _temp_set_get(tc_rm: pv.Resource, temp_target: float, instr_settings: ic.InstrumentSettings) -> list:
+def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
+                  instr_settings: ic.InstrumentSettings) -> list:
     """Sets/gets temperatures, ensure stability/status of heater."""
     temp_set = False
     tc_settings = instr_settings.temp_ctrl_settings
     while not temp_set:
         if tc_rm is not None:
             # region Set Lakeshore to target temp, wait for stabilisation.
-            pre_heater_status = ut.safe_query('HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
+            pre_heater_status = ut.safe_query(
+                'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
             hc.set_temp(tc_rm, temp_target, 'load')
             hc.load_temp_stabilisation(
                 tc_rm, tc_settings.load_lsch, temp_target)
             pre_loop_temps = _get_temps(tc_rm, temp_target, instr_settings)
-            post_heater_status = ut.safe_query('HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
-            if (temp_target - 1 < pre_loop_temps[0] < temp_target + 1) and pre_heater_status == '0\r' and post_heater_status == '0\r':
+            post_heater_status = ut.safe_query(
+                'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
+            if (temp_target - 1 < pre_loop_temps[0] < temp_target + 1) \
+                    and pre_heater_status == '0\r' \
+                    and post_heater_status == '0\r':
                 temp_set = True
             # endregion
         else:
-            temp_set == True
+            temp_set = True
 
     return pre_loop_temps
 
 
 def _meas_loop(
         settings: sc.Settings, hot_or_cold: str,
-        res_managers: ic.ResourceManagers, prev_meas_same_temp: bool = False
-        ) -> oc.LoopInstanceResult:
+        res_managers: ic.ResourceManagers) -> oc.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
     Checks if hot or cold, sets load to target temp, then moves through
@@ -164,7 +168,8 @@ def _meas_loop(
     # endregion
 
     if tc_rm is not None:
-        pre_loop_temps = _temp_set_get(tc_rm, temp_target, settings.instr_settings)
+        pre_loop_temps = _temp_set_get(
+            tc_rm, temp_target, settings.instr_settings)
     else:
         pre_loop_temps = [temp_target + 0.1, 18, 22, 10]
     pre_loop_lna_temp = pre_loop_temps[1]
@@ -183,7 +188,8 @@ def _meas_loop(
     pwr_lvl_cnt = 0
     for inter_frequency in tq.tqdm(
         inter_freqs_array, ncols=110, desc="Loop Prog", leave=True, position=0,
-        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} [Elapsed: {elapsed}, To Go: {remaining}]{postfix}'):
+        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} '
+                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}'):
 
         # region Store pre-loop temperatures, and during loop load temp.
         if tc_rm is not None:
@@ -191,7 +197,8 @@ def _meas_loop(
                 f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
             if temp_target - 1 > load_temp > temp_target + 1:
-                pre_loop_temps = _temp_set_get(tc_rm, temp_target, settings.instr_settings)
+                pre_loop_temps = _temp_set_get(
+                    tc_rm, temp_target, settings.instr_settings)
         else:
             load_temp = temp_target + (round(rd.uniform(-0.1, 0.1), 2))
 
@@ -227,7 +234,7 @@ def _meas_loop(
                 marker_power = -50 + round(rd.uniform(0.3, 0.6), 2)
             powers.append(marker_power)
         # endregion
-        
+
         load_temps.append(load_temp)
         pre_loop_lna_temps.append(pre_loop_lna_temp)
         pre_loop_extra_1_temps.append(pre_loop_extra_1_temp)
@@ -263,8 +270,8 @@ def _meas_loop(
     return oc.LoopInstanceResult(
         hot_or_cold, powers, load_temps, lna_temps,
         oc.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
-                         pre_loop_extra_1_temps, post_loop_extra_1_temps,
-                         pre_loop_extra_2_temps, post_loop_extra_2_temps))
+                        pre_loop_extra_1_temps, post_loop_extra_1_temps,
+                        pre_loop_extra_2_temps, post_loop_extra_2_temps))
     # endregion
 
 
@@ -295,8 +302,7 @@ def measurement(
         settings: sc.Settings,
         res_managers: ic.ResourceManagers,
         trimmed_input_data: sc.TrimmedInputs,
-        hot_cold_count: Optional[int] = None,
-        prev_meas_same_temp: Optional[bool] = False
+        hot_cold_count: Optional[int] = None
         ) -> Union[oc.Results, oc.LoopInstanceResult]:
     """Conducts a full measurement using the chosen algorithm.
 
@@ -321,8 +327,6 @@ def measurement(
             measurement returns a Hot or Cold object from the
             measurement loop. Only relevant in all cold then all hot
             mode.
-        prev_meas_same_temp: Default false, but for ACTAH if set to true
-            will skip the stabilisation step in the measurement loop.
 
     Returns:
         An object containing the results from the measurement ready to
@@ -377,15 +381,13 @@ def measurement(
     if meas_settings.measure_method == 'ACTAH':
         # region If all cold then all hot measurement, start cold.
         if hot_cold_count == 0:
-            cold = _meas_loop(
-                settings, 'Cold', res_managers, prev_meas_same_temp)
+            cold = _meas_loop(settings, 'Cold', res_managers)
             return cold
         # endregion
 
         # region Once cold measurements done, start on hot measurements.
         if hot_cold_count == 1:
-            hot = _meas_loop(
-                settings, 'Hot', res_managers, prev_meas_same_temp)
+            hot = _meas_loop(settings, 'Hot', res_managers)
             return hot
         # endregion
 
@@ -425,5 +427,4 @@ def measurement(
         return calibration_results
         # endregion
     # endregion
-
     raise Exception('')

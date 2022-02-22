@@ -117,7 +117,7 @@ class GainPostProc:
     def as_tuple(self, index: int) -> tuple:
         """Returns instance as tuple of attributes."""
         return self.avgs[index], self.std_devs[index], self.mins[index], \
-               self.maxs[index], self.ranges[index]
+            self.maxs[index], self.ranges[index]
 
 
 @dataclass()
@@ -139,7 +139,7 @@ class NoiseTempPostProc:
     def as_tuple(self, index: int) -> tuple:
         """Returns instance as tuple of attributes."""
         return self.avgs[index], self.std_devs[index], self.mins[index], \
-               self.maxs[index], self.ranges[index]
+            self.maxs[index], self.ranges[index]
 
 
 # region Mid level classes.
@@ -551,7 +551,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'L1S3GV Set (V)', 'L1S3DV Set (V)', 'L1S3DI Set (mA)', ' ',
             'L2S1GV Set (V)', 'L2S1DV Set (V)', 'L2S1DI Set (mA)',
             'L2S2GV Set (V)', 'L2S2DV Set (V)', 'L2S2DI Set (mA)',
-            'L2S3GV Set (V)', 'L2S3DV Set (V)', 'L2S3DI Set (mA)',' ',
+            'L2S3GV Set (V)', 'L2S3DV Set (V)', 'L2S3DI Set (mA)', ' ',
             'L1S1GV Meas (V)', 'L1S1DV Meas (V)', 'L1S1DI Meas (mA)',
             'L1S2GV Meas (V)', 'L1S2DV Meas (V)', 'L1S2DI Meas (mA)',
             'L1S3GV Meas (V)', 'L1S3DV Meas (V)', 'L1S3DI Meas (mA)', ' ',

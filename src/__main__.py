@@ -37,18 +37,20 @@ import start_session as ss
 def main():
     """Main for CryoMe."""
     os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))
-    
+
     # region Set up logging.
     stream_format = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(name)s - %(message)s', 
+        '%(asctime)s - %(levelname)s - %(name)s - %(message)s',
         '%m-%d %H:%M:%S')
     file_format = logging.Formatter(
         '%(asctime)s - %(levelname)s - %(name)s - %(funcName)s - %(message)s')
-    CDEBUG = 15
-    logging.addLevelName(CDEBUG, "CDEBUG")
+
+    logging.addLevelName(15, "CDEBUG")
+
     def cdebug(self, message, *args, **kws):
         """Logging level setup."""
-        self._log(CDEBUG, message, args, **kws)
+        self._log(15, message, args, **kws)
+
     logging.Logger.cdebug = cdebug
     logstream = logging.StreamHandler()
     logstream.setLevel(logging.INFO)
@@ -59,14 +61,15 @@ def main():
     # endregion
 
     # region Measure each chain as requested.
-    with open(pl.Path(str(os.getcwd()) + '\\settings.yml')) as f:
-	    config = ym.safe_load(f)
+    with open(pl.Path(str(os.getcwd()) + '\\settings.yml'),
+              encoding='utf-8') as _f:
+        config = ym.safe_load(_f)
 
-    for index, cryo_chain in enumerate(
-        config['bias_sweep_settings']['chain_sequence']):
+    for i, cryo_chain in enumerate(
+            config['bias_sweep_settings']['chain_sequence']):
 
         # region Reset all class instances.
-        if index > 0:
+        if i > 0:
             del sig_an_settings
             del sig_gen_settings
             del temp_ctrl_settings
@@ -206,8 +209,8 @@ def main():
         # region Manual LNA Settings.
         if config['measurement_settings']['measure_method'] == 'MEM':
             manual_lna_settings = lc.ManualLNASettings(
-                config['manual_entry_lna_settings'], 
-                lna_cryo_layout, 
+                config['manual_entry_lna_settings'],
+                lna_cryo_layout,
                 config['bias_psu_settings']['d_i_lim'])
         else:
             manual_lna_settings = None
@@ -256,7 +259,7 @@ def main():
 
         # region Top level.
         settings = sc.Settings(meas_settings, sweep_settings,
-                                instr_settings, file_struc)
+                               instr_settings, file_struc)
         # endregion
         # endregion
 
@@ -268,7 +271,7 @@ def main():
         file_handler.setFormatter(file_format)
         log.addHandler(file_handler)
         # endregion
-        
+
         # region Trigger measurement
         try:
             ss.start_session(settings)
@@ -278,6 +281,7 @@ def main():
 
     input('Press Enter to exit...')
     # endregion
+
 
 if __name__ == '__main__':
     main()

@@ -60,7 +60,6 @@ def safe_query(
     again. Only need to send equipment settings with a spec an query.
     """
     # region Keep trying query until it works or too many tries.
-    log = logging.getLogger(__name__)
     i = 0
     while True:
         try:
@@ -72,8 +71,8 @@ def safe_query(
                 output = str(output)
             sleep(buffer_time)
             return output
-        except Exception as e:
-            logging.error(f'Safe query failed. Error: {e}')
+        except Exception as _e:
+            logging.error(f'Safe query failed. Error: {_e}')
             sleep(5)
             # region Handle retries for each instrument.
             i += 1

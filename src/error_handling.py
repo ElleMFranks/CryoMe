@@ -12,6 +12,7 @@ import util as ut
 import settings_classes as sc
 # endregion
 
+
 def check_lna_sequence(lna_sequence: list, lnas_per_chain: int) -> None:
     """Ensures you can't put a non existent LNA in LNA Sequence."""
     if lnas_per_chain == 1 and 2 in lna_sequence:

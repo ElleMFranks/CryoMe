@@ -114,7 +114,7 @@ class StageBiasSet(IndivBias, StageSettings):
     def d_v_at_psu(self) -> float:
         """Drain voltage at PSU before cable loss / V."""
         return self._d_v_at_psu
-    
+
     @d_v_at_psu.setter
     def d_v_at_psu(self, value) -> None:
         self._d_v_at_psu = value
@@ -184,6 +184,7 @@ class LNAStages:
     stage_2: Optional[StageBiasSet] = None
     stage_3: Optional[StageBiasSet] = None
 # endregion
+
 
 # region LNA Settings.
 @dataclass()
@@ -311,11 +312,12 @@ class LNABiasSet(LNACryoLayout, LNAStages):
     def lna_meas_column_data(self, value):
         self._lna_meas_column_data = value
 
-    def sweep_setup(self, stage_ut, lna_d_v_ut, d_i_ut, d_v_nom, d_i_nom):
+    def sweep_setup(self, stage_ut: int, lna_d_v_ut: float, d_i_ut: float,
+                    d_v_nom: float, d_i_nom: float) -> None:
         """Sets drain current and voltage to either nominal or UT value.
         """
 
-        # Due to how the setter works, you must set current before voltage.
+        # Due to how the setter works, must set current before voltage.
         if stage_ut == 1:
             self.stage_1.d_i = d_i_ut
             self.stage_1.target_d_v_at_lna = lna_d_v_ut
@@ -526,8 +528,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 i += 1
             self.lna_meas_column_data = meas_col_data
         elif psx_rm is None and not (is_calibration or
-                                      self.lna_position in ['CRBE', 'RTBE']):
-            i=0
+                                     self.lna_position in ['CRBE', 'RTBE']):
+            i = 0
             while i < 9:
                 meas_col_data.append(i)
                 i += 1

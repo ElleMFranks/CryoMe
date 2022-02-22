@@ -17,7 +17,6 @@ import instr_classes as ic
 import lna_classes as lc
 import meas_algorithms as ma
 import settings_classes as sc
-import util as ut
 # endregion
 
 
@@ -251,7 +250,7 @@ def start_session(settings: sc.Settings) -> None:
         lna_nominals = None
         lna_biases = None
     log.cdebug('Nominal LNA bias objects set up.')
-    #endregion
+    # endregion
 
     # region Trim input data.
     log.info('Trimming input data...')

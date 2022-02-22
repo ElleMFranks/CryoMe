@@ -54,7 +54,7 @@ def all_cold_to_all_hot(
         trimmed_input_data:
     """
 
-    # region Unpack objects, instatiate arrays, and set up logging.
+    # region Unpack objects, instantiate arrays, and set up logging.
     log = logging.getLogger(__name__)
     sweep_settings = settings.sweep_settings
     meas_settings = settings.meas_settings
@@ -69,16 +69,17 @@ def all_cold_to_all_hot(
     lna_2_array = []
     prev_lna_ut = 0
     prev_temp_ut = None
-    states = list(product(hot_cold, sweep_settings.lna_sequence,
-                     sweep_settings.stage_sequence, sweep_settings.d_v_sweep,
-                     sweep_settings.d_i_sweep))
+    states = list(product(
+        hot_cold, sweep_settings.lna_sequence, sweep_settings.stage_sequence,
+        sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
     # endregion
 
     # region Loop through states measuring at each.
     print('')
     for i, state in enumerate(tq.tqdm(
         states, ncols=110, leave=False, desc="Sweep Prog",
-        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} [Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
+        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} '
+                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
         # region Unpack state object and set additional variable.
         temp_ut = state[0]
@@ -121,7 +122,8 @@ def all_cold_to_all_hot(
         # endregion
 
         # region Set and store LNA 1 PSU settings.
-        if res_managers.psu_rm is not None and (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+        if res_managers.psu_rm is not None and (
+                lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
             bc.bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
@@ -135,7 +137,8 @@ def all_cold_to_all_hot(
 
         # region Set and store LNA 2 PSU settings.
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-            if res_managers.psu_rm is not None and (lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+            if res_managers.psu_rm is not None and (
+                    lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
                 bc.bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -152,23 +155,18 @@ def all_cold_to_all_hot(
         # region Trigger measurement
         if temp_ut == 0:
             cold_array.append(ms.measurement(
-                settings, res_managers, trimmed_input_data, temp_ut,
-                prev_meas_same_temp))
+                settings, res_managers, trimmed_input_data, temp_ut))
 
         else:
             hot_array.append(ms.measurement(
-                settings, res_managers, trimmed_input_data, temp_ut,
-                prev_meas_same_temp))
+                settings, res_managers, trimmed_input_data, temp_ut))
 
         print('\n')
-
-        
 
         prev_temp_ut = temp_ut
         prev_lna_ut = lna_ut
         # endregion
     print('')
-    
     # endregion
 
     # region Analyse and save each set of hot and cold results.
@@ -215,7 +213,7 @@ def alternating_temps(
             instruments used in the measurement.
         trimmed_input_data:
     """
-    
+
     # region Unpack classes and set up logging.
     log = logging.getLogger(__name__)
     sweep_settings = settings.sweep_settings
@@ -224,16 +222,18 @@ def alternating_temps(
     lna_2_bias = lna_biases[1]
     d_v_nom = settings.sweep_settings.d_v_nominal
     d_i_nom = settings.sweep_settings.d_i_nominal
+    prev_lna_ut = None
     states = list(product(
             sweep_settings.lna_sequence, sweep_settings.stage_sequence,
             sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
     # endregion
-   
+
     # region Iterate measuring and saving lna/stage/bias value states.
     print('')
-    for i, state in tq.tqdm(enumerate(
+    for i, state in enumerate(tq.tqdm(
         states, ncols=110, leave=False, desc="Sweep Prog",
-        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} [Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
+        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
+                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
         lna_noms = cp.deepcopy(lna_nominals)
 
@@ -268,7 +268,8 @@ def alternating_temps(
 
             # region Set and enable power supply.
             # region LNA 1.
-            if res_managers.psu_rm is not None and (lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+            if res_managers.psu_rm is not None and (
+                    lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
                 bc.bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -279,7 +280,8 @@ def alternating_temps(
 
             # region LNA 2.
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-                if res_managers.psu_rm is not None and (lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+                if res_managers.psu_rm is not None and (
+                        lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
                     bc.bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,
@@ -303,8 +305,10 @@ def alternating_temps(
             # endregion
 
         log.info('All results saved.')
+        prev_lna_ut = lna_ut
         del lna_noms
         # endregion
+
 
 def calibration_measurement(
         settings: sc.Settings, res_managers: ic.ResourceManagers,

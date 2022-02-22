@@ -228,11 +228,11 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
     """Class containing all signal analyser settings variables."""
     def __init__(
-        self, sa_freq_settings: SpecAnFreqSettings,
-        sa_bw_settings: SpecAnBWSettings,
-        sa_ampl_settings: SpecAnAmplSettings,
-        sig_an_en: bool) -> None:
-        """"""
+            self, sa_freq_settings: SpecAnFreqSettings,
+            sa_bw_settings: SpecAnBWSettings,
+            sa_ampl_settings: SpecAnAmplSettings,
+            sig_an_en: bool) -> None:
+        """Constructor for the SignalAnalyserSettings class."""
 
         # region Check input settings.
         eh.check_sa_freq_settings(sa_freq_settings)
@@ -382,7 +382,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
             'SYST:ERR?', buffer_time, sig_gen_rm, 'sig gen')
         if error_status != '+0,"No error"':
             raise Exception(f'VNA Error Code {error_status}')
-        log.info("VNA initialised succesfully.")
+        log.info("VNA initialised successfully.")
         # endregion
 
     def set_sig_gen_pwr_lvls(self, trimmed_pwr_lvls: list) -> None:

@@ -76,10 +76,6 @@ def cryo_chain_switch(
         raise Exception('Invalid position read from switch.')
     # endregion
 
-    # region Write to switch (need to test if this is required still).
-    #switch_write.write([15])
-    # endregion
-
     # region Close switch ports.
     switch_write.close()
     switch_read.close()
