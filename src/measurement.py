@@ -99,6 +99,7 @@ def _get_temps(tc_rm, temp_target: float,
 def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
                   instr_settings: ic.InstrumentSettings) -> list:
     """Sets/gets temperatures, ensure stability/status of heater."""
+    log = logging.getLogger(__name__)
     temp_set = False
     tc_settings = instr_settings.temp_ctrl_settings
     while not temp_set:
@@ -116,6 +117,12 @@ def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
                     and pre_heater_status == '0\r' \
                     and post_heater_status == '0\r':
                 temp_set = True
+            else:
+                log.warning(f'Failed heating loop, trying again.'
+                            f'Pre-set status: {pre_heater_status}.  '
+                            f'Post-set status: {post_heater_status}.  '
+                            f'Temperature: {pre_loop_temps[0]}K.  '
+                            f'Target: {temp_target}K.')
             # endregion
         else:
             temp_set = True
@@ -188,8 +195,8 @@ def _meas_loop(
     pwr_lvl_cnt = 0
     for inter_frequency in tq.tqdm(
         inter_freqs_array, ncols=110, desc="Loop Prog", leave=True, position=0,
-        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} '
-                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}'):
+        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
+                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}'):
 
         # region Store pre-loop temperatures, and during loop load temp.
         if tc_rm is not None:
@@ -197,6 +204,7 @@ def _meas_loop(
                 f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
             if temp_target - 1 > load_temp > temp_target + 1:
+                log.warning('Fallen out of temp range during measurement.')
                 pre_loop_temps = _temp_set_get(
                     tc_rm, temp_target, settings.instr_settings)
         else:
