@@ -15,8 +15,8 @@ following categories:
     * Signal Generator -
         Synthesizes the input signal, note that a frequency multiplier
         is in the chain, so the signal generated from the instrument is
-        a fraction of the target frequency. Multiplier is 8x usually but
-        can be specified.
+        a fraction of the target frequency. Multiplier is 8x usually 
+        but can be specified.
 
     * Temperature Controller -
         Controls the temperature inside the cryostat. The temperature
@@ -36,13 +36,13 @@ following categories:
         The signal path switch, the position of this determines what
         cryostat signal chain is selected.
 
-Of these instruments different types can be added (for example 'sig gen'
-or 'vna' as options in Signal Generator). This allows for additional
-instruments to be implemented easily. Error handling is done in two
-ways, minor error handling where the input variables are checked over
-for obvious problems, and major error handling where the instruments
-themselves have the error que polled, which should flag up a lot of
-problems which haven't been considered.
+Of these instruments different types can be added (for example
+'sig gen' or 'vna' as options in Signal Generator). This allows for
+additional instruments to be implemented easily. Error handling is done
+in two ways, minor error handling where the input variables are checked
+over for obvious problems, and major error handling where the
+instruments themselves have the error que polled, which should flag up
+a lot of problems which haven't been considered.
 
 The resource managers for each instrument are given their own class,
 this is so you don't have to send the entire settings instance when
@@ -152,13 +152,13 @@ class FreqSweepSettings:
     """Frequency sweep settings for an individual measurement loop.
 
     Constructor Attributes:
-        min_freq (float): GHz Minimum frequency for the frequency sweep.
-        max_freq (float): GHz maximum frequency for the frequency sweep.
+        min_freq (float): GHz Minimum freq for the frequency sweep.
+        max_freq (float): GHz maximum freq for the frequency sweep.
         freq_step_size (float): GHz size of frequency step to get from
             minimum frequency to maximum.
-        inter_freq_factor (int): GHz multiplication factor in the signal
-            chain, the signal generator outputs the target frequency
-            divided by this factor.
+        inter_freq_factor (int): GHz multiplication factor in the
+            signal chain, the signal generator outputs the target
+            frequency divided by this factor.
     """
     min_freq: float
     max_freq: float
@@ -171,8 +171,8 @@ class PSUMetaSettings:
     """Settings of the power supply not related to IV outputs directly.
 
     Constructor Attributes:
-        psu_safe_init (bool): If true power supply steps all channels to
-            0V in safe steps before starting.
+        psu_safe_init (bool): If true power supply steps all channels 
+            to 0V in safe steps before starting.
         bias_psu_en (bool): Setting for debugging, if bias_psu not
             connected then bias_psu queries give synthetic results and
             write commands are skipped.
@@ -198,8 +198,8 @@ class GVSearchSettings:
             voltage search sweep.
         num_of_g_v_mid_steps (int): Number of steps in the secondary
             gate voltage search sweep.
-        num_of_g_v_nrw_steps (int): Number of steps in the tertiary gate
-            voltage search sweep.
+        num_of_g_v_nrw_steps (int): Number of steps in the tertiary
+            gate voltage search sweep.
     """
     g_v_lower_lim: float
     g_v_upper_lim: float
@@ -226,13 +226,36 @@ class PSULimits:
 # region Overall Instrumentation Classes.
 class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
-    """Class containing all signal analyser settings variables."""
+    """Class containing all signal analyser settings variables.
+
+    Composed of SpecAnFreqSettings, SpecAnAmplSettings, and 
+    SpeAnBWSettings.
+    
+    Attributes:
+        sig_an_en (bool): Whether the signal analyser is enabled for
+            the measurement.
+    """
+    __doc__ += f'\n    SpecAnFreqSettings: {SpecAnFreqSettings.__doc__}\n'
+    __doc__ += f'    SpecAnAmplSettings: {SpecAnAmplSettings.__doc__}\n'
+    __doc__ += f'    SpecAnBWSettings: {SpecAnBWSettings.__doc__}'
+
     def __init__(
             self, sa_freq_settings: SpecAnFreqSettings,
             sa_bw_settings: SpecAnBWSettings,
             sa_ampl_settings: SpecAnAmplSettings,
             sig_an_en: bool) -> None:
-        """Constructor for the SignalAnalyserSettings class."""
+        """Constructor for the SignalAnalyserSettings class.
+        
+        Args:
+            sa_freq_settings: The frequency settings to be set on the
+                signal analyser.
+            sa_bw_settings: The bandwidth settings to be set on the
+                signal analyser.
+            sa_ampl_settings: The amplitude settings to be set on on
+                the signal analyser.
+            sig_an_en: Whether the signal analyser is enabled in this
+                measurement instance or not.
+        """
 
         # region Check input settings.
         eh.check_sa_freq_settings(sa_freq_settings)
@@ -310,6 +333,8 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
 class SignalGeneratorSettings(FreqSweepSettings):
     """Settings for the PNA-X N5245A network analyser.
 
+    Inherits from FreqSweepSettings.
+
     Attributes:
         freq_array (ndarray): An equally spaced array of values from
             minimum to maximum frequency stepped by the step size.
@@ -319,7 +344,13 @@ class SignalGeneratorSettings(FreqSweepSettings):
         sig_gen_en (bool): Setting for debugging, if sig_an not
             connected then sig_gen queries give synthetic results
             and write commands are skipped.
+        sig_gen_pwr_lvls (list[float]): The trimmed list of power
+            levels in dBm for the signal generator.
+        vna_or_sig_gen (str): Either 'vna' or 'sig gen' depending on
+            the instrument being used.
     """
+
+    __doc__ += f'\n    FreqSweepSettings: {FreqSweepSettings.__doc__}'
 
     def __init__(
             self, freq_sweep_settings: FreqSweepSettings,
@@ -330,6 +361,10 @@ class SignalGeneratorSettings(FreqSweepSettings):
             sig_gen_en: Setting for debugging, if sig_an not connected
                 then sig_gen queries give synthetic results and write
                 commands are skipped.
+            vna_or_sig_gen: Either 'vna' or 'sig gen' depending on the
+                instrument being used.
+            freq_sweep_settings: The frequency sweep settings for the
+                measurement instance.
         """
 
         # region Variable minor error handling.
@@ -354,12 +389,6 @@ class SignalGeneratorSettings(FreqSweepSettings):
             self.min_freq,
             self.max_freq + self.freq_step_size,
             self.freq_step_size)
-
-        self.if_freq_settings = FreqSweepSettings(
-            self.max_freq / self.inter_freq_factor,
-            self.min_freq / self.inter_freq_factor,
-            self.freq_step_size / self.inter_freq_factor,
-            self.inter_freq_factor)
 
         self.if_freq_array = self.freq_array / self.inter_freq_factor
         # endregion
@@ -398,16 +427,24 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         temp_ctrl_en (bool): Setting for debugging, if temp controller
             not connected then temp_ctrl queries give synthetic results
             and write commands are skipped.
+        lna_lsch (int): The lna UT lakeshore channel.
+        extra_1_lsch (int): The first extra lakeshore channel.
+        extra_2_lsch (int): The second extra lakeshore channel.
     """
+    __doc__ += f'\n    TempCtrlChannels: {TempCtrlChannels.__doc__}\n'
+    __doc__ += f'    TempTargets: {TempTargets.__doc__}'
+
 
     def __init__(self, temp_ctrl_channels: TempCtrlChannels,
                  temp_targets: TempTargets, cryo_chain: int,
                  temp_ctrl_en: bool) -> None:
         """Constructor for the TempControllerSettings class.
 
-        Parameters:
+        Args:
+            temp_ctrl_channels: The sensor channels on the lakeshore.
+            temp_targets: The hot and cold temperature targets (K).
             cryo_chain: The cryostat chain currently under test.
-            temp_ctrl_en: Setting for debugging, if temp controller  not
+            temp_ctrl_en: Setting for debugging, if temp controller not
                 connected then temp_ctrl queries give synthetic results
                 and write commands are skipped.
         """
@@ -477,7 +514,19 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
     """The PSX bias power supply settings.
 
     Attributes:
+        g_v_brd_step_size (float): The gate voltage step size for the 
+            broad level drain current search. 
+        g_v_mid_step_size (float): The gate voltage step size for the 
+            middle level drain current search.
+        g_v_nrw_step_size (float): The gate voltage step size for the 
+            narrow level drain current search.
+        g_v_brd_range (list[float]): The range of gate voltages  to
+            sweep through in the broad level of the adaptive search.
     """
+
+    __doc__ += f'\n    GVSearchSettings: {GVSearchSettings.__doc__}\n'
+    __doc__ += f'    PSULimits: {PSULimits.__doc__}\n'
+    __doc__ += f'    PSUMetaSettings: {PSUMetaSettings.__doc__}'
 
     def __init__(
             self, g_v_search_settings: GVSearchSettings, psu_limits: PSULimits,
@@ -485,6 +534,11 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         """Constructor for the BiasPSUSettings class.
 
         Args:
+            g_v_search_settings: The settings for sweeping g_v to find
+                d_i.
+            psu_limits: The power supply limits.
+            psu_meta_settings: Extra information about the power supply
+                configuration.
         """
         # region Variable minor error handling.
         eh.check_g_v_search_settings(g_v_search_settings)
@@ -558,9 +612,9 @@ class SwitchSettings:
 
     Constructor Arguments:
         cryo_chain (int): The cryostat chain currently under test.
-        switch_en (bool): Setting for debugging, if switch not connected
-            then switch queries give synthetic results and write
-            commands are skipped.
+        switch_en (bool): Setting for debugging, if switch not
+            connected then switch queries give synthetic results and
+            write commands are skipped.
     """
     cryo_chain: int
     switch_en: bool
