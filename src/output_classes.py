@@ -492,7 +492,18 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
     """Overall results incorporating hot and cold measurements.
 
     Attributes:
+        present (_S): Present time from datetime.
+        time_str (str): Present time as a string.
+        date_str (str): Present date as a string.
     """
+    __doc__ += f'\n    LoopPair: {LoopPair.__doc__}\n'
+    __doc__ += f'    StandardAnalysedResults: ' \
+               f'{StandardAnalysedResults.__doc__}\n'
+    __doc__ += f'    CalibrationAnalysedResults: ' \
+               f'{CalibrationAnalysedResults.__doc__}\n'
+    __doc__ += f'    ResultsMetaInfo: {ResultsMetaInfo.__doc__}\n'
+    __doc__ += f'    AnalysisBandwidths: {AnalysisBandwidths.__doc__}\n'
+    __doc__ += f'    PostProcResults: {PostProcResults.__doc__}'
 
     def __init__(self, loop_pair: LoopPair,
                  results_meta_info: ResultsMetaInfo) -> None:

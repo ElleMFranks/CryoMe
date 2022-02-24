@@ -15,7 +15,7 @@ following categories:
     * Signal Generator -
         Synthesizes the input signal, note that a frequency multiplier
         is in the chain, so the signal generated from the instrument is
-        a fraction of the target frequency. Multiplier is 8x usually 
+        a fraction of the target frequency. Multiplier is 8x usually
         but can be specified.
 
     * Temperature Controller -
@@ -171,7 +171,7 @@ class PSUMetaSettings:
     """Settings of the power supply not related to IV outputs directly.
 
     Constructor Attributes:
-        psu_safe_init (bool): If true power supply steps all channels 
+        psu_safe_init (bool): If true power supply steps all channels
             to 0V in safe steps before starting.
         bias_psu_en (bool): Setting for debugging, if bias_psu not
             connected then bias_psu queries give synthetic results and
@@ -228,9 +228,9 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
     """Class containing all signal analyser settings variables.
 
-    Composed of SpecAnFreqSettings, SpecAnAmplSettings, and 
+    Composed of SpecAnFreqSettings, SpecAnAmplSettings, and
     SpeAnBWSettings.
-    
+
     Attributes:
         sig_an_en (bool): Whether the signal analyser is enabled for
             the measurement.
@@ -245,14 +245,14 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
             sa_ampl_settings: SpecAnAmplSettings,
             sig_an_en: bool) -> None:
         """Constructor for the SignalAnalyserSettings class.
-        
+
         Args:
             sa_freq_settings: The frequency settings to be set on the
                 signal analyser.
             sa_bw_settings: The bandwidth settings to be set on the
                 signal analyser.
-            sa_ampl_settings: The amplitude settings to be set on on
-                the signal analyser.
+            sa_ampl_settings: The amplitude settings to be set on the
+                signal analyser.
             sig_an_en: Whether the signal analyser is enabled in this
                 measurement instance or not.
         """
@@ -434,7 +434,6 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
     __doc__ += f'\n    TempCtrlChannels: {TempCtrlChannels.__doc__}\n'
     __doc__ += f'    TempTargets: {TempTargets.__doc__}'
 
-
     def __init__(self, temp_ctrl_channels: TempCtrlChannels,
                  temp_targets: TempTargets, cryo_chain: int,
                  temp_ctrl_en: bool) -> None:
@@ -514,11 +513,11 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
     """The PSX bias power supply settings.
 
     Attributes:
-        g_v_brd_step_size (float): The gate voltage step size for the 
-            broad level drain current search. 
-        g_v_mid_step_size (float): The gate voltage step size for the 
+        g_v_brd_step_size (float): The gate voltage step size for the
+            broad level drain current search.
+        g_v_mid_step_size (float): The gate voltage step size for the
             middle level drain current search.
-        g_v_nrw_step_size (float): The gate voltage step size for the 
+        g_v_nrw_step_size (float): The gate voltage step size for the
             narrow level drain current search.
         g_v_brd_range (list[float]): The range of gate voltages  to
             sweep through in the broad level of the adaptive search.

@@ -68,7 +68,13 @@ class StageSettings:
 class StageBiasSet(IndivBias, StageSettings):
     """The gate and drain settings for a single lna stage.
     Attributes:
+        d_resistance (float): The resistance of the drain wire.
+        d_v_at_psu (float): The voltage at the power supply before the
+            voltage drop across the drain wire.
+        d_i_lim (float): The drain current limit for the stage (mA).
     """
+    __doc__ += f'\n    {IndivBias.__doc__}\n'
+    __doc__ += f'    {StageSettings.__doc__}'
 
     def __init__(self, stage_settings: StageSettings, bias: IndivBias) -> None:
         """Constructor for the StageBiasSet class.
@@ -225,8 +231,9 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             in the cryostat, or "LNA2" if the second.
         lna_meas_column_data (list[str]): The LNA data which goes into
             the settings log for this measurement.
-
     """
+    __doc__ += f'\n    LNACryoLayout: {LNACryoLayout.__doc__}\n'
+    __doc__ += f'    LNAStages: {LNAStages.__doc__}'
 
     def __init__(
             self, lna_position: str, lna_cryo_layout: LNACryoLayout,
@@ -683,6 +690,10 @@ class ManualLNASettings:
         The passed drain voltages get corrected for wire voltage drop.
 
     Attributes:
+        lna_1_stages (LNAStages): The stages of the first manual LNA.
+        lna_2_stages (LNAStages): The stages of the second manual LNA.
+        lna_1_man (LNABiasSet): The first manual LNA.
+        lna_2_man (LNABiasSet): The second manual LNA.
     """
     def __init__(
             self, manual_lna_biases: dict,
@@ -733,7 +744,12 @@ class ManualLNASettings:
 
 
 class NominalLNASettings:
-    """Nominal LNA drain and gate voltages set to LNA objects."""
+    """Nominal LNA drain and gate voltages set to LNA objects.
+
+    Attributes:
+        lna_1_nom_bias (LNABiasSet):
+        lna_2_nom_bias Optional(LNABiasSet):
+    """
     def __init__(self, settings: sc.Settings) -> None:
         """Constructor for the NominalLNASettings class.
 
@@ -778,6 +794,12 @@ class BackEndLNASettings:
 
     Attributes:
         d_i_lim (float): D current limit for the LNAs in question.
+        rtbe_gv (float): The room temperature back end gate voltage (V).
+        crbe_gvs (list[float]): The cryo back end gate voltages (V).
+        rtbe_chain_a_lna (LNABiasSet): The room temperature backend LNA.
+        crbe_chain_1_lna (LNABiasSet): The cryo backend LNA on chain 1.
+        crbe_chain_2_lna (LNABiasSet): The cryo backend LNA on chain 2.
+        crbe_chain_3_lna (LNABiasSet): The cryo backend LNA on chain 3.
     """
 
     def __init__(

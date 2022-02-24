@@ -452,16 +452,20 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
         comment (str): User defined string for additional information
             required for the measurement session.
     """
+    __doc__ += f'\n    SessionInfo: {SessionInfo.__doc__}\n'
+    __doc__ += f'    LNAInfo: {LNAInfo.__doc__}\n'
+    __doc__ += f'    CalInfo: {CalInfo.__doc__}\n'
+    __doc__ += f'    Misc: {Misc.__doc__}'
 
     def __init__(self, session_info: SessionInfo, lna_info: LNAInfo,
                  cal_info: CalInfo, misc: Misc) -> None:
         """Constructor for the MeasurementSettings class.
 
         Args:
-            session_info:
-            lna_info:
-            cal_info:
-            misc:
+            session_info: The session meta information.
+            lna_info: Information about the LNAs in the measurement.
+            cal_info: Information pertaining to calibration status.
+            misc: Additional information relevant to the session.
         """
         # region Variable error handling.
         eh.check_session_info(session_info)
@@ -599,6 +603,10 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
         d_v_sweep (list): The list of drain voltage values to sweep.
         d_i_sweep (list): The list of drain current values to sweep.
     """
+    __doc__ += f'\n    MeasSequence: {MeasSequence.__doc__}\n'
+    __doc__ += f'    SweepSetupVars: {SweepSetupVars.__doc__}\n'
+    __doc__ += f'    NominalBias: {NominalBias.__doc__}\n'
+    __doc__ += f'    LNACryoLayout: {LNACryoLayout.__doc__}'
 
     def __init__(
             self, meas_sequence: MeasSequence,
@@ -607,10 +615,10 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
         """Constructor for the  SweepSettings class.
 
         Args:
-            meas_sequence:
-            sweep_setup_vars:
-            nominal_bias:
-            lna_cryo_layout:
+            meas_sequence: The stage/LNA sequence info.
+            sweep_setup_vars: Sweep configuration variables.
+            nominal_bias: The nominal bias for the LNAs.
+            lna_cryo_layout: The layout of the LNAs in the cryostat.
         """
         # region Check variables for errors.
         eh.check_meas_sequence(meas_sequence)
