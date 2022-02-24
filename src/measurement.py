@@ -99,12 +99,17 @@ def _get_temps(tc_rm, temp_target: float,
 def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
                   instr_settings: ic.InstrumentSettings) -> list:
     """Sets/gets temperatures, ensure stability/status of heater."""
+
+    # region Unpack objects/set up logger/set initial variables.
     log = logging.getLogger(__name__)
     temp_set = False
     tc_settings = instr_settings.temp_ctrl_settings
+    # endregion
+
     while not temp_set:
         if tc_rm is not None:
             # region Set Lakeshore to target temp, wait for stabilisation.
+            # Check for heater errors before and after.
             pre_heater_status = ut.safe_query(
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
             hc.set_temp(tc_rm, temp_target, 'load')
@@ -113,6 +118,9 @@ def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
             pre_loop_temps = _get_temps(tc_rm, temp_target, instr_settings)
             post_heater_status = ut.safe_query(
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
+            # endregion
+
+            # region If set without problem, exit loop, else warning.
             if (temp_target - 1 < pre_loop_temps[0] < temp_target + 1) \
                     and pre_heater_status == '0\r' \
                     and post_heater_status == '0\r':
@@ -141,14 +149,11 @@ def _meas_loop(
     temperatures.
 
     Args:
+        settings: The settings for the measurement instance.
         hot_or_cold: Either 'Hot' or 'Cold', decides which target
             temperature to set the lakeshore to.
         res_managers: The resource managers for all the instruments
             being used in this measurement.
-        prev_meas_same_temp: Determines whether the stability check is
-            needed. Always false except for during ACTAH measurements
-            when the previous measurement was at the requested
-            temperature.
 
     Returns:
         Object containing measured power, and load/lna/extra
@@ -192,11 +197,21 @@ def _meas_loop(
 
     # region Sweep requested frequencies measuring power and load temp.
     log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.', )
-    pwr_lvl_cnt = 0
-    for inter_frequency in tq.tqdm(
+    for i, inter_frequency in enumerate(tq.tqdm(
         inter_freqs_array, ncols=110, desc="Loop Prog", leave=True, position=0,
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
-                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}'):
+                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')):
+
+        # region Set signal generator to intermediate frequency.
+        if sig_gen_rm is not None and sig_gen_settings.vna_or_sig_gen == 'vna':
+            sig_gen_rm.write(f':SENSE:FREQ:CW {inter_frequency} GHz')
+        elif sig_gen_rm is not None and \
+                sig_gen_settings.vna_or_sig_gen == 'sig gen':
+            sig_gen_rm.write(
+                f'PL {sig_gen_settings.sig_gen_pwr_lvls[i]} DM')
+            sleep(buffer_time)
+            sig_gen_rm.write(f'CW {inter_frequency} GZ')
+        # endregion
 
         # region Store pre-loop temperatures, and during loop load temp.
         if tc_rm is not None:
@@ -210,22 +225,10 @@ def _meas_loop(
         else:
             load_temp = temp_target + (round(rd.uniform(-0.1, 0.1), 2))
 
-        # region Prep spec an for next measurement by resetting.
+        # region Send command for sig an to take a measurement sweep.
         if spec_an_rm is not None:
             spec_an_rm.write('INIT:IMM')
             sleep(buffer_time)
-        # endregion
-
-        # region Set signal generator to intermediate frequency.
-        if sig_gen_rm is not None and sig_gen_settings.vna_or_sig_gen == 'vna':
-            sig_gen_rm.write(f':SENSE:FREQ:CW {inter_frequency} GHz')
-        elif sig_gen_rm is not None and \
-                sig_gen_settings.vna_or_sig_gen == 'sig gen':
-            sig_gen_rm.write(
-                f'PL {sig_gen_settings.sig_gen_pwr_lvls[pwr_lvl_cnt]} DM')
-            pwr_lvl_cnt += 1
-            sleep(buffer_time)
-            sig_gen_rm.write(f'CW {inter_frequency} GZ')
         # endregion
 
         # region Measure and store marker power at requested frequency.
@@ -286,6 +289,7 @@ def _meas_loop(
 def _closest_temp_then_other(
         init_temp: float, res_managers: ic.ResourceManagers,
         settings: sc.Settings) -> list[oc.LoopInstanceResult]:
+    """Triggers measurement loops, first closest temp, then other."""
 
     tc_settings = settings.instr_settings.temp_ctrl_settings
     distance_to_hot = abs(init_temp - float(tc_settings.hot_target))
@@ -330,7 +334,7 @@ def measurement(
     Args:
         settings: Settings for the measurement session.
         res_managers: The resource managers for the instruments in use.
-        trimmed_input_data:
+        trimmed_input_data: The trimmed loss/calibration input data.
         hot_cold_count: Either 'Hot' or 'Cold', decides whether the
             measurement returns a Hot or Cold object from the
             measurement loop. Only relevant in all cold then all hot

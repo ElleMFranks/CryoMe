@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """settings_classes.py - Stores/handles measurement instance settings.
+
+Contains the class structures for the configuration of a given
+measurement. Dataclasses are used for their simplicity, and are made
+into subclasses of the mid level classes. The mid level classes are
+combined into a top level Settings class, which can be passed around
+easily. Error checking is carried out in mid and top level class
+constructors.
 """
 
 # region Import modules.
@@ -20,6 +27,167 @@ import lna_classes as lc
 import output_classes as oc
 import util as ut
 # endregion
+
+
+def settings_config(config, cryo_chain: int) -> Settings:
+    """Put user settings into class instances."""
+    # region Instrumentation Settings.
+    # region Signal Analyser Settings
+    sig_an_settings = ic.SignalAnalyserSettings(
+        ic.SpecAnFreqSettings(
+            config['signal_analyser_settings']['center_freq'],
+            config['signal_analyser_settings']['marker_freq'],
+            config['signal_analyser_settings']['freq_span']),
+        ic.SpecAnBWSettings(
+            config['signal_analyser_settings']['vid_bw'],
+            config['signal_analyser_settings']['res_bw'],
+            config['signal_analyser_settings']['power_bw']),
+        ic.SpecAnAmplSettings(
+            config['signal_analyser_settings']['atten'],
+            config['signal_analyser_settings']['ref_level']),
+        config['available_instruments']['sig_an_en'])
+    # endregion
+
+    # region Signal Generator Settings.
+    sig_gen_settings = ic.SignalGeneratorSettings(
+        ic.FreqSweepSettings(
+            config['signal_generator_settings']['min_freq'],
+            config['signal_generator_settings']['max_freq'],
+            config['signal_generator_settings']['freq_step_size'],
+            config['measurement_settings']['inter_freq_factor']),
+        config['signal_generator_settings']['vna_or_sig_gen'],
+        config['available_instruments']['sig_gen_en'])
+    # endregion
+
+    # region Temperature Controller Settings
+    temp_ctrl_settings = ic.TempControllerSettings(
+        ic.TempCtrlChannels(
+            config['temperature_controller_settings']['allchn_load_lsch'],
+            config['temperature_controller_settings']['chn1_lna_lsch'],
+            config['temperature_controller_settings']['chn2_lna_lsch'],
+            config['temperature_controller_settings']['chn3_lna_lsch'],
+            config['temperature_controller_settings']['extra_sensors_en']),
+        ic.TempTargets(
+            config['temperature_controller_settings']['t_hot_target'],
+            config['temperature_controller_settings']['t_cold_target']),
+        cryo_chain,
+        config['available_instruments']['temp_ctrl_en'])
+    # endregion
+
+    # region Bias Power Supply Settings.
+    bias_psu_settings = ic.BiasPSUSettings(
+        ic.GVSearchSettings(
+            config['bias_psu_settings']['g_v_low_lim'],
+            config['bias_psu_settings']['g_v_up_lim'],
+            config['bias_psu_settings']['num_g_v_brd_steps'],
+            config['bias_psu_settings']['num_g_v_mid_steps'],
+            config['bias_psu_settings']['num_g_v_nrw_steps']),
+        ic.PSULimits(
+            config['bias_psu_settings']['v_step_lim'],
+            config['bias_psu_settings']['d_i_lim']),
+        ic.PSUMetaSettings(
+            config['measurement_settings']['psu_safe_init'],
+            config['available_instruments']['bias_psu_en'],
+            config['measurement_settings']['instr_buffer_time']))
+    # endregion
+
+    # region Switch Settings.
+    switch_settings = ic.SwitchSettings(
+        cryo_chain,
+        config['available_instruments']['switch_en'])
+    # endregion
+    # endregion
+
+    # region LNA Settings.
+    # region LNA Meta Settings
+    lna_ids = LNAIDs(
+        config['lna_ids']['chain_1_lna_1_id'],
+        config['lna_ids']['chain_1_lna_2_id'],
+        config['lna_ids']['chain_2_lna_1_id'],
+        config['lna_ids']['chain_2_lna_2_id'],
+        config['lna_ids']['chain_3_lna_1_id'],
+        config['lna_ids']['chain_3_lna_2_id'])
+
+    lna_cryo_layout = LNACryoLayout(
+        cryo_chain,
+        config['measurement_settings']['lnas_per_chain'],
+        config['measurement_settings']['stages_per_lna'],
+        config['measurement_settings']['stage_1_2_same'],
+        config['measurement_settings']['stage_2_3_same'])
+
+    analysis_sub_bws = oc.AnalysisBandwidths(
+        config['analysis_bandwidths']['ana_bw_1_min_max'],
+        config['analysis_bandwidths']['ana_bw_2_min_max'],
+        config['analysis_bandwidths']['ana_bw_3_min_max'],
+        config['analysis_bandwidths']['ana_bw_4_min_max'],
+        config['analysis_bandwidths']['ana_bw_5_min_max'])
+    # endregion
+
+    # region Manual LNA Settings.
+    if config['measurement_settings']['measure_method'] == 'MEM':
+        manual_lna_settings = lc.ManualLNASettings(
+            config['manual_entry_lna_settings'],
+            lna_cryo_layout,
+            config['bias_psu_settings']['d_i_lim'])
+    else:
+        manual_lna_settings = None
+    # endregion
+
+    # region Nominal LNA Settings.
+    if not config['measurement_settings']['is_calibration']:
+        nominal_bias = NominalBias(
+            config['bias_sweep_settings']['d_v_nominal'],
+            config['bias_sweep_settings']['d_i_nominal'])
+    else:
+        nominal_bias = None
+    # endregion
+
+    # region Back End LNA Settings.
+    be_lna_settings = lc.BackEndLNASettings(
+        config['back_end_lna_settings'],
+        config['back_end_lna_settings']['be_d_i_limit'])
+    # endregion
+    # endregion
+
+    # region Return settings.
+    return Settings(
+        MeasurementSettings(
+            SessionInfo(
+                config['measurement_settings']['project_title'],
+                config['measurement_settings']['measure_method'],
+                analysis_sub_bws),
+            LNAInfo(
+                DirectLNAs(be_lna_settings, manual_lna_settings),
+                lna_ids, lna_cryo_layout),
+            CalInfo(
+                config['measurement_settings']['is_calibration'],
+                config['measurement_settings']['in_cal_file_id']),
+            Misc(
+                config['measurement_settings']['comment_en'],
+                config['measurement_settings']['dark_mode_plot'],
+                config['measurement_settings']['order'])),
+        SweepSettings(
+            MeasSequence(
+                config['bias_sweep_settings']['stage_sequence'],
+                config['bias_sweep_settings']['lna_sequence']),
+            SweepSetupVars(
+                config['bias_sweep_settings']['num_of_d_v'],
+                config['bias_sweep_settings']['num_of_d_i'],
+                config['bias_sweep_settings']['d_v_min'],
+                config['bias_sweep_settings']['d_v_max'],
+                config['bias_sweep_settings']['d_i_min'],
+                config['bias_sweep_settings']['d_i_max'],
+                config['bias_sweep_settings']['alt_temp_sweep_skips']),
+            nominal_bias, lna_cryo_layout),
+        ic.InstrumentSettings(
+            sig_an_settings, sig_gen_settings, temp_ctrl_settings,
+            bias_psu_settings, switch_settings,
+            config['measurement_settings']['instr_buffer_time']),
+        FileStructure(
+            config['measurement_settings']['project_title'],
+            config['measurement_settings']['in_cal_file_id'],
+            cryo_chain))
+    # endregion
 
 
 # region Base Level Classes.

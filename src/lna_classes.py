@@ -39,9 +39,10 @@ class IndivBias:
     """Individual bias values for a stage.
 
     Constructor Arguments:
-        target_d_v_at_lna (float):
-        d_i (float):
-        g_v (float):
+        target_d_v_at_lna (float): Target drain voltage at the lna,
+            after the voltage drop through the wire (V).
+        d_i (float): The drain voltage (V).
+        g_v (float): The gate voltage (V).
     """
     d_i: float
     target_d_v_at_lna: float
@@ -53,9 +54,9 @@ class StageSettings:
     """Non-bias settings for a stage.
 
     Constructor Attributes:
-        lna_position (str):
-        d_i_limit (float):
-        card_chnl (Optional[CardChnl]):
+        lna_position (str): The position of the LNA in the chain.
+        d_i_limit (float): The drain current limit (mA).
+        card_chnl (Optional[CardChnl]): The card and channel on the psu.
     """
     lna_position: str
     d_i_limit: float = 10
@@ -73,6 +74,8 @@ class StageBiasSet(IndivBias, StageSettings):
         """Constructor for the StageBiasSet class.
 
         Args:
+            stage_settings: The settings for the stage.
+            bias: The bias conditions for the stage.
         """
 
         StageSettings.__init__(self, *ut.get_dataclass_args(stage_settings))
@@ -176,9 +179,9 @@ class LNAStages:
     """Settings for the collection of stages of an LNA.
 
     Constructor Attributes:
-        stage_1 (StageBiasSet):
-        stage_2 (Optional[StageBiasSet]):
-        stage_3 (Optional[StageBiasSet]):
+        stage_1 (StageBiasSet): The first stage of the LNA.
+        stage_2 (Optional[StageBiasSet]): Second stage of the LNA.
+        stage_3 (Optional[StageBiasSet]): Third stage of the LNA.
     """
     stage_1: StageBiasSet
     stage_2: Optional[StageBiasSet] = None
@@ -199,10 +202,12 @@ class LNACryoLayout:
             under test. If an amplifier is 3 stage, but the second and
             third are the same, this number is 3, and the stage_2_3_same
             variable should be set true.
+        stage_1_2_same (bool): If the first and second stage of the lnas
+            under test are the same psx channel, this needs to be set to
+            true. Used to set the bias psx settings.
         stage_2_3_same (bool): If the second and third stage of the lnas
             under test are the same psx channel, this needs to be set to
-            true. Used to set the bias psx settings. Similar to
-            stage_1_2_same.
+            true. Used to set the bias psx settings.
     """
     cryo_chain: int
     lnas_per_chain: int
@@ -231,10 +236,11 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         Args:
             lna_position: Either "LNA1" if the first lna from the load
                 in the cryostat, or "LNA2" if the second.
-
-        Raises:
-            Exception: If LNA2 is passed, but LNA is not a chain raises
-                exception.
+            lna_cryo_layout: The layout configuration of the LNAs in the
+                cryostat.
+            single_stage_d_i_lim: The current limit of a single LNA
+                stage (mA).
+            lna_stages: The stages of the LNA which make up the LNA.
         """
 
         # region Set args to attributes.
@@ -685,6 +691,10 @@ class ManualLNASettings:
         """Constructor for the ManualLNASettings class.
 
         Args:
+            manual_lna_biases: The bias conditions of the LNA ut.
+            lna_cryo_layout: The layout config of the LNAs inside the
+                cryostat.
+            d_i_lim: The current limit of the LNA (mA).
         """
 
         # region Set lna stages from args.
@@ -725,10 +735,15 @@ class ManualLNASettings:
 class NominalLNASettings:
     """Nominal LNA drain and gate voltages set to LNA objects."""
     def __init__(self, settings: sc.Settings) -> None:
-        """Constructor for the NominalLNASettings class."""
+        """Constructor for the NominalLNASettings class.
+
+        Args:
+            settings: The settings for the measurement instance.
+        """
         meas_settings = settings.meas_settings
         d_i_lim = settings.instr_settings.bias_psu_settings.d_i_lim
 
+        # region Construct stages.
         self.lna_1_nom_stg = StageBiasSet(
             StageSettings('LNA1'),
             IndivBias(cp.copy(settings.sweep_settings.d_i_nominal),
@@ -738,7 +753,9 @@ class NominalLNASettings:
             StageSettings('LNA2'),
             IndivBias(cp.copy(settings.sweep_settings.d_i_nominal),
                       cp.copy(settings.sweep_settings.d_v_nominal)))
+        # endregion
 
+        # region Construct LNAs from stages.
         self.lna_1_nom_bias = LNABiasSet(
             'LNA1', meas_settings.lna_cryo_layout, d_i_lim,
             LNAStages(cp.deepcopy(self.lna_1_nom_stg),
@@ -753,6 +770,7 @@ class NominalLNASettings:
                           cp.deepcopy(self.lna_2_nom_stg)))
         else:
             self.lna_2_nom_bias = None
+        # endregion
 
 
 class BackEndLNASettings:
@@ -769,7 +787,7 @@ class BackEndLNASettings:
         Args:
             be_lna_biases: Dictionary containing user input BE LNA
                 bias variables.
-            be_d_i_lim: D current limit for the LNA in question.
+            be_d_i_lim: Drain current lim for the LNA in question (mA).
         """
 
         self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']

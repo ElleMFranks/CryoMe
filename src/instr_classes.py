@@ -392,6 +392,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
 
 class TempControllerSettings(TempCtrlChannels, TempTargets):
     """Settings for the Lakeshore temperature controller.
+
     Attributes:
         cryo_chain (int): The cryostat chain currently under test.
         temp_ctrl_en (bool): Setting for debugging, if temp controller

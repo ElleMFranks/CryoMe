@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """error_handling.py - Input checking functions and error types.
+
+This module provides functions to check the user input settings to
+ensure the program can run successfully. Adding additional functions is
+easy, and they are all called in the classes modules.
 """
 
 # region Import modules.

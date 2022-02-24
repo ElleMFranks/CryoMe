@@ -47,11 +47,11 @@ def all_cold_to_all_hot(
     bias point is taken. The results are then processed all at once.
 
     Args:
-        settings:
-        lna_biases:
+        settings: The settings for the measurement instance.
+        lna_biases: The biases for the LNAs ut.
         res_managers: An object containing the resource managers for the
             instruments used in the measurement.
-        trimmed_input_data:
+        trimmed_input_data: The trimmed loss/calibration data.
     """
 
     # region Unpack objects, instantiate arrays, and set up logging.
@@ -68,7 +68,6 @@ def all_cold_to_all_hot(
     lna_1_array = []
     lna_2_array = []
     prev_lna_ut = 0
-    prev_temp_ut = None
     states = list(product(
         hot_cold, sweep_settings.lna_sequence, sweep_settings.stage_sequence,
         sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
@@ -78,8 +77,8 @@ def all_cold_to_all_hot(
     print('')
     for i, state in enumerate(tq.tqdm(
         states, ncols=110, leave=False, desc="Sweep Prog",
-        bar_format= '{l_bar}{bar}| {n_fmt}/{total_fmt} '
-                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
+        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
+                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
         # region Unpack state object and set additional variable.
         temp_ut = state[0]
@@ -87,16 +86,15 @@ def all_cold_to_all_hot(
         stage_ut = state[2]
         d_v_ut = state[3]
         d_i_ut = state[4]
-        prev_meas_same_temp = bool(prev_temp_ut == temp_ut)
         # endregion
 
         # region Log measurement state.
         if temp_ut == 0:
             log.info(f'Measurement: {i + 1} - HotOrCold: Cold - LNA: {lna_ut} '
-                  f'- DV: {d_v_ut:.2f} V - DI: {d_i_ut:.2f} mA.')
+                     f'- DV: {d_v_ut:.2f} V - DI: {d_i_ut:.2f} mA.')
         else:
             log.info(f'Measurement: {i + 1} - HotOrCold: Hot - LNA:{lna_ut} '
-                  f'- DV:{d_v_ut:.2f} V - DI:{d_i_ut:.2f} mA.')
+                     f'- DV:{d_v_ut:.2f} V - DI:{d_i_ut:.2f} mA.')
         # endregion
 
         # region Configure LNA biasing settings to send to bias control.
@@ -163,7 +161,6 @@ def all_cold_to_all_hot(
 
         print('\n')
 
-        prev_temp_ut = temp_ut
         prev_lna_ut = lna_ut
         # endregion
     print('')
@@ -190,7 +187,6 @@ def all_cold_to_all_hot(
 def alternating_temps(
         settings: sc.Settings,
         lna_biases: list[lc.LNABiasSet],
-        lna_nominals: lc.NominalLNASettings,
         res_managers: ic.ResourceManagers,
         trimmed_input_data: sc.TrimmedInputs) -> None:
     """Series sweep where temp is alternated between measurements.
@@ -208,10 +204,9 @@ def alternating_temps(
         settings: The settings for the measurement session.
         lna_biases: The target bias values for the LNAs in the cryostat
             chain.
-        lna_nominals: Nominal bias settings for the LNAs.
         res_managers: An object containing the resource managers for the
             instruments used in the measurement.
-        trimmed_input_data:
+        trimmed_input_data: The trimmed loss/calibration input data.
     """
 
     # region Unpack classes and set up logging.
@@ -234,8 +229,6 @@ def alternating_temps(
         states, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
-
-        lna_noms = cp.deepcopy(lna_nominals)
 
         if i >= sweep_settings.alt_temp_sweep_skips:
             # region Get iterables from state object.
@@ -306,7 +299,6 @@ def alternating_temps(
 
         log.info('All results saved.')
         prev_lna_ut = lna_ut
-        del lna_noms
         # endregion
 
 

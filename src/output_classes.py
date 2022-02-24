@@ -3,8 +3,8 @@
 
 Two types of results are within this module. LoopInstanceResult is the
 result of a single measurement loop. Results contain a set of two
-LoopInstanceResult instances, one for a Cold measurement and another for
-a Hot measurement.
+LoopInstanceResult instances, one for a cold measurement and another for
+a hot measurement.
 """
 
 # region Import modules.
@@ -320,7 +320,6 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
     cor_hot_temps = []
     cor_cold_temps = []
     y_factor = []
-    uncal_loss_uncor_noise_temp = []
     gain_cal = []
     gain_cal_db = []
     uncal_loss_uncor_noise_temp = []
@@ -500,8 +499,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         """Constructor for the Results class.
 
         Args:
-            loop_pair:
-            results_meta_info:
+            loop_pair: The pair of hot and cold loop measurements.
+            results_meta_info: The meta information for the results set.
         """
 
         # region Initialise subclasses and process results.

@@ -71,7 +71,8 @@ def safe_query(
                 output = str(output)
             sleep(buffer_time)
             return output
-        except Exception as _e:
+
+        except Exception as _e:  # pylint: disable=broad-except
             logging.error(f'Safe query failed. Error: {_e}')
             sleep(5)
             # region Handle retries for each instrument.

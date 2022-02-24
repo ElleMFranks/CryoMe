@@ -204,6 +204,7 @@ def direct_set_stage(
 def _get_step_to_target(v_set_diff: float, v_step_lim: float,
                         v_set_status: float) -> float:
     """Return direction and amount to step voltage towards target."""
+
     # region Return direction and amount to step voltage towards target.
     # region Define boolean conditions for readability.
     pos_targ_oof_rng = bool(
@@ -229,6 +230,15 @@ def _get_step_to_target(v_set_diff: float, v_step_lim: float,
 
     return v_set_status
     # endregion
+
+
+def _gate_or_drain(g_or_d: str) -> str:
+    """Return gate or drain string from g_or_d for logging."""
+    if g_or_d == 'g':
+        return 'gate'
+    if g_or_d == 'd':
+        return 'drain'
+    raise Exception('Invalid g_or_d argument.')
 
 
 def _safe_set_v(
@@ -258,12 +268,6 @@ def _safe_set_v(
     Returns:
         The measured drain current in mA or a notifier that the current
         is over limit.
-
-    Raises:
-        Current limit exception.  When this exception is raised, the
-        current was found to be too high, then the voltage was backed
-        off and the current was still too high.  Power supply is turned
-        off globally to prevent further damage at this point.
     """
     # region Unpack objects and set up logging.
     log = logging.getLogger(__name__)
@@ -271,19 +275,11 @@ def _safe_set_v(
     g_or_d = g_or_d_v_target.g_or_d
     d_i_lim = psu_lims.d_i_lim
     v_step_lim = psu_lims.v_step_lim
+    gate_or_drain = _gate_or_drain(g_or_d)
     # endregion
 
     # region Enable channel to be set.
     _local_bias_en(psu_rm, card_chnl, 1, buffer_time)
-    # endregion
-
-    # region Get gate or drain string from g_or_d for logging.
-    if g_or_d == 'g':
-        gate_or_drain = 'gate'
-    elif g_or_d == 'd':
-        gate_or_drain = 'drain'
-    else:
-        raise Exception('Invalid g_or_d argument.')
     # endregion
 
     log.cdebug(f'\nSTARTED SAFE VOLTAGE SET: '
@@ -434,14 +430,9 @@ def _adapt_search_stage(
     prev_dist_from_targ = d_i_target - d_i_meas_arr[index - 1]
     pres_dist_from_targ = d_i_target - d_i_meas_arr[index]
 
-    # If sign switches between previous and present measurement then
-    # value of gate for drain is within this step.
-    target_current_exceeded = bool(
-        np.sign(prev_dist_from_targ) != np.sign(pres_dist_from_targ))
-    # endregion
-
     # region Handle exceeded target current conditions.
-    if target_current_exceeded and not final_stage:
+    if (np.sign(prev_dist_from_targ) !=
+            np.sign(pres_dist_from_targ)) and not final_stage:
         # region Increment level
         # If the previous distance to target is larger than the present
         # the direction of the next sweep is from present to previous <-
@@ -484,7 +475,8 @@ def _adapt_search_stage(
         return next_g_v_rng, next_d_i_meas, 1, \
             pres_closer_than_prev, d_i_meas_arr
 
-    if target_current_exceeded and final_stage:
+    if (np.sign(prev_dist_from_targ) !=
+            np.sign(pres_dist_from_targ)) and final_stage:
         # region Report and return closest to target gate voltage
         # region If present closest, return present gate voltage.
         if abs(prev_dist_from_targ) > abs(pres_dist_from_targ):
@@ -545,14 +537,13 @@ def _safe_set_stage(
     # region Set up logging, instantiate arrays, and unpack objects.
     log = logging.getLogger(__name__)
     brd_d_i_meas = []
-    buffer_time = psu_set.buffer_time
     d_i_target = stage_bias.d_i
     # endregion
 
     # region Set psu to target drain voltage accounting for wire v drop.
     _safe_set_v(
         psu_rm, card_chnl, GOrDVTarget('d', stage_bias.d_v_at_psu),
-        psu_lims, buffer_time)
+        psu_lims, psu_set.buffer_time)
     # endregion
 
     # region Report drain current status.
@@ -565,7 +556,7 @@ def _safe_set_stage(
     brd_g_v_range = psu_set.g_v_brd_range
     init_brd_d_i = _safe_set_v(
         psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[0]),
-        psu_lims, buffer_time)
+        psu_lims, psu_set.buffer_time)
 
     if init_brd_d_i == 'over limit':
         return brd_g_v_range[0]  # Return the lowest g_v possible.
@@ -580,10 +571,10 @@ def _safe_set_stage(
         # region Measure unmeasured currents.
         if index < len(g_v_range) - 1:
             # No _safe_set_v as know upper bound within current limit.
-            _set_psu_v(psu_rm, card_chnl, buffer_time,
+            _set_psu_v(psu_rm, card_chnl, psu_set.buffer_time,
                        GOrDVTarget('g', g_v_range[index]))
-            sleep(buffer_time)
-            _d_i = _get_psu_d_i(psu_rm, card_chnl, buffer_time)
+            sleep(psu_set.buffer_time)
+            _d_i = _get_psu_d_i(psu_rm, card_chnl, psu_set.buffer_time)
             log.cdebug(f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}')
         # endregion
 
@@ -605,7 +596,7 @@ def _safe_set_stage(
         # region Get iteration current.
         d_i = _safe_set_v(
             psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[i]), psu_lims,
-            buffer_time)
+            psu_set.buffer_time)
         brd_d_i_meas.append(d_i)
         # endregion
 
@@ -658,7 +649,7 @@ def _safe_set_stage(
 
                 if g_v_final[0] is not None:
                     if not g_v_final[3]:
-                        _set_psu_v(psu_rm, card_chnl, buffer_time,
+                        _set_psu_v(psu_rm, card_chnl, psu_set.buffer_time,
                                    GOrDVTarget('g', g_v_final[0]))
                     return g_v_final[0]
                 # endregion
@@ -695,12 +686,17 @@ def bias_set(
     """
 
     # region Get power supply limits.
+    psu_stg_2_lims = None
+    psu_stg_3_lims = None
+
     psu_stg_1_lims = ic.PSULimits(
          psu_set.v_step_lim, target_lna_bias.stage_1.d_i_lim)
+
     if hasattr(target_lna_bias, 'stage_2'):
         if target_lna_bias.stage_2 is not None:
             psu_stg_2_lims = ic.PSULimits(
                 psu_set.v_step_lim, target_lna_bias.stage_2.d_i_lim)
+
     if hasattr(target_lna_bias, 'stage_3'):
         if target_lna_bias.stage_3 is not None:
             psu_stg_3_lims = ic.PSULimits(
@@ -714,19 +710,17 @@ def bias_set(
         psu_rm, target_lna_bias.stage_1, psu_set,
         target_lna_bias.stage_1.card_chnl, psu_stg_1_lims)
 
-    if hasattr(target_lna_bias, 'stage_2'):
-        if target_lna_bias.stage_2 is not None:
-            _local_bias_en(psu_rm, target_lna_bias.stage_2.card_chnl, 1,
-                           buffer_time)
-            target_lna_bias.stage_2.g_v = _safe_set_stage(
-                    psu_rm, target_lna_bias.stage_2, psu_set,
-                    target_lna_bias.stage_2.card_chnl, psu_stg_2_lims)
+    if psu_stg_2_lims is not None:
+        _local_bias_en(psu_rm, target_lna_bias.stage_2.card_chnl, 1,
+                       buffer_time)
+        target_lna_bias.stage_2.g_v = _safe_set_stage(
+                psu_rm, target_lna_bias.stage_2, psu_set,
+                target_lna_bias.stage_2.card_chnl, psu_stg_2_lims)
 
-    if hasattr(target_lna_bias, 'stage_3'):
-        if target_lna_bias.stage_3 is not None:
-            _local_bias_en(psu_rm, target_lna_bias.stage_3.card_chnl, 1,
-                           buffer_time)
-            target_lna_bias.stage_3.g_v = _safe_set_stage(
-                    psu_rm, target_lna_bias.stage_3, psu_set,
-                    target_lna_bias.stage_3.card_chnl, psu_stg_3_lims)
+    if psu_stg_3_lims is not None:
+        _local_bias_en(psu_rm, target_lna_bias.stage_3.card_chnl, 1,
+                       buffer_time)
+        target_lna_bias.stage_3.g_v = _safe_set_stage(
+                psu_rm, target_lna_bias.stage_3, psu_set,
+                target_lna_bias.stage_3.card_chnl, psu_stg_3_lims)
     # endregion

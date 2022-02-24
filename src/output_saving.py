@@ -48,7 +48,9 @@ def _save_plot(
         bias_id: The BiasID, or where these results are in a bias sweep.
         calibration_id: The calibration ID if a calibration measurement.
     """
-    # region Unpack classes.
+
+    # region Unpack objects/ensure logger isn't dominated by matplotlib.
+    logging.getLogger('matplotlib.font_manager').disabled = True
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
     # endregion
@@ -185,8 +187,7 @@ def _save_plot(
 
 
 def save_standard_results(
-        settings: sc.Settings,
-        results: oc.Results, bias_id: int,
+        settings: sc.Settings, results: oc.Results, bias_id: int,
         lna_1_bias: lc.LNABiasSet,
         lna_2_bias: Optional[lc.LNABiasSet] = None) -> None:
     """Update settings log and create raw results CSV.
@@ -198,6 +199,7 @@ def save_standard_results(
         lna_1_bias: The LNA settings for the first measured LNA.
         lna_2_bias: The LNA settings for the second measured LNA.
     """
+
     # region Unpack objects and set up logging.
     log = logging.getLogger(__name__)
     meas_settings = settings.meas_settings
@@ -252,12 +254,12 @@ def save_standard_results(
         writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                             delimiter=',', escapechar='\\')
         writer.writerow(set_col_data)
+        writer.writerow('\n')
     # endregion
-    log.info('Settings log updated.')
+    log.info('Settings log updated. Updating results log...')
     # endregion
 
     # region Update results log.
-    log.info('Updating results log...')
     res_log_data = results.results_ana_log_data(meas_settings, bias_id)
     with open(
             file_struc.res_log_path, 'a',
@@ -265,21 +267,20 @@ def save_standard_results(
         writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
                             delimiter=',', escapechar='\\')
         writer.writerow(res_log_data)
-    log.info('Results log updated.')
+        writer.writerow('\n')
+    log.info('Results log updated. Saving plot...')
     # endregion
 
     # region Setup and save plot.
-    log.info('Saving plot...')
     lna_biases = [lna_1_bias, lna_2_bias]
     _save_plot(results, meas_settings, lna_biases,
                results.output_file_path(file_struc.results_directory,
                                         meas_settings, bias_id, 'png'),
                bias_id)
-    log.info('Plot saved.')
+    log.info('Plot saved. Saving raw results to be processed.')
     # endregion
 
     # region Save results as csv.
-    log.info('Saving raw results to be processed...')
 
     # region Figure out output file name.
     # Create file name in format: Raw Meas# LNA# Bias#.csv/png.
@@ -381,8 +382,7 @@ def save_calibration_results(
     # region Set file names for csv and plot.
     log.cdebug('Setting file names for csv and plot.')
     cal_output_path = pl.Path(
-        str(settings.file_struc.cal_directory) +
-        f'\\Chain {cryo_chain}')
+        str(settings.file_struc.cal_directory) + f'\\Chain {cryo_chain}')
     os.makedirs(cal_output_path, exist_ok=True)
     cal_csv_path = pl.Path(
         str(cal_output_path) + f'\\Chain {cryo_chain} '
@@ -416,6 +416,7 @@ def save_calibration_results(
         writer = csv.writer(
             file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
         writer.writerow(cal_settings_col_data)
+        writer.writerow('\n')
     log.info('Calibration settings saved.')
     # endregion
 

@@ -3,8 +3,8 @@
 
 First function, cryo_chain_switch(), safely changes the signal path
 switch. The second, back_end_lna_setup(), biases both the room temp and
-cryostat back end LNAs for the cryostat chain specified either using
-a direct set method, or a safe set method.
+cryostat back end LNAs for the cryostat chain specified either using a
+direct set method, or a safe set method.
 """
 
 # region Import modules.
@@ -101,11 +101,13 @@ def back_end_lna_setup(
             voltage drops.
     """
     # region Unpack passed objects.
+    log = logging.getLogger(__name__)
     chain = settings.meas_settings.lna_cryo_layout.cryo_chain
     be_biases = settings.meas_settings.direct_lnas.be_lna_settings
     buffer_time = settings.instr_settings.buffer_time
     psu_settings = settings.instr_settings.bias_psu_settings
     # endregion
+    log.info('Setting up back end LNAs...')
 
     # region Unpack LNA bias variables.
     rtbe_lna = be_biases.rtbe_chain_a_lna
@@ -165,3 +167,4 @@ def back_end_lna_setup(
         crbe_lna.lna_measured_column_data(psu_rm, True)
         # endregion
     # endregion
+    log.info('Back end LNAs set up.')
