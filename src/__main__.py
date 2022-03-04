@@ -75,6 +75,8 @@ def main():
     for i, cryo_chain in enumerate(
             yaml_config['bias_sweep_settings']['chain_sequence']):
 
+        input(f'Please ensure chain {cryo_chain} is connected to the PSU, then press enter.')
+
         # region Reset all class instances.
         if i > 0:
             del settings
