@@ -137,7 +137,7 @@ def back_end_lna_setup(
     if psu_rm is not None and direct_set:
         # region If direct set uncor manual input g/dV to biasing.
         bc.direct_set_stage(
-            psu_rm, bc.CardChnl(1, 8),
+            psu_rm, bc.CardChnl(chain, 8),
             ic.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
             [bc.GOrDVTarget('g', rtbe_chn_g_v),
                 bc.GOrDVTarget('d', rtbe_chn_d_v)])

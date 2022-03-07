@@ -398,8 +398,8 @@ class SignalGeneratorSettings(FreqSweepSettings):
         # endregion
 
     @staticmethod
-    def vna_init(sig_gen_rm, buffer_time: float):
-        """Initialise the PNA-X N5245A VNA to 10GHz CW"""
+    def vna_init(sig_gen_rm: pv.Resource, buffer_time: float):
+        """Initialise the PNA-X N5245A VNA to 10GHz CW."""
         # region Print VNA ID and set it to CW mode at 10GHz.
         log = logging.getLogger(__name__)
         ut.safe_write('*CLS', buffer_time, sig_gen_rm)
@@ -413,6 +413,14 @@ class SignalGeneratorSettings(FreqSweepSettings):
             raise Exception(f'VNA Error Code {error_status}')
         log.info("VNA initialised successfully.")
         # endregion
+
+    def sig_gen_init(
+        self, sig_gen_rm: pv.Resource, buffer_time: float) -> None:
+        """Initialises the signal generator to 10GHz 0dBm."""
+        ut.safe_write(
+            f'PL {self.sig_gen_pwr_lvls[0]} DM', buffer_time, sig_gen_rm)
+        ut.safe_write(
+            f'CW {self.if_freq_array[0]} GZ', buffer_time, sig_gen_rm)
 
     def set_sig_gen_pwr_lvls(self, trimmed_pwr_lvls: list) -> None:
         """Set the power levels for the signal generator."""
