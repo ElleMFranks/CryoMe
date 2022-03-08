@@ -1,8 +1,7 @@
-Project Title,Cryostat Chain,Calibration ID,Date,Time,Comment,,Center Frequency (GHz),Marker Frequency (GHz),Resolution Bandwidth (MHz),Video Bandwidth (Hz),Frequency Span (MHz),Power Bandwidth (MHz),Attenuation (dB),,CRBE GV Set (V),CRBE DV Set (V),CRBE DI Set (mA),RTBE GV Set (V),RTBE DV Set (V),RTBE DI Set (mA),,CRBE GV Meas (V),CRBE DV Meas (V),CRBE DI Meas (mA),RTBE GV Meas (V),RTBE DV Meas (V),RTBE DI Meas (mA)
-XYZ,3,1,2022210,21 11,NA,,0.075,0.075,8,10,25,24,10,,NA,+1.250,+16.500,NA,+1.220,+16.000,,0,1,2,0,1,2
-XYZ,3,2,2022210,21 11,NA,,0.075,0.075,8,10,25,24,10,,NA,+1.250,+16.500,NA,+1.220,+16.000,,0,1,2,0,1,2
+Project Title,Cryostat Chain,Calibration ID,Date,Time,Comment, ,Center Frequency (GHz),Marker Frequency (GHz),Resolution Bandwidth (MHz),Video Bandwidth (Hz),Frequency Span (MHz),Power Bandwidth (MHz),Attenuation (dB), ,CRBE GV Set (V),CRBE DV Set (V),CRBE DI Set (mA),RTBE GV Set (V),RTBE DV Set (V),RTBE DI Set (mA), ,CRBE GV Meas (V),CRBE DV Meas (V),CRBE DI Meas (mA),RTBE GV Meas (V),RTBE DV Meas (V),RTBE DI Meas (mA)
+Sig Gen Test,1,1,202234,17 34,NA,,0.075,0.075,8,10,25,24,10,,NA,+1.200,+12.000,NA,+1.220,+16.000,,0.186,1.2,11.190999999999999,-0.171,1.22,16.213
 "
 "
-XYZ,3,3.0,2022210,21 12,NA,,0.075,0.075,8,10,25,24,10,,NA,+1.250,+16.500,NA,+1.220,+16.000,,0,1,2,0,1,2
+Sig Gen Test,1,2,202237,15 32,NA,,0.075,0.075,8,10,25,24,10,,NA,+1.200,+12.000,NA,+1.220,+16.000,,-0.241,1.2,0.19699999999999998,-0.171,1.22,16.298
 "
 "

@@ -180,6 +180,9 @@ def _res_manager_setup(
     if sig_gen_settings.sig_gen_en:
         if sig_gen_settings.vna_or_sig_gen == 'vna':
             sig_gen_settings.vna_init(sig_gen_rm, instr_settings.buffer_time)
+        elif sig_gen_settings.vna_or_sig_gen == 'sig gen':
+            sig_gen_settings.sig_gen_init(
+                sig_gen_rm, instr_settings.buffer_time)
     if temp_ctrl_settings.temp_ctrl_en:
         temp_ctrl_settings.lakeshore_init(
             temp_ctrl_rm, instr_settings.buffer_time, 'warm up')
@@ -210,44 +213,6 @@ def start_session(settings: sc.Settings) -> None:
 
     # region Measurement comments handling.
     meas_settings.comment = _comment_handling(meas_settings.comment_en)
-    # endregion
-
-    # region Initialise instrumentation.
-    log.info('Initialising instrumentation...')
-
-    # region Ensure correct cryostat channel is set
-    if instr_settings.switch_settings.switch_en:
-        cs.cryo_chain_switch(0.5, meas_settings)
-        log.info('Switch set.')
-    # endregion
-
-    # region Set LNA IDs.
-    meas_settings.lna_ids = meas_settings.lna_cryo_layout.cryo_chain
-    # endregion
-
-    # region Initialise resource managers.
-    res_managers = _res_manager_setup(instr_settings)
-    # endregion
-
-    log.info('Instrumentation initialised.')
-    # endregion
-
-    # region Set back end (cryostat and room-temperature) LNAs.
-    cs.back_end_lna_setup(settings, res_managers.psu_rm)
-    # endregion
-
-    # region Set up nominal LNA bias points.
-    log.cdebug('Setting up nominal LNA bias objects...')
-    # Initialise LNA biases to nominal points before sweeping stages and
-    # set up back end LNAs. Defined nominal stages as two separate LNAs
-    # in case of different voltage drops across wires.
-    if not meas_settings.is_calibration:
-        lna_nominals = lc.NominalLNASettings(settings)
-        lna_biases = [lna_nominals.lna_1_nom_bias, lna_nominals.lna_2_nom_bias]
-    else:
-        lna_nominals = None
-        lna_biases = None
-    log.cdebug('Nominal LNA bias objects set up.')
     # endregion
 
     # region Trim input data.
@@ -289,6 +254,46 @@ def start_session(settings: sc.Settings) -> None:
 
     log.info('Input data trimmed.')
     # endregion
+
+    # region Initialise instrumentation.
+    log.info('Initialising instrumentation...')
+
+    # region Ensure correct cryostat channel is set
+    if instr_settings.switch_settings.switch_en:
+        cs.cryo_chain_switch(0.5, meas_settings)
+        log.info('Switch set.')
+    # endregion
+
+    # region Set LNA IDs.
+    meas_settings.lna_ids = meas_settings.lna_cryo_layout.cryo_chain
+    # endregion
+
+    # region Initialise resource managers.
+    res_managers = _res_manager_setup(instr_settings)
+    # endregion
+
+    log.info('Instrumentation initialised.')
+    # endregion
+
+    # region Set back end (cryostat and room-temperature) LNAs.
+    cs.back_end_lna_setup(settings, res_managers.psu_rm)
+    # endregion
+
+    # region Set up nominal LNA bias points.
+    log.cdebug('Setting up nominal LNA bias objects...')
+    # Initialise LNA biases to nominal points before sweeping stages and
+    # set up back end LNAs. Defined nominal stages as two separate LNAs
+    # in case of different voltage drops across wires.
+    if not meas_settings.is_calibration:
+        lna_nominals = lc.NominalLNASettings(settings)
+        lna_biases = [lna_nominals.lna_1_nom_bias, lna_nominals.lna_2_nom_bias]
+    else:
+        lna_nominals = None
+        lna_biases = None
+    log.cdebug('Nominal LNA bias objects set up.')
+    # endregion
+
+
 
     # region Trigger measurement.
     log.info('Triggering measurement...')
