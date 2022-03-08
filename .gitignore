@@ -4,3 +4,9 @@
 
 /results
 /calibrations
+/.idea
+/.vs
+/instr_docs
+/results
+/calibrations
+/venv
