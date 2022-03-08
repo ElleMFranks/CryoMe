@@ -4,3 +4,8 @@
 
 /results
 /calibrations
+/__pycache__
+/.idea
+/.vs
+/venv
+/instr_docs
