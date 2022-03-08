@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="PylintConfigService">
-    <option name="customPylintPath" value="C:\Program Files\Python310\Scripts\pylint.exe" />
-    <option name="pylintrcPath" value="C:\Users\m40046ef\Documents\Software Development\CryoMe\src\.pylintrc" />
-  </component>
-</project>
