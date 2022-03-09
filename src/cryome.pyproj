@@ -26,14 +26,14 @@
   <ItemGroup>
     <Compile Include="bias_ctrl.py" />
     <Compile Include="chain_select.py" />
-    <Compile Include="instr_classes.py" />
-    <Compile Include="lna_classes.py" />
+    <Compile Include="instruments.py" />
+    <Compile Include="lnas.py" />
     <Compile Include="main_window.py" />
     <Compile Include="measurement.py" />
     <Compile Include="start_session.py" />
-    <Compile Include="output_classes.py" />
-    <Compile Include="plot_test.py" />
-    <Compile Include="settings_classes.py" />
+    <Compile Include="outputs.py" />
+    <Compile Include="plot_testat.py" />
+    <Compile Include="settings.py" />
     <Compile Include="heater_ctrl.py" />
     <Compile Include="cryome.py" />
     <Compile Include="meas_algorithms.py" />

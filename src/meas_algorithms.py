@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""meas_algorithms.py - Decides how each full measurement happens.
+"""meas_algorithmeasure.py - Decides how each full measurement happens.
 
 Contains the different measurement algorithms which can be used for the
 y factor measurement:
@@ -20,23 +20,23 @@ from itertools import product
 import copy as cp
 import logging
 
-import tqdm as tq
+import tqdm
 
-import bias_ctrl as bc
-import instr_classes as ic
-import lna_classes as lc
-import measurement as ms
-import output_classes as oc
-import output_saving as sv
-import settings_classes as sc
+import bias_ctrl
+import instruments as instr
+import lnas
+import measurement as measure
+import outputs as out
+import output_saving as save
+import config_handling as cfg
 # endregion
 
 
 def all_cold_to_all_hot(
-        settings: sc.Settings,
-        lna_biases: list[lc.LNABiasSet],
-        res_managers: ic.ResourceManagers,
-        trimmed_input_data: sc.TrimmedInputs) -> None:
+        settings: cfg.Settings,
+        lna_biases: list[lnas.LNABiasSet],
+        res_managers: instr.ResourceManagers,
+        trimmed_input_data: cfg.TrimmedInputs) -> None:
     """Parallel sweep where cold measurements are taken, then hot.
 
     This  method loops through each drain current for each drain
@@ -75,7 +75,7 @@ def all_cold_to_all_hot(
 
     # region Loop through states measuring at each.
     print('')
-    for i, state in enumerate(tq.tqdm(
+    for i, state in enumerate(tqdm.tqdm(
         states, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
@@ -122,7 +122,7 @@ def all_cold_to_all_hot(
         # region Set and store LNA 1 PSU settings.
         if res_managers.psu_rm is not None and (
                 lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
-            bc.bias_set(
+            bias_ctrl.bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
                 settings.instr_settings.buffer_time)
@@ -137,7 +137,7 @@ def all_cold_to_all_hot(
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             if res_managers.psu_rm is not None and (
                     lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
-                bc.bias_set(
+                bias_ctrl.bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
                     settings.instr_settings.buffer_time)
@@ -152,11 +152,11 @@ def all_cold_to_all_hot(
 
         # region Trigger measurement
         if temp_ut == 0:
-            cold_array.append(ms.measurement(
+            cold_array.append(measure.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut))
 
         else:
-            hot_array.append(ms.measurement(
+            hot_array.append(measure.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut))
 
         print('\n')
@@ -170,25 +170,25 @@ def all_cold_to_all_hot(
     log.info('Starting results saving.')
     freq_array = settings.instr_settings.sig_gen_settings.freq_array
     for i, _ in enumerate(hot_array):
-        result = oc.Results(
-            oc.LoopPair(cold_array[i], hot_array[i]),
-            oc.ResultsMetaInfo(
+        result = out.Results(
+            out.LoopPair(cold_array[i], hot_array[i]),
+            out.ResultsMetaInfo(
                 meas_settings.comment, freq_array, meas_settings.order,
                 meas_settings.is_calibration, meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss,
                 trimmed_input_data.trimmed_cal_data))
 
-        sv.save_standard_results(
+        save.save_standard_results(
             settings, result, i + 1, lna_1_array[i], lna_2_array[i])
     log.info('All results saved.')
     # endregion
 
 
 def alternating_temps(
-        settings: sc.Settings,
-        lna_biases: list[lc.LNABiasSet],
-        res_managers: ic.ResourceManagers,
-        trimmed_input_data: sc.TrimmedInputs) -> None:
+        settings: cfg.Settings,
+        lna_biases: list[lnas.LNABiasSet],
+        res_managers: instr.ResourceManagers,
+        trimmed_input_data: cfg.TrimmedInputs) -> None:
     """Series sweep where temp is alternated between measurements.
 
     For each LNA, for each stage, for each drain voltage, for each
@@ -225,7 +225,7 @@ def alternating_temps(
 
     # region Iterate measuring and saving lna/stage/bias value states.
     print('')
-    for i, state in enumerate(tq.tqdm(
+    for i, state in enumerate(tqdm.tqdm(
         states, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
@@ -263,7 +263,7 @@ def alternating_temps(
             # region LNA 1.
             if res_managers.psu_rm is not None and (
                     lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
-                bc.bias_set(
+                bias_ctrl.bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
                     settings.instr_settings.buffer_time)
@@ -275,7 +275,7 @@ def alternating_temps(
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                 if res_managers.psu_rm is not None and (
                         lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
-                    bc.bias_set(
+                    bias_ctrl.bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,
                         settings.instr_settings.buffer_time)
@@ -284,12 +284,12 @@ def alternating_temps(
             # endregion
 
             # region Trigger measurement.
-            standard_results = ms.measurement(
+            standard_results = measure.measurement(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
             # region Analyse and save results.
-            sv.save_standard_results(
+            save.save_standard_results(
                 settings, standard_results, i + 1, lna_1_bias, lna_2_bias)
             # endregion
 
@@ -303,7 +303,7 @@ def alternating_temps(
 
 
 def calibration_measurement(
-        settings: sc.Settings, res_managers: ic.ResourceManagers,
+        settings: cfg.Settings, res_managers: instr.ResourceManagers,
         trimmed_loss: list[float]) -> None:
     """Triggers and saves a calibration measurement.
 
@@ -342,21 +342,21 @@ def calibration_measurement(
     else:
         raise Exception('Cryostat chain not set.')
 
-    calibration_result = ms.measurement(
-        settings, res_managers, sc.TrimmedInputs(trimmed_loss))
+    calibration_result = measure.measurement(
+        settings, res_managers, cfg.TrimmedInputs(trimmed_loss))
 
     be_biases = [crbe_lna_bias, rtbe_lna_bias]
     be_stages = [crbe_stg, rtbe_stg]
-    sv.save_calibration_results(
+    save.save_calibration_results(
         be_biases, be_stages, settings, calibration_result)
     # endregion
 
 
 def manual_entry_measurement(
-        settings: sc.Settings,
-        lna_biases: list[lc.LNABiasSet],
-        res_managers: ic.ResourceManagers,
-        trimmed_input_data: sc.TrimmedInputs) -> None:
+        settings: cfg.Settings,
+        lna_biases: list[lnas.LNABiasSet],
+        res_managers: instr.ResourceManagers,
+        trimmed_input_data: cfg.TrimmedInputs) -> None:
     """Single measurement point with user input bias conditions.
 
     User inputs bias array for a noise temperature measurement, this
@@ -375,9 +375,9 @@ def manual_entry_measurement(
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
 
-    standard_results = ms.measurement(
+    standard_results = measure.measurement(
         settings, res_managers, trimmed_input_data)
 
-    sv.save_standard_results(
+    save.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)
     # endregion

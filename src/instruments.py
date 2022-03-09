@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""instr_classes.py - Provides classes to store instrument information.
+"""instruments.py - Provides classes to store instrument information.
 
 This module provides classes and error handling for the instrumentation
 used in the measurement setup. The instrumentation falls into the
@@ -55,11 +55,11 @@ from dataclasses import dataclass
 import logging
 from typing import Optional
 
+from pyvisa import Resource
 import numpy as np
-import pyvisa as pv
 
 import bias_ctrl as bc
-import error_handling as eh
+import error_handling as err
 import heater_ctrl as hc
 import util as ut
 # endregion
@@ -118,13 +118,13 @@ class TempCtrlChannels:
             the temperature sensor on the load inside the cryostat.
         chn1_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the first cryostat chain LNA
-            under test.
+            under testat.
         chn2_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the second cryostat chain LNA
-            under test.
+            under testat.
         chn3_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the third cryostat chain LNA
-            under test.
+            under testat.
     """
     load_lsch: str
     chn1_lna_lsch: str
@@ -258,9 +258,9 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         """
 
         # region Check input settings.
-        eh.check_sa_freq_settings(sa_freq_settings)
-        eh.check_sa_bw_settings(sa_bw_settings, sa_freq_settings)
-        eh.check_sa_ampl_settings(sa_ampl_settings)
+        err.validate_sa_freq_settings(sa_freq_settings)
+        err.check_sa_bw_settings(sa_bw_settings, sa_freq_settings)
+        err.check_sa_ampl_settings(sa_ampl_settings)
 
         if not isinstance(sig_an_en, bool):
             raise Exception('sig_an_en must be True or False.')
@@ -280,7 +280,7 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         # endregion
 
     def spec_an_init(
-            self, spec_an_rm: pv.Resource, buffer_time: float) -> None:
+            self, spec_an_rm: Resource, buffer_time: float) -> None:
         """Initialises the spectrum analyser to instance settings."""
         # region Send setup commands to Spectrum Analyser.
         log = logging.getLogger(__name__)
@@ -368,7 +368,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         """
 
         # region Variable minor error handling.
-        eh.check_freq_sweep_settings(freq_sweep_settings)
+        err.check_freq_sweep_settings(freq_sweep_settings)
 
         if vna_or_sig_gen not in ['vna', 'sig gen']:
             raise Exception('vna_or_sig_gen must be "vna" or "sig gen"')
@@ -398,7 +398,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         # endregion
 
     @staticmethod
-    def vna_init(sig_gen_rm: pv.Resource, buffer_time: float):
+    def vna_init(sig_gen_rm: Resource, buffer_time: float):
         """Initialise the PNA-X N5245A VNA to 10GHz CW."""
         # region Print VNA ID and set it to CW mode at 10GHz.
         log = logging.getLogger(__name__)
@@ -415,7 +415,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         # endregion
 
     def sig_gen_init(
-        self, sig_gen_rm: pv.Resource, buffer_time: float) -> None:
+        self, sig_gen_rm: Resource, buffer_time: float) -> None:
         """Initialises the signal generator to 10GHz 0dBm."""
         ut.safe_write(
             f'PL {self.sig_gen_pwr_lvls[0]} DM', buffer_time, sig_gen_rm)
@@ -431,7 +431,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
     """Settings for the Lakeshore temperature controller.
 
     Attributes:
-        cryo_chain (int): The cryostat chain currently under test.
+        cryo_chain (int): The cryostat chain currently under testat.
         temp_ctrl_en (bool): Setting for debugging, if temp controller
             not connected then temp_ctrl queries give synthetic results
             and write commands are skipped.
@@ -450,14 +450,14 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         Args:
             temp_ctrl_channels: The sensor channels on the lakeshore.
             temp_targets: The hot and cold temperature targets (K).
-            cryo_chain: The cryostat chain currently under test.
+            cryo_chain: The cryostat chain currently under testat.
             temp_ctrl_en: Setting for debugging, if temp controller not
                 connected then temp_ctrl queries give synthetic results
                 and write commands are skipped.
         """
         # region Minor error handling.
-        eh.check_temp_ctrl_channels(temp_ctrl_channels)
-        eh.check_temp_targets(temp_targets)
+        err.validate_temp_ctrl_channels(temp_ctrl_channels)
+        err.check_temp_targets(temp_targets)
         if cryo_chain not in [1, 2, 3]:
             raise Exception('Must select chain 1, 2, or 3.')
         if not isinstance(temp_ctrl_en, bool):
@@ -492,7 +492,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
             raise Exception('')
         # endregion
 
-    def lakeshore_init(self, lakeshore_rm: pv.Resource, buffer_time: float,
+    def lakeshore_init(self, lakeshore_rm: Resource, buffer_time: float,
                        sample_or_warm_up: str = 'warm up') -> None:
         """Initialise the lakeshore to correct channels."""
         # region Print Lakeshore ID
@@ -548,9 +548,9 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
                 configuration.
         """
         # region Variable minor error handling.
-        eh.check_g_v_search_settings(g_v_search_settings)
-        eh.check_psu_limits(psu_limits)
-        eh.check_psu_meta_settings(psu_meta_settings)
+        err.check_g_v_search_settings(g_v_search_settings)
+        err.check_psu_limits(psu_limits)
+        err.validate_psu_meta_settings(psu_meta_settings)
         # endregion
 
         # region Initialise subclasses.
@@ -576,7 +576,7 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
         # endregion
 
     @staticmethod
-    def psx_init(psx_rm: pv.Resource, buffer_time: float,
+    def psx_init(psx_rm: Resource, buffer_time: float,
                  init_d_v: float, init_g_v: float):
         """Initialise the PSX bias power supply to initial values.
 
@@ -618,7 +618,7 @@ class SwitchSettings:
     """Class containing the settings for the cryostat chain switch.
 
     Constructor Arguments:
-        cryo_chain (int): The cryostat chain currently under test.
+        cryo_chain (int): The cryostat chain currently under testat.
         switch_en (bool): Setting for debugging, if switch not
             connected then switch queries give synthetic results and
             write commands are skipped.
@@ -664,10 +664,10 @@ class ResourceManagers:
         psu_rm (Optional[Resource]): The psx resource manager.
     """
     # region Set args to attributes.
-    sa_rm: Optional[pv.Resource]
-    sg_rm: Optional[pv.Resource]
-    tc_rm: Optional[pv.Resource]
-    psu_rm: Optional[pv.Resource]
+    sa_rm: Optional[Resource]
+    sg_rm: Optional[Resource]
+    tc_rm: Optional[Resource]
+    psu_rm: Optional[Resource]
     # endregion
 
     def __del__(self):

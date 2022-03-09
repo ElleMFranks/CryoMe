@@ -1,2 +1,2 @@
-import instr_classes as ic
-print(ic.SignalAnalyserSettings.__doc__)
+import instruments as instr
+print(instr.SignalAnalyserSettings.__doc__)

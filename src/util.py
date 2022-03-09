@@ -26,9 +26,9 @@ from typing import Any, Optional
 from time import sleep
 import logging
 
-import pyvisa as pv
+from pyvisa import Resource
 
-import instr_classes as ic
+import instruments as instr
 # endregion
 
 
@@ -50,9 +50,9 @@ def yes_no(variable_name: str, variable_val: Any, variable_unit: str) -> None:
 
 
 def safe_query(
-        command: str, buffer_time: float, res_manager: pv.Resource,
+        command: str, buffer_time: float, res_manager: Resource,
         instr: str, float_req: bool = False, str_req: bool = False,
-        instr_settings: Optional[ic.InstrumentSettings] = None) -> Any:
+        instr_settings: Optional[instr.InstrumentSettings] = None) -> Any:
     """Try query, if failed wait 5s and try again up to 10 times.
 
     Tries query multiple times, if spectrum analyser is being queried
@@ -107,7 +107,7 @@ def safe_query(
 
 
 def safe_write(command: str, buffer_time: float,
-               res_manager: pv.Resource) -> None:
+               res_manager: Resource) -> None:
     """Writes a command to an instrument and waits the buffer time."""
     # region Write command and then sleep for buffer time.
     res_manager.write(command)

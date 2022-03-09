@@ -14,7 +14,7 @@ from typing import Optional
 import csv
 import logging
 import os
-import pathlib as pl
+import pathlib
 
 import matplotlib.offsetbox as ob
 import matplotlib.pyplot as pp
@@ -23,15 +23,15 @@ import numpy as np
 import pandas as pd
 import tabulate as tb
 
-import lna_classes as lc
-import output_classes as oc
-import settings_classes as sc
+import lnas
+import outputs as out
+import config_handling as cfg
 # endregion
 
 
 def _save_plot(
-        results: oc.Results, meas_settings: sc.MeasurementSettings,
-        lna_biases: list[lc.LNABiasSet], save_path: pl.Path,
+        results: out.Results, meas_settings: cfg.MeasurementSettings,
+        lna_biases: list[lnas.LNABiasSet], save_path: pathlib.Path,
         bias_id: Optional[int] = None,
         calibration_id: Optional[int] = None) -> None:
     """Creates and saves plot for given results set.
@@ -121,6 +121,7 @@ def _save_plot(
 
     # region Handle calibration results.
     if meas_settings.is_calibration:
+        axis.set_ylim(0, +500)
         plot_title = 'Noise Temperature / Frequency'
         plot_details = (
                 f'Cryostat Chain: {meas_settings.lna_cryo_layout.cryo_chain}  '
@@ -187,9 +188,9 @@ def _save_plot(
 
 
 def save_standard_results(
-        settings: sc.Settings, results: oc.Results, bias_id: int,
-        lna_1_bias: lc.LNABiasSet,
-        lna_2_bias: Optional[lc.LNABiasSet] = None) -> None:
+        settings: cfg.Settings, results: out.Results, bias_id: int,
+        lna_1_bias: lnas.LNABiasSet,
+        lna_2_bias: Optional[lnas.LNABiasSet] = None) -> None:
     """Update settings log and create raw results CSV.
 
     Args:
@@ -342,8 +343,8 @@ def save_standard_results(
 
 
 def save_calibration_results(
-        be_biases: list[lc.LNABiasSet], be_stages: list[lc.StageBiasSet],
-        settings: sc.Settings, results: oc.Results) -> None:
+        be_biases: list[lnas.LNABiasSet], be_stages: list[lnas.StageBiasSet],
+        settings: cfg.Settings, results: out.Results) -> None:
     """Save calibration results and update calibration settings log.
 
     Args:
@@ -371,7 +372,7 @@ def save_calibration_results(
     trim_cal_id_list = []
     for entry, _ in enumerate(chain_list):
         if cryo_chain == chain_list[entry]:
-            trim_cal_id_list.append(cal_id_list[entry])
+            trim_cal_id_listat.append(cal_id_list[entry])
     if len(trim_cal_id_list) != 0:
         cal_id = int(1 + max(trim_cal_id_list))
     else:
@@ -381,13 +382,13 @@ def save_calibration_results(
 
     # region Set file names for csv and plot.
     log.cdebug('Setting file names for csv and plot.')
-    cal_output_path = pl.Path(
+    cal_output_path = pathlib.Path(
         str(settings.file_struc.cal_directory) + f'\\Chain {cryo_chain}')
     os.makedirs(cal_output_path, exist_ok=True)
-    cal_csv_path = pl.Path(
+    cal_csv_path = pathlib.Path(
         str(cal_output_path) + f'\\Chain {cryo_chain} '
         f'Calibration {cal_id}.csv')
-    cal_png_path = pl.Path(
+    cal_png_path = pathlib.Path(
         str(cal_output_path) + f'\\Chain {cryo_chain} '
         f'Calibration {cal_id}.png')
     # endregion

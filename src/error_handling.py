@@ -11,20 +11,20 @@ from __future__ import annotations
 
 from pathvalidate import validate_filename
 
-import instr_classes as ic
+import instruments as instr
 import util as ut
-import settings_classes as sc
+import config_handling as cfg
 # endregion
 
 
 # region Measurement settings.
-def check_lna_sequence(lna_sequence: list, lnas_per_chain: int) -> None:
+def validate_lna_sequence(lna_sequence: list, lnas_per_chain: int) -> None:
     """Ensures you can't put a non existent LNA in LNA Sequence."""
     if lnas_per_chain == 1 and 2 in lna_sequence:
         raise Exception('If 2 is in lna_sequence, lnas_per_chain must = 2.')
 
 
-def check_lna_info(lna_info: sc.LNAInfo) -> None:
+def validate_lna_info(lna_info: cfg.LNAInfo) -> None:
     """LNA info error handling."""
     if lna_info.lna_cryo_layout.cryo_chain not in [1, 2, 3]:
         raise Exception('Chain must be 1, 2, or 3.')
@@ -33,7 +33,7 @@ def check_lna_info(lna_info: sc.LNAInfo) -> None:
         raise Exception('Maximum 3 stages per chain.')
 
 
-def check_misc(misc: sc.Misc) -> None:
+def validate_misc(misc: cfg.Misc) -> None:
     """Misc error handling"""
     if not isinstance(misc.dark_mode_plot, bool):
         raise Exception('Dark mode plot must be true or false.')
@@ -45,7 +45,7 @@ def check_misc(misc: sc.Misc) -> None:
         ut.yes_no('Order', misc.order, '')
 
 
-def check_cal_info(cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
+def validate_cal_info(cal_info: cfg.CalInfo, session_info: cfg.SessionInfo) -> None:
     """Cal info error handling."""
     if cal_info.is_calibration \
             and session_info.measure_method != 'Calibration':
@@ -59,7 +59,7 @@ def check_cal_info(cal_info: sc.CalInfo, session_info: sc.SessionInfo) -> None:
         raise Exception('Input cal file ID must be 1 or greater.')
 
 
-def check_session_info(session_info: sc.SessionInfo) -> None:
+def validate_session_info(session_info: cfg.SessionInfo) -> None:
     """Session info error handling."""
     validate_filename(session_info.project_title)
     if session_info.measure_method not in ['ACTAH', 'AT',
@@ -69,7 +69,7 @@ def check_session_info(session_info: sc.SessionInfo) -> None:
 
 
 # region Sweep settings.
-def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
+def validate_meas_sequence(meas_sequence: cfg.MeasSequence) -> None:
     """Measurement sequence error handling."""
     if (any(meas_sequence.stage_sequence) not in [1, 2, 3]) \
             or (0 >= len(meas_sequence.stage_sequence) > 3):
@@ -82,7 +82,7 @@ def check_meas_sequence(meas_sequence: sc.MeasSequence) -> None:
             raise Exception('Invalid LNA sequence.')
 
 
-def check_nominals(nominal_bias: sc.NominalBias) -> None:
+def check_nominals(nominal_bias: cfg.NominalBias) -> None:
     """Nominal bias error handling."""
     if nominal_bias is not None:
         if 3 > nominal_bias.d_i_nominal > 9 and nominal_bias is not None:
@@ -94,7 +94,7 @@ def check_nominals(nominal_bias: sc.NominalBias) -> None:
                       'V')
 
 
-def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
+def validate_sweep_setup_vars(sweep_setup_vars: cfg.SweepSetupVars) -> None:
     """Sweep setup variable error handling."""
     if sweep_setup_vars.num_of_d_v > 6:
         ut.yes_no('Number of Drain Voltage Points',
@@ -130,7 +130,7 @@ def check_sweep_setup_vars(sweep_setup_vars: sc.SweepSetupVars) -> None:
 
 # region Instrumentation settings.
 # region Signal analyser settings.
-def check_sa_freq_settings(sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+def validate_sa_freq_settings(sa_freq_settings: instr.SpecAnFreqSettings) -> None:
     """Check signal analyser frequency settings."""
     if 0 > sa_freq_settings.center_freq > 10:
         raise Exception('Invalid center frequency.')
@@ -148,8 +148,8 @@ def check_sa_freq_settings(sa_freq_settings: ic.SpecAnFreqSettings) -> None:
         ut.yes_no('Frequency Span', sa_freq_settings.freq_span, 'MHz')
 
 
-def check_sa_bw_settings(sa_bw_settings: ic.SpecAnBWSettings,
-                         sa_freq_settings: ic.SpecAnFreqSettings) -> None:
+def check_sa_bw_settings(sa_bw_settings: instr.SpecAnBWSettings,
+                         sa_freq_settings: instr.SpecAnFreqSettings) -> None:
     """Check signal analyser bandwidth settings."""
     if 1 > sa_bw_settings.res_bw > 100:
         ut.yes_no('Resolution Bandwidth', sa_bw_settings.res_bw, 'MHz')
@@ -162,7 +162,7 @@ def check_sa_bw_settings(sa_bw_settings: ic.SpecAnBWSettings,
         ut.yes_no('Power Bandwidth', sa_bw_settings.power_bw, 'MHz')
 
 
-def check_sa_ampl_settings(sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
+def check_sa_ampl_settings(sa_ampl_settings: instr.SpecAnAmplSettings) -> None:
     """Check signal analyser amplitude settings."""
     if 0 > sa_ampl_settings.atten > 30:
         ut.yes_no('Attenuation', sa_ampl_settings.atten, 'dB')
@@ -174,7 +174,7 @@ def check_sa_ampl_settings(sa_ampl_settings: ic.SpecAnAmplSettings) -> None:
 
 # region Signal generator settings.
 def check_freq_sweep_settings(
-        freq_sweep_settings: ic.FreqSweepSettings) -> None:
+        freq_sweep_settings: instr.FreqSweepSettings) -> None:
     """Check frequency sweep settings."""
     if 60 > freq_sweep_settings.min_freq > 350:
         ut.yes_no('Minimum Frequency', freq_sweep_settings.min_freq, 'GHz')
@@ -193,7 +193,7 @@ def check_freq_sweep_settings(
 
 
 # region Temperature controller settings.
-def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
+def validate_temp_ctrl_channels(temp_ctrl_channels: instr.TempCtrlChannels) -> None:
     """Check temperature controller channel settings."""
     if int(temp_ctrl_channels.chn1_lna_lsch) not in range(1, 11):
         raise Exception('Check lakeshore channels.')
@@ -211,7 +211,7 @@ def check_temp_ctrl_channels(temp_ctrl_channels: ic.TempCtrlChannels) -> None:
         raise Exception('extra_sensors_en must be True or False.')
 
 
-def check_temp_targets(temp_targets: ic.TempTargets) -> None:
+def check_temp_targets(temp_targets: instr.TempTargets) -> None:
     """Check temperature controller target temperatures."""
     if temp_targets.cold_target > temp_targets.hot_target:
         raise Exception('Hot temperature must be greater than cold.')
@@ -226,7 +226,7 @@ def check_temp_targets(temp_targets: ic.TempTargets) -> None:
 
 # region Bias PSU settings.
 def check_g_v_search_settings(
-        g_v_search_settings: ic.GVSearchSettings) -> None:
+        g_v_search_settings: instr.GVSearchSettings) -> None:
     """Check gate voltage drain current search settings."""
     g_v_lower_lim = g_v_search_settings.g_v_lower_lim
     g_v_upper_lim = g_v_search_settings.g_v_upper_lim
@@ -259,7 +259,7 @@ def check_g_v_search_settings(
                   num_of_g_v_nrw_steps, 'V')
 
 
-def check_psu_limits(psu_limits: ic.PSULimits) -> None:
+def check_psu_limits(psu_limits: instr.PSULimits) -> None:
     """Check power supply limits."""
     if 3 > psu_limits.d_i_lim > 10:
         ut.yes_no('Drain Current Limit', psu_limits.d_i_lim, 'mA')
@@ -268,7 +268,7 @@ def check_psu_limits(psu_limits: ic.PSULimits) -> None:
         ut.yes_no('Voltage Step Limit', psu_limits.v_step_lim, 'V')
 
 
-def check_psu_meta_settings(psu_meta_settings: ic.PSUMetaSettings) -> None:
+def validate_psu_meta_settings(psu_meta_settings: instr.PSUMetaSettings) -> None:
     """Check power supply meta settings."""
     if not isinstance(psu_meta_settings.bias_psu_en, bool):
         raise Exception('bias_psu_en must be True or False.')

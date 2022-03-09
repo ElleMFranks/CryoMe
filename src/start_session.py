@@ -15,10 +15,10 @@ import pyvisa as pv
 
 import bias_ctrl as bc
 import chain_select as cs
-import instr_classes as ic
-import lna_classes as lc
+import instruments as instr
+import lnas
 import meas_algorithms as ma
-import settings_classes as sc
+import config_handling as cfg
 # endregion
 
 
@@ -118,7 +118,7 @@ def _comment_handling(comment_en: bool) -> str:
 
 
 def _res_manager_setup(
-        instr_settings: ic.InstrumentSettings) -> ic.ResourceManagers:
+        instr_settings: instr.InstrumentSettings) -> instr.ResourceManagers:
     """Sets up resource managers for instrumentation."""
 
     # region Unpack settings
@@ -168,7 +168,7 @@ def _res_manager_setup(
         if bias_psu_settings.psu_safe_init:
             bc.psu_safe_init(
                 psu_rm, instr_settings.buffer_time,
-                ic.PSULimits(bias_psu_settings.v_step_lim,
+                instr.PSULimits(bias_psu_settings.v_step_lim,
                              bias_psu_settings.d_i_lim),
                 bias_psu_settings.g_v_lower_lim)
     # endregion
@@ -193,11 +193,11 @@ def _res_manager_setup(
     # endregion
 
     # region Create class instance to keep ResourceManagers together.
-    return ic.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
+    return instr.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
     # endregion
 
 
-def start_session(settings: sc.Settings) -> None:
+def start_session(settings: cfg.Settings) -> None:
     """Begins a session using the settings passed from Cryome.
 
     Args:
@@ -238,7 +238,7 @@ def start_session(settings: sc.Settings) -> None:
     log.cdebug('Loss trimmed.')
 
     # region Save trimmed loss and calibration data as an object.
-    trimmed_input_data = sc.TrimmedInputs(trimmed_loss, trimmed_cal_data)
+    trimmed_input_data = cfg.TrimmedInputs(trimmed_loss, trimmed_cal_data)
     # endregion
     # endregion
 
@@ -285,7 +285,7 @@ def start_session(settings: sc.Settings) -> None:
     # set up back end LNAs. Defined nominal stages as two separate LNAs
     # in case of different voltage drops across wires.
     if not meas_settings.is_calibration:
-        lna_nominals = lc.NominalLNASettings(settings)
+        lna_nominals = lnas.NominalLNASettings(settings)
         lna_biases = [lna_nominals.lna_1_nom_bias, lna_nominals.lna_2_nom_bias]
     else:
         lna_nominals = None
@@ -317,7 +317,7 @@ def start_session(settings: sc.Settings) -> None:
         log.info('Turning off PSU...')
         bc.psu_safe_init(
             res_managers.psu_rm, instr_settings.buffer_time,
-            ic.PSULimits(bias_psu_settings.v_step_lim,
+            instr.PSULimits(bias_psu_settings.v_step_lim,
                          bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
         log.info('PSU turned off.')

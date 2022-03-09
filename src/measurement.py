@@ -7,7 +7,7 @@ depending on the passed variables, will call the _meas_loop()
 function in specific ways. The measurement loop will record the
 temperatures/powers required for the y factor measurement at each
 frequency. They are stored as hot/cold results objects as found
-in output_classes.py and returned.
+in outputs.py and returned.
 """
 
 # region Import modules.
@@ -15,22 +15,22 @@ from __future__ import annotations
 from time import sleep
 from typing import (Union, Optional)
 import logging
-import random as rd
+import random
 
+from pyvisa import Resource
 import numpy as np
-import pyvisa as pv
-import tqdm as tq
+import tqdm
 
-import heater_ctrl as hc
-import instr_classes as ic
-import output_classes as oc
-import settings_classes as sc
+import heater_ctrl
+import instruments as instr
+import outputs as out
+import config_handling as cfg
 import util as ut
 # endregion
 
 
 def _get_temp_target(
-        hot_or_cold: str, tc_settings: ic.TempControllerSettings) -> float:
+        hot_or_cold: str, tc_settings: instr.TempControllerSettings) -> float:
     """Returns the hot or cold temperature target."""
     log = logging.getLogger(__name__)
     if hot_or_cold == 'Cold':
@@ -45,7 +45,7 @@ def _get_temp_target(
 
 
 def _get_temps(tc_rm, temp_target: float,
-               instr_settings: ic.InstrumentSettings) -> list[float]:
+               instr_settings: instr.InstrumentSettings) -> list[float]:
     """Returns the measured temperatures on the requested channels."""
     # region Get and return temperatures for requested temp sensors.
     buffer_time = instr_settings.buffer_time
@@ -96,8 +96,8 @@ def _get_temps(tc_rm, temp_target: float,
     # endregion
 
 
-def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
-                  instr_settings: ic.InstrumentSettings) -> list:
+def _temp_set_get(tc_rm: Resource, temp_target: float,
+                  instr_settings: instr.InstrumentSettings) -> list:
     """Sets/gets temperatures, ensure stability/status of heater."""
 
     # region Unpack objects/set up logger/set initial variables.
@@ -112,8 +112,8 @@ def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
             # Check for heater errors before and after.
             pre_heater_status = ut.safe_query(
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
-            hc.set_temp(tc_rm, temp_target, 'load')
-            hc.load_temp_stabilisation(
+            heater_ctrl.set_temp(tc_rm, temp_target, 'load')
+            heater_ctrl.load_temp_stabilisation(
                 tc_rm, tc_settings.load_lsch, temp_target)
             pre_loop_temps = _get_temps(tc_rm, temp_target, instr_settings)
             post_heater_status = ut.safe_query(
@@ -139,8 +139,8 @@ def _temp_set_get(tc_rm: pv.Resource, temp_target: float,
 
 
 def _meas_loop(
-        settings: sc.Settings, hot_or_cold: str,
-        res_managers: ic.ResourceManagers) -> oc.LoopInstanceResult:
+        settings: cfg.Settings, hot_or_cold: str,
+        res_managers: instr.ResourceManagers) -> out.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
     Checks if hot or cold, sets load to target temp, then moves through
@@ -197,7 +197,7 @@ def _meas_loop(
 
     # region Sweep requested frequencies measuring power and load temp.
     log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.', )
-    for i, inter_frequency in enumerate(tq.tqdm(
+    for i, inter_frequency in enumerate(tqdm.tqdm(
         inter_freqs_array, ncols=110, desc="Loop Prog", leave=True, position=0,
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')):
@@ -223,7 +223,7 @@ def _meas_loop(
                 pre_loop_temps = _temp_set_get(
                     tc_rm, temp_target, settings.instr_settings)
         else:
-            load_temp = temp_target + (round(rd.uniform(-0.1, 0.1), 2))
+            load_temp = temp_target + (round(random.uniform(-0.1, 0.1), 2))
 
         # region Send command for sig an to take a measurement sweep.
         if spec_an_rm is not None:
@@ -240,9 +240,9 @@ def _meas_loop(
         else:
             sleep(0.2)
             if hot_or_cold == 'Hot':
-                marker_power = -50 + round(rd.uniform(1.2, 2), 2)
+                marker_power = -50 + round(random.uniform(1.2, 2), 2)
             else:
-                marker_power = -50 + round(rd.uniform(0.3, 0.6), 2)
+                marker_power = -50 + round(random.uniform(0.3, 0.6), 2)
             powers.append(marker_power)
         # endregion
 
@@ -278,17 +278,17 @@ def _meas_loop(
 
     # region Return loop instance result.
     log.info(f'{hot_or_cold} measurement complete.')
-    return oc.LoopInstanceResult(
+    return out.LoopInstanceResult(
         hot_or_cold, powers, load_temps, lna_temps,
-        oc.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
+        out.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
                         pre_loop_extra_1_temps, post_loop_extra_1_temps,
                         pre_loop_extra_2_temps, post_loop_extra_2_temps))
     # endregion
 
 
 def _closest_temp_then_other(
-        init_temp: float, res_managers: ic.ResourceManagers,
-        settings: sc.Settings) -> list[oc.LoopInstanceResult]:
+        init_temp: float, res_managers: instr.ResourceManagers,
+        settings: cfg.Settings) -> list[out.LoopInstanceResult]:
     """Triggers measurement loops, first closest temp, then other."""
 
     tc_settings = settings.instr_settings.temp_ctrl_settings
@@ -311,11 +311,11 @@ def _closest_temp_then_other(
 
 
 def measurement(
-        settings: sc.Settings,
-        res_managers: ic.ResourceManagers,
-        trimmed_input_data: sc.TrimmedInputs,
+        settings: cfg.Settings,
+        res_managers: instr.ResourceManagers,
+        trimmed_input_data: cfg.TrimmedInputs,
         hot_cold_count: Optional[int] = None
-        ) -> Union[oc.Results, oc.LoopInstanceResult]:
+        ) -> Union[out.Results, out.LoopInstanceResult]:
     """Conducts a full measurement using the chosen algorithm.
 
     Function works differently depending on the measurement method
@@ -376,9 +376,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        standard_results = oc.Results(
-            oc.LoopPair(loop_res[1], loop_res[0]),
-            oc.ResultsMetaInfo(
+        standard_results = out.Results(
+            out.LoopPair(loop_res[1], loop_res[0]),
+            out.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,
@@ -428,9 +428,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        calibration_results = oc.Results(
-            oc.LoopPair(loop_res[1], loop_res[0]),
-            oc.ResultsMetaInfo(
+        calibration_results = out.Results(
+            out.LoopPair(loop_res[1], loop_res[0]),
+            out.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,

@@ -25,10 +25,10 @@ from dataclasses import dataclass
 from typing import (Optional, Union)
 import copy as cp
 
-import pyvisa as pv
+from pyvisa import Resource
 
 import bias_ctrl as bc
-import settings_classes as sc
+import config_handling as cfg
 import util as ut
 # endregion
 
@@ -72,19 +72,25 @@ class StageBiasSet(IndivBias, StageSettings):
         d_v_at_psu (float): The voltage at the power supply before the
             voltage drop across the drain wire.
         d_i_lim (float): The drain current limit for the stage (mA).
+        correct_d_v (bool): Whether to correct the drain voltage for 
+            wire voltage drop.
     """
     __doc__ += f'\n    {IndivBias.__doc__}\n'
     __doc__ += f'    {StageSettings.__doc__}'
 
-    def __init__(self, stage_settings: StageSettings, bias: IndivBias) -> None:
+    def __init__(self, stage_settings: StageSettings, bias: IndivBias,
+                 correct_d_v: bool = True) -> None:
         """Constructor for the StageBiasSet class.
 
         Args:
             stage_settings: The settings for the stage.
             bias: The bias conditions for the stage.
+            correct_d_v: Whether to correct the drain voltage for wire
+                voltage drop.
         """
 
         StageSettings.__init__(self, *ut.get_dataclass_args(stage_settings))
+        self.correct_d_v = correct_d_v
 
         # region Set drain resistance depending on passed position.
         if self.lna_position == 'LNA1':
@@ -104,8 +110,11 @@ class StageBiasSet(IndivBias, StageSettings):
         # endregion
 
         # region Calculate additional attributes from args.
-        self.d_v_at_psu = self.target_d_v_at_lna \
-            + ((self.d_i * self.d_resistance) / 1000)
+        if self.correct_d_v:
+            self.d_v_at_psu = self.target_d_v_at_lna \
+                + ((self.d_i * self.d_resistance) / 1000)
+        else:
+            self.d_v_at_psu = self.target_d_v_at_lna
         # endregion
 
         self.d_i_lim = 8  # Default to 8mA just in case set incorrectly.
@@ -135,8 +144,11 @@ class StageBiasSet(IndivBias, StageSettings):
 
     @target_d_v_at_lna.setter
     def target_d_v_at_lna(self, value) -> None:
-        self.d_v_at_psu = (
-            value + (self.d_resistance * (self.d_i / 1000)))
+        if self.correct_d_v:
+            self.d_v_at_psu = (
+                value + (self.d_resistance * (self.d_i / 1000)))
+        else:
+            self.d_v_at_psu = value
         self._target_d_v_at_lna = value
 
     @property
@@ -205,7 +217,7 @@ class LNACryoLayout:
             measurement session, either 1, 2, or 3.
         lnas_per_chain (int): How many LNAs per cryostat chain, 1 or 2.
         stages_per_lna (int): The technical number of stages in the lnas
-            under test. If an amplifier is 3 stage, but the second and
+            under testat. If an amplifier is 3 stage, but the second and
             third are the same, this number is 3, and the stage_2_3_same
             variable should be set true.
         stage_1_2_same (bool): If the first and second stage of the lnas
@@ -281,7 +293,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         elif self.lna_position == 'CRBE':
             self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 7)
         elif self.lna_position == 'RTBE':
-            self.stage_1.card_chnl = bc.CardChnl(1, 8)
+            self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 8)
         # endregion
 
         # region Handle same stage conditions.
@@ -447,7 +459,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # endregion
 
     def lna_measured_column_data(
-            self, psx_rm: Optional[pv.Resource] = None,
+            self, psx_rm: Optional[Resource] = None,
             is_calibration: bool = False) -> Optional[list[Union[float, str]]]:
         """Return the measured bias conditions of the LNA."""
         # region Measure and return bias conditions, or dummy values.
@@ -750,7 +762,7 @@ class NominalLNASettings:
         lna_1_nom_bias (LNABiasSet):
         lna_2_nom_bias Optional(LNABiasSet):
     """
-    def __init__(self, settings: sc.Settings) -> None:
+    def __init__(self, settings: cfg.Settings) -> None:
         """Constructor for the NominalLNASettings class.
 
         Args:
@@ -800,22 +812,36 @@ class BackEndLNASettings:
         crbe_chain_1_lna (LNABiasSet): The cryo backend LNA on chain 1.
         crbe_chain_2_lna (LNABiasSet): The cryo backend LNA on chain 2.
         crbe_chain_3_lna (LNABiasSet): The cryo backend LNA on chain 3.
+        use_g_v_or_d_i (str): Either 'd i' or 'g v', which of the two 
+            to set on the psu.
+        correct_be_d_v (bool): Whether to correct dv for wire voltage drop.
     """
 
     def __init__(
-            self, be_lna_biases: dict, be_d_i_lim: float = 20) -> None:
+            self, be_lna_biases: dict, use_g_v_or_d_i: str,
+            correct_be_d_v: bool, cryo_chain: int, be_d_i_lim: float = 20
+            ) -> None:
         """Constructor for the BackEndLNASettings class.
 
         Args:
             be_lna_biases: Dictionary containing user input BE LNA
                 bias variables.
+            use_g_v_or_d_i: Either 'g v' or 'd i', which to set on psu.
+            correct_be_d_v: Whether to correct dv for wire voltage drop.
+            cryo_chain: The chain under test.
             be_d_i_lim: Drain current lim for the LNA in question (mA).
         """
 
+        self.use_g_v_or_d_i = use_g_v_or_d_i
+        self.correct_be_d_v = correct_be_d_v
         self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']
+        self.rtbe_di = be_lna_biases['rtbe_chna_d_i']
         self.crbe_gvs = [be_lna_biases['crbe_chn1_g_v'],
                          be_lna_biases['crbe_chn2_g_v'],
                          be_lna_biases['crbe_chn3_g_v']]
+        self.crbe_dis = [be_lna_biases['crbe_chn1_d_i'],
+                         be_lna_biases['crbe_chn2_d_i'],
+                         be_lna_biases['crbe_chn3_d_i']]
 
         # region Set args to attributes.
         self.d_i_lim = be_d_i_lim
@@ -826,24 +852,24 @@ class BackEndLNASettings:
         rtbe_chain_a_stage_1 = StageBiasSet(
             StageSettings('RTBE', be_d_i_lim),
             IndivBias(be_lna_biases['rtbe_chna_d_i'],
-                      be_lna_biases['rtbe_chna_d_v']))
+                      be_lna_biases['rtbe_chna_d_v']), correct_be_d_v)
         crbe_chain_1_stage_1 = StageBiasSet(
             StageSettings('CRBE', be_d_i_lim),
             IndivBias(be_lna_biases['crbe_chn1_d_i'],
-                      be_lna_biases['crbe_chn1_d_v']))
+                      be_lna_biases['crbe_chn1_d_v']), correct_be_d_v)
         crbe_chain_2_stage_1 = StageBiasSet(
             StageSettings('CRBE', be_d_i_lim),
             IndivBias(be_lna_biases['crbe_chn2_d_i'],
-                      be_lna_biases['crbe_chn2_d_v']))
+                      be_lna_biases['crbe_chn2_d_v']), correct_be_d_v)
         crbe_chain_3_stage_1 = StageBiasSet(
             StageSettings('CRBE', be_d_i_lim),
             IndivBias(be_lna_biases['crbe_chn3_d_i'],
-                      be_lna_biases['crbe_chn3_d_v']))
+                      be_lna_biases['crbe_chn3_d_v']), correct_be_d_v)
         # endregion
 
         # region LNAs.
         self.rtbe_chain_a_lna = LNABiasSet(
-            'RTBE', LNACryoLayout(1, 1, 1, False, False), be_d_i_lim,
+            'RTBE', LNACryoLayout(cryo_chain, 1, 1, False, False), be_d_i_lim,
             LNAStages(rtbe_chain_a_stage_1))
         self.crbe_chain_1_lna = LNABiasSet(
             'CRBE', LNACryoLayout(1, 1, 1, False, False), be_d_i_lim,

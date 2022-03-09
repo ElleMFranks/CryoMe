@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""settings_classes.py - Stores/handles measurement instance settings.
+"""settings.py - Stores/handles measurement instance settings.
 
 Contains the class structures for the configuration of a given
 measurement. Dataclasses are used for their simplicity, and are made
@@ -14,17 +14,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 import csv
-import math as mt
+import math
 import os
-import pathlib as pl
+import pathlib
 
 import numpy as np
 import pandas as pd
 
-import error_handling as eh
-import instr_classes as ic
-import lna_classes as lc
-import output_classes as oc
+import error_handling as err
+import instruments as instr
+import lnas
+import outputs as out
 import util as ut
 # endregion
 
@@ -33,24 +33,24 @@ def settings_config(config, cryo_chain: int) -> Settings:
     """Put user settings into class instances."""
     # region Instrumentation Settings.
     # region Signal Analyser Settings
-    sig_an_settings = ic.SignalAnalyserSettings(
-        ic.SpecAnFreqSettings(
+    sig_an_settings = instr.SignalAnalyserSettings(
+        instr.SpecAnFreqSettings(
             config['signal_analyser_settings']['center_freq'],
             config['signal_analyser_settings']['marker_freq'],
             config['signal_analyser_settings']['freq_span']),
-        ic.SpecAnBWSettings(
+        instr.SpecAnBWSettings(
             config['signal_analyser_settings']['vid_bw'],
             config['signal_analyser_settings']['res_bw'],
             config['signal_analyser_settings']['power_bw']),
-        ic.SpecAnAmplSettings(
+        instr.SpecAnAmplSettings(
             config['signal_analyser_settings']['atten'],
             config['signal_analyser_settings']['ref_level']),
         config['available_instruments']['sig_an_en'])
     # endregion
 
     # region Signal Generator Settings.
-    sig_gen_settings = ic.SignalGeneratorSettings(
-        ic.FreqSweepSettings(
+    sig_gen_settings = instr.SignalGeneratorSettings(
+        instr.FreqSweepSettings(
             config['signal_generator_settings']['min_freq'],
             config['signal_generator_settings']['max_freq'],
             config['signal_generator_settings']['freq_step_size'],
@@ -60,14 +60,14 @@ def settings_config(config, cryo_chain: int) -> Settings:
     # endregion
 
     # region Temperature Controller Settings
-    temp_ctrl_settings = ic.TempControllerSettings(
-        ic.TempCtrlChannels(
+    temp_ctrl_settings = instr.TempControllerSettings(
+        instr.TempCtrlChannels(
             config['temperature_controller_settings']['allchn_load_lsch'],
             config['temperature_controller_settings']['chn1_lna_lsch'],
             config['temperature_controller_settings']['chn2_lna_lsch'],
             config['temperature_controller_settings']['chn3_lna_lsch'],
             config['temperature_controller_settings']['extra_sensors_en']),
-        ic.TempTargets(
+        instr.TempTargets(
             config['temperature_controller_settings']['t_hot_target'],
             config['temperature_controller_settings']['t_cold_target']),
         cryo_chain,
@@ -75,24 +75,24 @@ def settings_config(config, cryo_chain: int) -> Settings:
     # endregion
 
     # region Bias Power Supply Settings.
-    bias_psu_settings = ic.BiasPSUSettings(
-        ic.GVSearchSettings(
+    bias_psu_settings = instr.BiasPSUSettings(
+        instr.GVSearchSettings(
             config['bias_psu_settings']['g_v_low_lim'],
             config['bias_psu_settings']['g_v_up_lim'],
             config['bias_psu_settings']['num_g_v_brd_steps'],
             config['bias_psu_settings']['num_g_v_mid_steps'],
             config['bias_psu_settings']['num_g_v_nrw_steps']),
-        ic.PSULimits(
+        instr.PSULimits(
             config['bias_psu_settings']['v_step_lim'],
             config['bias_psu_settings']['d_i_lim']),
-        ic.PSUMetaSettings(
+        instr.PSUMetaSettings(
             config['measurement_settings']['psu_safe_init'],
             config['available_instruments']['bias_psu_en'],
             config['measurement_settings']['instr_buffer_time']))
     # endregion
 
     # region Switch Settings.
-    switch_settings = ic.SwitchSettings(
+    switch_settings = instr.SwitchSettings(
         cryo_chain,
         config['available_instruments']['switch_en'])
     # endregion
@@ -115,7 +115,7 @@ def settings_config(config, cryo_chain: int) -> Settings:
         config['measurement_settings']['stage_1_2_same'],
         config['measurement_settings']['stage_2_3_same'])
 
-    analysis_sub_bws = oc.AnalysisBandwidths(
+    analysis_sub_bws = out.AnalysisBandwidths(
         config['analysis_bandwidths']['ana_bw_1_min_max'],
         config['analysis_bandwidths']['ana_bw_2_min_max'],
         config['analysis_bandwidths']['ana_bw_3_min_max'],
@@ -125,7 +125,7 @@ def settings_config(config, cryo_chain: int) -> Settings:
 
     # region Manual LNA Settings.
     if config['measurement_settings']['measure_method'] == 'MEM':
-        manual_lna_settings = lc.ManualLNASettings(
+        manual_lna_settings = lnas.ManualLNASettings(
             config['manual_entry_lna_settings'],
             lna_cryo_layout,
             config['bias_psu_settings']['d_i_lim'])
@@ -143,8 +143,11 @@ def settings_config(config, cryo_chain: int) -> Settings:
     # endregion
 
     # region Back End LNA Settings.
-    be_lna_settings = lc.BackEndLNASettings(
+    be_lna_settings = lnas.BackEndLNASettings(
         config['back_end_lna_settings'],
+        config['back_end_lna_settings']['use_g_v_or_d_i'],
+        config['back_end_lna_settings']['correct_be_d_v'],
+        cryo_chain,
         config['back_end_lna_settings']['be_d_i_limit'])
     # endregion
     # endregion
@@ -179,7 +182,7 @@ def settings_config(config, cryo_chain: int) -> Settings:
                 config['bias_sweep_settings']['d_i_max'],
                 config['bias_sweep_settings']['alt_temp_sweep_skips']),
             nominal_bias, lna_cryo_layout),
-        ic.InstrumentSettings(
+        instr.InstrumentSettings(
             sig_an_settings, sig_gen_settings, temp_ctrl_settings,
             bias_psu_settings, switch_settings,
             config['measurement_settings']['instr_buffer_time']),
@@ -282,7 +285,7 @@ class LNACryoLayout:
             measurement session, either 1, 2, or 3.
         lnas_per_chain (int): How many LNAs per cryostat chain, 1 or 2.
         stages_per_lna (int): The technical number of stages in the lnas
-            under test. If an amplifier is 3 stage, but the second and
+            under testat. If an amplifier is 3 stage, but the second and
             third are the same, this number is 3, and the stage_2_3_same
             variable should be set true.
         stage_2_3_same (bool): If the second and third stage of the lnas
@@ -309,13 +312,13 @@ class DirectLNAs:
             LNA biases and settings for the LNAs made from the manual
             bias inputs.
     """
-    be_lna_settings: lc.BackEndLNASettings
-    manual_lna_settings: lc.ManualLNASettings
+    be_lna_settings: lnas.BackEndLNASettings
+    manual_lna_settings: lnas.ManualLNASettings
 
 
 @dataclass()
 class LNAIDs:
-    """Object containing the LNA ID for each of the LNAs under test.
+    """Object containing the LNA ID for each of the LNAs under testat.
 
     Constructor Attributes:
         chain_1_lna_1_id (Optional[int]): LNA ID for chain 1 lna 1.
@@ -418,7 +421,7 @@ class LNAInfo:
     Constructor Attributes:
         direct_lnas (DirectLNAs): User input manual/backend LNA
             biases/settings.
-        lna_ids (LNAIDs): The LNA ID for each of the LNAs under test.
+        lna_ids (LNAIDs): The LNA ID for each of the LNAs under testat.
         lna_cryo_layout (LNACryoLayout): Settings describing layout of
             LNAs under test in the cryostat.
     """
@@ -429,11 +432,11 @@ class LNAInfo:
 
 @dataclass
 class LNAsUTIDs:
-    """Object containing the LNA IDs of the LNAs under test.
+    """Object containing the LNA IDs of the LNAs under testat.
 
     Constructor Attributes:
-        lna_1_id (int): ID of the first LNA in the chain under test.
-        lna_2_id (int): ID of the second LNA in the chain under test.
+        lna_1_id (int): ID of the first LNA in the chain under testat.
+        lna_2_id (int): ID of the second LNA in the chain under testat.
     """
     lna_1_id: int
     lna_2_id: int
@@ -446,7 +449,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
     """Non-instrument settings for a measurement session.
 
     Attributes:
-        lna_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under test.
+        lna_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under testat.
         lna_id_str (str): String of the LNAs ut IDs for saving results.
         session_id (int): The ID of the measurement session.
         comment (str): User defined string for additional information
@@ -468,10 +471,10 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             misc: Additional information relevant to the session.
         """
         # region Variable error handling.
-        eh.check_session_info(session_info)
-        eh.check_misc(misc)
-        eh.check_cal_info(cal_info, session_info)
-        eh.check_lna_info(lna_info)
+        err.validate_session_info(session_info)
+        err.validate_misc(misc)
+        err.validate_cal_info(cal_info, session_info)
+        err.validate_lna_info(lna_info)
         # endregion
 
         # region Initialise subclasses.
@@ -504,7 +507,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def lna_ut_ids(self) -> LNAsUTIDs:
-        """The IDs of the LNA/s under test."""
+        """The IDs of the LNA/s under testat."""
         return self._lna_ut_ids
 
     @lna_ut_ids.setter
@@ -513,7 +516,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def lna_id_str(self) -> str:
-        """The string of the LNA ID/s for the LNA/s under test."""
+        """The string of the LNA ID/s for the LNA/s under testat."""
         return self._lna_id_str
 
     @lna_id_str.setter
@@ -585,7 +588,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
                 file_struc.settings_path, dtype=str))
             if len(settings_log) != 0:
                 for i in settings_log[:, 2]:
-                    if not mt.isnan(float(i)):
+                    if not math.isnan(float(i)):
                         session_ids.append(int(i))
                 session_id = max(session_ids) + 1
             else:
@@ -621,10 +624,10 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
             lna_cryo_layout: The layout of the LNAs in the cryostat.
         """
         # region Check variables for errors.
-        eh.check_meas_sequence(meas_sequence)
-        eh.check_nominals(nominal_bias)
-        eh.check_sweep_setup_vars(sweep_setup_vars)
-        eh.check_lna_sequence(meas_sequence.lna_sequence,
+        err.validate_meas_sequence(meas_sequence)
+        err.check_nominals(nominal_bias)
+        err.validate_sweep_setup_vars(sweep_setup_vars)
+        err.validate_lna_sequence(meas_sequence.lna_sequence,
                               lna_cryo_layout.lnas_per_chain)
         # endregion
 
@@ -697,24 +700,24 @@ class FileStructure:
 
         # region Set attributes from args.
         cwd = os.getcwd()
-        self.results_directory = pl.Path(
+        self.results_directory = pathlib.Path(
             str(cwd) + f'\\results\\{project_title}')
-        self.cal_directory = pl.Path(
+        self.cal_directory = pathlib.Path(
             str(cwd) + '\\calibrations')
-        self.cal_settings_path = pl.Path(
+        self.cal_settings_path = pathlib.Path(
             str(self.cal_directory) + '\\Calibration Settings Log.csv')
-        self.loss_path = pl.Path(
+        self.loss_path = pathlib.Path(
             str(self.cal_directory) + '\\Loss.csv')
-        self.pwr_lvls = pl.Path(
+        self.pwr_lvls = pathlib.Path(
             str(self.cal_directory) + '\\Sig Gen Power Levels.csv')
-        self.in_cal_file_path = pl.Path(
+        self.in_cal_file_path = pathlib.Path(
             str(self.cal_directory) +
             f'\\Chain {cryo_chain}' +
             f'\\Chain {cryo_chain} Calibration {in_cal_file_id}.csv')
-        self.settings_path = pl.Path(
+        self.settings_path = pathlib.Path(
             str(self.results_directory) +
             f'\\{project_title} Settings Log.csv')
-        self.res_log_path = pl.Path(
+        self.res_log_path = pathlib.Path(
             str(self.results_directory) +
             f'\\{project_title} Results Log.csv')
         # endregion
@@ -729,20 +732,20 @@ class FileStructure:
         self._results_log_setup()
         # endregion
 
-    def get_log_path(self, session_id: int) -> pl.Path:
+    def get_log_path(self, session_id: int) -> pathlib.Path:
         """Sets the directory for & returns the path of the log file.
         """
-        log_path = pl.Path(str(self.results_directory)
+        log_path = pathlib.Path(str(self.results_directory)
                            + f'\\Session Logs\\Session {session_id}')
         os.makedirs(log_path, exist_ok=True)
-        log_path = pl.Path(str(log_path) + f'\\session_{session_id}.log')
+        log_path = pathlib.Path(str(log_path) + f'\\session_{session_id}.log')
         return log_path
 
     def _settings_log_setup(self):
         """Sets up the normal and calibration settings logs."""
         # region Setup standard settings log.
         if not os.path.isfile(self.settings_path):
-            settings_col_titles = oc.Results.std_settings_column_titles()
+            settings_col_titles = out.Results.std_settings_column_titles()
             with open(self.settings_path, 'w',
                       newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -752,7 +755,7 @@ class FileStructure:
 
         # region Setup calibration settings log.
         if not os.path.isfile(self.cal_settings_path):
-            cal_settings_col_titles = oc.Results.cal_settings_column_titles()
+            cal_settings_col_titles = out.Results.cal_settings_column_titles()
             with open(self.cal_settings_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -764,8 +767,8 @@ class FileStructure:
         """Sets up the results log."""
         # region Setup results log
         if not os.path.isfile(self.res_log_path):
-            res_log_col_header = oc.Results.results_ana_log_header()
-            res_log_col_titles = oc.Results.results_ana_log_column_titles()
+            res_log_col_header = out.Results.results_ana_log_header()
+            res_log_col_titles = out.Results.results_ana_log_column_titles()
             with open(self.res_log_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -790,6 +793,6 @@ class Settings:
     """
     meas_settings: MeasurementSettings
     sweep_settings: SweepSettings
-    instr_settings: ic.InstrumentSettings
+    instr_settings: instr.InstrumentSettings
     file_struc: FileStructure
 # endregion

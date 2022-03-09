@@ -82,6 +82,8 @@ temperature_controller_settings:
   
 back_end_lna_settings: # cryo/room-temp_backend_all/chain#_drain_voltage/current
   be_d_i_limit: 20       # ma
+  use_g_v_or_d_i: 'd i'  # Either 'd i' or 'g v'
+  correct_be_d_v: False  # Whether to correct dv for wire voltage drop
   
   crbe_chn1_d_v: 1.2    # v
   crbe_chn1_d_i: 12    # ma

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""output_classes.py - Neatly stores/processes results sets.
+"""outputs.py - Neatly stores/processes results sets.
 
 Two types of results are within this module. LoopInstanceResult is the
 result of a single measurement loop. Results contain a set of two
@@ -11,15 +11,15 @@ a hot measurement.
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Union
-import datetime as dt
-import math as mt
+import datetime
+import math
 import os
-import pathlib as pl
-import statistics as st
+import pathlib
+import statistics as stat
 
 import numpy as np
 
-import settings_classes as sc
+import config_handling as cfg
 import util as ut
 # endregion
 
@@ -333,7 +333,7 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
         """
 
         # region Calculate corrected temperature
-        _a = ((1 - (1 / loss[index])) / (0.23036 * 10 * mt.log10(loss[index])))
+        _a = ((1 - (1 / loss[index])) / (0.23036 * 10 * math.log10(loss[index])))
 
         ts1 = (load_t / loss[index])
         ts2 = 0
@@ -379,7 +379,7 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
             gain_cal.append(gain_s1 / gain_s2)
 
             if gain_cal[i] > 0:
-                gain_cal_db.append(10 * mt.log10(gain_cal[i]))
+                gain_cal_db.append(10 * math.log10(gain_cal[i]))
             elif gain_cal[i] <= 0:
                 gain_cal_db.append(0)
         # endregion
@@ -443,14 +443,14 @@ def _post_process(freqs, gain: Gain, noise_temperature,
         maxs = []
         rngs = []
         if is_gain:
-            avgs.append(10 * mt.log10(abs(st.mean(non_db_gain))))
-            std_devs.append(st.stdev(non_db_gain))
+            avgs.append(10 * math.log10(abs(stat.mean(non_db_gain))))
+            std_devs.append(stat.stdev(non_db_gain))
             mins.append(min(db_gain))
             maxs.append(max(db_gain))
             rngs.append(max(db_gain) - min(db_gain))
         else:
-            avgs.append(st.mean(noise_temperature))
-            std_devs.append(st.stdev(noise_temperature))
+            avgs.append(stat.mean(noise_temperature))
+            std_devs.append(stat.stdev(noise_temperature))
             mins.append(min(noise_temperature))
             maxs.append(max(noise_temperature))
             rngs.append(max(noise_temperature) - min(noise_temperature))
@@ -464,16 +464,16 @@ def _post_process(freqs, gain: Gain, noise_temperature,
                         if is_gain:
                             trimmed_res_db.append(freq_res[2])
                 if is_gain:
-                    avgs.append(10 * mt.log10(abs(st.mean(trimmed_res))))
+                    avgs.append(10 * math.log10(abs(stat.mean(trimmed_res))))
                     mins.append(min(trimmed_res_db))
                     maxs.append(max(trimmed_res_db))
                     rngs.append(max(trimmed_res_db) - min(trimmed_res_db))
                 else:
-                    avgs.append(st.mean(trimmed_res))
+                    avgs.append(stat.mean(trimmed_res))
                     mins.append(min(trimmed_res))
                     maxs.append(max(trimmed_res))
                     rngs.append(max(trimmed_res) - min(trimmed_res))
-                std_devs.append(st.stdev(trimmed_res))
+                std_devs.append(stat.stdev(trimmed_res))
             else:
                 avgs.append('NA')
                 std_devs.append('NA')
@@ -539,7 +539,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         # endregion
 
         # region Set time and date of creation as attributes.
-        self.present = dt.datetime.now()
+        self.present = datetime.datetime.now()
         self.date_str = (str(self.present.year)
                          + str(self.present.month)
                          + str(self.present.day))
@@ -628,7 +628,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Noise Temp Max (K)', 'Noise Temp Range (K)']
         return res_ana_log_col_titles
 
-    def results_ana_log_data(self, meas_settings: sc.MeasurementSettings,
+    def results_ana_log_data(self, meas_settings: cfg.MeasurementSettings,
                              bias_id: int) -> list:
         """Returns results analysis log data row."""
 
@@ -652,18 +652,18 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             str(meas_settings.session_id), str(bias_id),
             self.date_str, self.time_str, meas_settings.comment, None,
             fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4],
-            None, *self.gain_post_proc.as_tuple(0),
-            *self.noise_temp_post_proc.as_tuple(0), None,
-            *self.gain_post_proc.as_tuple(1),
-            *self.noise_temp_post_proc.as_tuple(1), None,
-            *self.gain_post_proc.as_tuple(2),
-            *self.noise_temp_post_proc.as_tuple(2), None,
-            *self.gain_post_proc.as_tuple(3),
-            *self.noise_temp_post_proc.as_tuple(3), None,
-            *self.gain_post_proc.as_tuple(4),
-            *self.noise_temp_post_proc.as_tuple(4), None,
-            *self.gain_post_proc.as_tuple(5),
-            *self.noise_temp_post_proc.as_tuple(5), None]
+            None, *self.gain_post_prout.as_tuple(0),
+            *self.noise_temp_post_prout.as_tuple(0), None,
+            *self.gain_post_prout.as_tuple(1),
+            *self.noise_temp_post_prout.as_tuple(1), None,
+            *self.gain_post_prout.as_tuple(2),
+            *self.noise_temp_post_prout.as_tuple(2), None,
+            *self.gain_post_prout.as_tuple(3),
+            *self.noise_temp_post_prout.as_tuple(3), None,
+            *self.gain_post_prout.as_tuple(4),
+            *self.noise_temp_post_prout.as_tuple(4), None,
+            *self.gain_post_prout.as_tuple(5),
+            *self.noise_temp_post_prout.as_tuple(5), None]
         return col_data
 
     @staticmethod
@@ -776,8 +776,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
 
     @staticmethod
     def output_file_path(
-            directory: pl.Path, meas_settings: sc.MeasurementSettings,
-            bias_id: int, csv_or_png: str) -> pl.Path:
+            directory: pathlib.Path, meas_settings: cfg.MeasurementSettings,
+            bias_id: int, csv_or_png: str) -> pathlib.Path:
         """Returns the output csv or png path."""
 
         l_str = f'LNA {meas_settings.lna_id_str} '
@@ -797,9 +797,9 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         results_csv_title = f'\\{s_str}{l_str}{b_str}.csv'
         results_png_title = f'\\{s_str}{l_str}{b_str}.png'
 
-        results_csv_path = pl.Path(
+        results_csv_path = pathlib.Path(
             str(directory) + session_folder + results_csv_title)
-        results_png_path = pl.Path(
+        results_png_path = pathlib.Path(
             str(directory) + session_folder + results_png_title)
         if csv_or_png == 'csv':
             return results_csv_path

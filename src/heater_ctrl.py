@@ -11,13 +11,13 @@ from __future__ import annotations
 from typing import Union
 from time import sleep
 
-import pyvisa as pv
+from pyvisa import Resource
 
 import util as ut
 # endregion
 
 
-def heater_setup(tc_rm: pv.Resource, channel: Union[int, str],
+def heater_setup(tc_rm: Resource, channel: Union[int, str],
                  sample_or_warmup: str) -> None:
     """Function sets up lakeshore to "sample" or "warmup" mode."""
 
@@ -35,7 +35,7 @@ def heater_setup(tc_rm: pv.Resource, channel: Union[int, str],
     # endregion
 
 
-def set_temp(tc_rm: pv.Resource, temp: float, lna_or_load: str) -> None:
+def set_temp(tc_rm: Resource, temp: float, lna_or_load: str) -> None:
     """Sets the temp of either the lna or load in the cryostat."""
     # region Send sample heater cmd if LNA or warmup cmd if Load.
     if lna_or_load == 'lna':
@@ -48,7 +48,7 @@ def set_temp(tc_rm: pv.Resource, temp: float, lna_or_load: str) -> None:
     # endregion
 
 
-def _check_temp(tc_rm: pv.Resource,  channel: int, target_temp: float) -> int:
+def _check_temp(tc_rm: Resource,  channel: int, target_temp: float) -> int:
     """Checks temperature over 10s to ascertain stability."""
     # region Set function variables.
     check = 0
