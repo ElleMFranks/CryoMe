@@ -29,7 +29,7 @@ import util
 # endregion
 
 
-def settings_config(config, cryo_chain: int) -> Settings:
+def settings_config(config: dict, cryo_chain: int) -> Settings:
     """Put user settings into class instances."""
     # region Instrumentation Settings.
     # region Signal Analyser Settings
