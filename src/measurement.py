@@ -197,61 +197,72 @@ def _meas_loop(
 
     # region Sweep requested frequencies measuring power and load temp.
     log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.', )
-    for i, inter_frequency in enumerate(tqdm.tqdm(
-        inter_freqs_array, ncols=110, desc="Loop Prog", leave=True, position=0,
+    pbar = tqdm.tqdm(
+        total=len(inter_freqs_array), ncols=110,
+        desc="Loop Prog", leave=True, position=0,
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
-                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')):
+                   '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')
+    i = 0
 
-        # region Set signal generator to intermediate frequency.
-        if sig_gen_rm is not None and sig_gen_settings.vna_or_sig_gen == 'vna':
-            sig_gen_rm.write(f':SENSE:FREQ:CW {inter_frequency} GHz')
-        elif sig_gen_rm is not None and \
-                sig_gen_settings.vna_or_sig_gen == 'sig gen':
-            sig_gen_rm.write(
-                f'PL {sig_gen_settings.sig_gen_pwr_lvls[i]} DM')
-            sleep(buffer_time)
-            sig_gen_rm.write(f'CW {inter_frequency} GZ')
-        # endregion
+    while i < len(inter_freqs_array):
+        try:
+            # region Set signal generator to intermediate frequency.
+            if sig_gen_rm is not None and sig_gen_settings.vna_or_sig_gen == 'vna':
+                sig_gen_rm.write(f':SENSE:FREQ:CW {inter_freqs_array[i]} GHz')
+            elif sig_gen_rm is not None and \
+                    sig_gen_settings.vna_or_sig_gen == 'sig gen':
+                sig_gen_rm.write(
+                    f'PL {sig_gen_settings.sig_gen_pwr_lvls[i]} DM')
+                sleep(buffer_time)
+                sig_gen_rm.write(f'CW {inter_freqs_array[i]} GZ')
+            # endregion
 
-        # region Store pre-loop temperatures, and during loop load temp.
-        if tc_rm is not None:
-            load_temp = ut.safe_query(
-                f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
-                'lakeshore', True)
-            if temp_target - 1 > load_temp > temp_target + 1:
-                log.warning('Fallen out of temp range during measurement.')
-                pre_loop_temps = _temp_set_get(
-                    tc_rm, temp_target, settings.instr_settings)
-        else:
-            load_temp = temp_target + (round(random.uniform(-0.1, 0.1), 2))
-
-        # region Send command for sig an to take a measurement sweep.
-        if spec_an_rm is not None:
-            spec_an_rm.write('INIT:IMM')
-            sleep(buffer_time)
-        # endregion
-
-        # region Measure and store marker power at requested frequency.
-        if spec_an_rm is not None:
-            ut.safe_query('*OPC?', buffer_time, spec_an_rm, 'spec an')
-            marker_power = ut.safe_query(
-                ':CALC:MARK1:Y?', buffer_time, spec_an_rm, 'spec an')
-            powers.append(float(marker_power.strip()))
-        else:
-            sleep(0.2)
-            if hot_or_cold == 'Hot':
-                marker_power = -50 + round(random.uniform(1.2, 2), 2)
+            # region Store pre-loop temperatures, and during loop load temp.
+            if tc_rm is not None:
+                load_temp = ut.safe_query(
+                    f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
+                    'lakeshore', True)
+                if temp_target - 1 > load_temp > temp_target + 1:
+                    log.warning('Fallen out of temp range during measurement.')
+                    pre_loop_temps = _temp_set_get(
+                        tc_rm, temp_target, settings.instr_settings)
             else:
-                marker_power = -50 + round(random.uniform(0.3, 0.6), 2)
-            powers.append(marker_power)
-        # endregion
+                load_temp = temp_target + (round(random.uniform(-0.1, 0.1), 2))
 
-        load_temps.append(load_temp)
-        pre_loop_lna_temps.append(pre_loop_lna_temp)
-        pre_loop_extra_1_temps.append(pre_loop_extra_1_temp)
-        pre_loop_extra_2_temps.append(pre_loop_extra_2_temp)
-        # endregion
+            # region Send command for sig an to take a measurement sweep.
+            if spec_an_rm is not None:
+                spec_an_rm.write('INIT:IMM')
+                sleep(buffer_time)
+            # endregion
+
+            # region Measure and store marker power at requested frequency.
+            if spec_an_rm is not None:
+                ut.safe_query('*OPC?', buffer_time, spec_an_rm, 'spec an')
+                marker_power = ut.safe_query(
+                    ':CALC:MARK1:Y?', buffer_time, spec_an_rm, 'spec an')
+                powers.append(float(marker_power.strip()))
+            else:
+                sleep(0.2)
+                if hot_or_cold == 'Hot':
+                    marker_power = -50 + round(random.uniform(1.2, 2), 2)
+                else:
+                    marker_power = -50 + round(random.uniform(0.3, 0.6), 2)
+                powers.append(marker_power)
+            # endregion
+
+            load_temps.append(load_temp)
+            pre_loop_lna_temps.append(pre_loop_lna_temp)
+            pre_loop_extra_1_temps.append(pre_loop_extra_1_temp)
+            pre_loop_extra_2_temps.append(pre_loop_extra_2_temp)
+            # endregion
+
+            i += 1
+            pbar.update()
+        except Exception as _e:
+            log.error(f'Error at {inter_freqs_array[i]}: {_e}')
+            continue
     # endregion
+    pbar.close()
     log.info('Frequency sweep completed.')
 
     # region Put spec an in continuous measurement mode.

@@ -372,7 +372,7 @@ def save_calibration_results(
     trim_cal_id_list = []
     for entry, _ in enumerate(chain_list):
         if cryo_chain == chain_list[entry]:
-            trim_cal_id_listat.append(cal_id_list[entry])
+            trim_cal_id_list.append(cal_id_list[entry])
     if len(trim_cal_id_list) != 0:
         cal_id = int(1 + max(trim_cal_id_list))
     else:

@@ -14,13 +14,13 @@ higher.
 from __future__ import annotations
 import logging
 import os
-import pathlib
+import pathlib as pl
 import sys
 
-import yaml
+import yaml as ym
 
 import config_handling as cfg
-import start_session as start
+import start_session as ss
 # endregion
 
 
@@ -66,16 +66,17 @@ def main():
     # endregion
 
     # region Load in settings yaml file.
-    with open(pathlib.Path(str(os.getcwd()) + '\\config.yml'),
+    with open(pl.Path(str(os.getcwd()) + '\\config.yml'),
               encoding='utf-8') as _f:
-        yaml_config = yaml.safe_load(_f)
+        yaml_config = ym.safe_load(_f)
     # endregion
 
     # region Measure each chain as requested.
     for i, cryo_chain in enumerate(
             yaml_config['bias_sweep_settings']['chain_sequence']):
 
-        input(f'Please ensure chain {cryo_chain} is connected to the PSU, then press enter.')
+        input(f'Please ensure chain {cryo_chain} is connected to the PSU, '
+              f'then press enter.')
 
         # region Reset all class instances.
         if i > 0:
@@ -98,7 +99,7 @@ def main():
 
         # region Trigger measurement
         try:
-            start.start_session(settings)
+            ss.start_session(settings)
         # Pylint broad-except disabled as sys.exc_info()[0] logged.
         except Exception as _e:  # pylint: disable=broad-except
             log.exception(sys.exc_info()[0])
