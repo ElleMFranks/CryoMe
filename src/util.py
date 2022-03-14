@@ -28,7 +28,7 @@ import logging
 
 from pyvisa import Resource
 
-import instruments as instr
+import instruments
 # endregion
 
 
@@ -52,7 +52,7 @@ def yes_no(variable_name: str, variable_val: Any, variable_unit: str) -> None:
 def safe_query(
         command: str, buffer_time: float, res_manager: Resource,
         instr: str, float_req: bool = False, str_req: bool = False,
-        instr_settings: Optional[instr.InstrumentSettings] = None) -> Any:
+        instr_settings: Optional[instruments.InstrumentSettings] = None) -> Any:
     """Try query, if failed wait 5s and try again up to 10 times.
 
     Tries query multiple times, if spectrum analyser is being queried

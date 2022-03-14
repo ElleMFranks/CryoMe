@@ -15,12 +15,12 @@ import datetime
 import math
 import os
 import pathlib
-import statistics as stat
+import statistics as stats
 
 import numpy as np
 
-import config_handling as cfg
-import util as ut
+import config_handling
+import util
 # endregion
 
 
@@ -443,14 +443,14 @@ def _post_process(freqs, gain: Gain, noise_temperature,
         maxs = []
         rngs = []
         if is_gain:
-            avgs.append(10 * math.log10(abs(stat.mean(non_db_gain))))
-            std_devs.append(stat.stdev(non_db_gain))
+            avgs.append(10 * math.log10(abs(stats.mean(non_db_gain))))
+            std_devs.append(stats.stdev(non_db_gain))
             mins.append(min(db_gain))
             maxs.append(max(db_gain))
             rngs.append(max(db_gain) - min(db_gain))
         else:
-            avgs.append(stat.mean(noise_temperature))
-            std_devs.append(stat.stdev(noise_temperature))
+            avgs.append(stats.mean(noise_temperature))
+            std_devs.append(stats.stdev(noise_temperature))
             mins.append(min(noise_temperature))
             maxs.append(max(noise_temperature))
             rngs.append(max(noise_temperature) - min(noise_temperature))
@@ -464,16 +464,16 @@ def _post_process(freqs, gain: Gain, noise_temperature,
                         if is_gain:
                             trimmed_res_db.append(freq_res[2])
                 if is_gain:
-                    avgs.append(10 * math.log10(abs(stat.mean(trimmed_res))))
+                    avgs.append(10 * math.log10(abs(stats.mean(trimmed_res))))
                     mins.append(min(trimmed_res_db))
                     maxs.append(max(trimmed_res_db))
                     rngs.append(max(trimmed_res_db) - min(trimmed_res_db))
                 else:
-                    avgs.append(stat.mean(trimmed_res))
+                    avgs.append(stats.mean(trimmed_res))
                     mins.append(min(trimmed_res))
                     maxs.append(max(trimmed_res))
                     rngs.append(max(trimmed_res) - min(trimmed_res))
-                std_devs.append(stat.stdev(trimmed_res))
+                std_devs.append(stats.stdev(trimmed_res))
             else:
                 avgs.append('NA')
                 std_devs.append('NA')
@@ -516,23 +516,23 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
 
         # region Initialise subclasses and process results.
         ResultsMetaInfo.__init__(
-            self, *ut.get_dataclass_args(results_meta_info))
+            self, *util.get_dataclass_args(results_meta_info))
 
-        LoopPair.__init__(self, *ut.get_dataclass_args(loop_pair))
+        LoopPair.__init__(self, *util.get_dataclass_args(loop_pair))
 
         if self.is_calibration:
             CalibrationAnalysedResults.__init__(
-                self, *ut.get_dataclass_args(
+                self, *util.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
         else:
             AnalysisBandwidths.__init__(
-                self, *ut.get_dataclass_args(results_meta_info.sub_bws))
+                self, *util.get_dataclass_args(results_meta_info.sub_bws))
 
             StandardAnalysedResults.__init__(
-                self, *ut.get_dataclass_args(
+                self, *util.get_dataclass_args(
                     process(loop_pair, results_meta_info)))
 
-            PostProcResults.__init__(self, *ut.get_dataclass_args(
+            PostProcResults.__init__(self, *util.get_dataclass_args(
                 _post_process(self.freq_array, self.gain,
                               self.noise_temp.cal_loss_cor,
                               results_meta_info.sub_bws)))
@@ -628,7 +628,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Noise Temp Max (K)', 'Noise Temp Range (K)']
         return res_ana_log_col_titles
 
-    def results_ana_log_data(self, meas_settings: cfg.MeasurementSettings,
+    def results_ana_log_data(self, meas_settings: config_handling.MeasurementSettings,
                              bias_id: int) -> list:
         """Returns results analysis log data row."""
 
@@ -652,18 +652,18 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             str(meas_settings.session_id), str(bias_id),
             self.date_str, self.time_str, meas_settings.comment, None,
             fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4],
-            None, *self.gain_post_prout.as_tuple(0),
-            *self.noise_temp_post_prout.as_tuple(0), None,
-            *self.gain_post_prout.as_tuple(1),
-            *self.noise_temp_post_prout.as_tuple(1), None,
-            *self.gain_post_prout.as_tuple(2),
-            *self.noise_temp_post_prout.as_tuple(2), None,
-            *self.gain_post_prout.as_tuple(3),
-            *self.noise_temp_post_prout.as_tuple(3), None,
-            *self.gain_post_prout.as_tuple(4),
-            *self.noise_temp_post_prout.as_tuple(4), None,
-            *self.gain_post_prout.as_tuple(5),
-            *self.noise_temp_post_prout.as_tuple(5), None]
+            None, *self.gain_post_proc.as_tuple(0),
+            *self.noise_temp_post_proc.as_tuple(0), None,
+            *self.gain_post_proc.as_tuple(1),
+            *self.noise_temp_post_proc.as_tuple(1), None,
+            *self.gain_post_proc.as_tuple(2),
+            *self.noise_temp_post_proc.as_tuple(2), None,
+            *self.gain_post_proc.as_tuple(3),
+            *self.noise_temp_post_proc.as_tuple(3), None,
+            *self.gain_post_proc.as_tuple(4),
+            *self.noise_temp_post_proc.as_tuple(4), None,
+            *self.gain_post_proc.as_tuple(5),
+            *self.noise_temp_post_proc.as_tuple(5), None]
         return col_data
 
     @staticmethod
@@ -776,7 +776,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
 
     @staticmethod
     def output_file_path(
-            directory: pathlib.Path, meas_settings: cfg.MeasurementSettings,
+            directory: pathlib.Path, meas_settings: config_handling.MeasurementSettings,
             bias_id: int, csv_or_png: str) -> pathlib.Path:
         """Returns the output csv or png path."""
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""meas_algorithmeasure.py - Decides how each full measurement happens.
+"""meas_algorithmeasurement.py - Decides how each full measurement happens.
 
 Contains the different measurement algorithms which can be used for the
 y factor measurement:
@@ -23,20 +23,20 @@ import logging
 import tqdm
 
 import bias_ctrl
-import instruments as instr
+import instruments
 import lnas
-import measurement as measure
-import outputs as out
-import output_saving as save
-import config_handling as cfg
+import measurement
+import outputs
+import output_saving
+import config_handling
 # endregion
 
 
 def all_cold_to_all_hot(
-        settings: cfg.Settings,
+        settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
-        res_managers: instr.ResourceManagers,
-        trimmed_input_data: cfg.TrimmedInputs) -> None:
+        res_managers: instruments.ResourceManagers,
+        trimmed_input_data: config_handling.TrimmedInputs) -> None:
     """Parallel sweep where cold measurements are taken, then hot.
 
     This  method loops through each drain current for each drain
@@ -152,11 +152,11 @@ def all_cold_to_all_hot(
 
         # region Trigger measurement
         if temp_ut == 0:
-            cold_array.append(measure.measurement(
+            cold_array.append(measurement.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut))
 
         else:
-            hot_array.append(measure.measurement(
+            hot_array.append(measurement.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut))
 
         print('\n')
@@ -170,25 +170,25 @@ def all_cold_to_all_hot(
     log.info('Starting results saving.')
     freq_array = settings.instr_settings.sig_gen_settings.freq_array
     for i, _ in enumerate(hot_array):
-        result = out.Results(
-            out.LoopPair(cold_array[i], hot_array[i]),
-            out.ResultsMetaInfo(
-                meas_settings.comment, freq_array, meas_settings.order,
-                meas_settings.is_calibration, meas_settings.analysis_bws,
-                trimmed_input_data.trimmed_loss,
-                trimmed_input_data.trimmed_cal_data))
+        result = outputs.Results(
+                     outputs.LoopPair(cold_array[i], hot_array[i]),
+                     outputs.ResultsMetaInfo(
+                         meas_settings.comment, freq_array, meas_settings.order,
+                         meas_settings.is_calibration, meas_settings.analysis_bws,
+                         trimmed_input_data.trimmed_loss,
+                         trimmed_input_data.trimmed_cal_data))
 
-        save.save_standard_results(
+        output_saving.save_standard_results(
             settings, result, i + 1, lna_1_array[i], lna_2_array[i])
     log.info('All results saved.')
     # endregion
 
 
 def alternating_temps(
-        settings: cfg.Settings,
+        settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
-        res_managers: instr.ResourceManagers,
-        trimmed_input_data: cfg.TrimmedInputs) -> None:
+        res_managers: instruments.ResourceManagers,
+        trimmed_input_data: config_handling.TrimmedInputs) -> None:
     """Series sweep where temp is alternated between measurements.
 
     For each LNA, for each stage, for each drain voltage, for each
@@ -284,12 +284,12 @@ def alternating_temps(
             # endregion
 
             # region Trigger measurement.
-            standard_results = measure.measurement(
+            standard_results = measurement.measurement(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
             # region Analyse and save results.
-            save.save_standard_results(
+            output_saving.save_standard_results(
                 settings, standard_results, i + 1, lna_1_bias, lna_2_bias)
             # endregion
 
@@ -303,7 +303,7 @@ def alternating_temps(
 
 
 def calibration_measurement(
-        settings: cfg.Settings, res_managers: instr.ResourceManagers,
+        settings: config_handling.Settings, res_managers: instruments.ResourceManagers,
         trimmed_loss: list[float]) -> None:
     """Triggers and saves a calibration measurement.
 
@@ -342,21 +342,21 @@ def calibration_measurement(
     else:
         raise Exception('Cryostat chain not set.')
 
-    calibration_result = measure.measurement(
-        settings, res_managers, cfg.TrimmedInputs(trimmed_loss))
+    calibration_result = measurement.measurement(
+        settings, res_managers, config_handling.TrimmedInputs(trimmed_loss))
 
     be_biases = [crbe_lna_bias, rtbe_lna_bias]
     be_stages = [crbe_stg, rtbe_stg]
-    save.save_calibration_results(
+    output_saving.save_calibration_results(
         be_biases, be_stages, settings, calibration_result)
     # endregion
 
 
 def manual_entry_measurement(
-        settings: cfg.Settings,
+        settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
-        res_managers: instr.ResourceManagers,
-        trimmed_input_data: cfg.TrimmedInputs) -> None:
+        res_managers: instruments.ResourceManagers,
+        trimmed_input_data: config_handling.TrimmedInputs) -> None:
     """Single measurement point with user input bias conditions.
 
     User inputs bias array for a noise temperature measurement, this
@@ -375,9 +375,9 @@ def manual_entry_measurement(
     lna_1_bias = lna_biases[0]
     lna_2_bias = lna_biases[1]
 
-    standard_results = measure.measurement(
+    standard_results = measurement.measurement(
         settings, res_managers, trimmed_input_data)
 
-    save.save_standard_results(
+    output_saving.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)
     # endregion

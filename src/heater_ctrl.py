@@ -31,7 +31,7 @@ def heater_setup(tc_rm: Resource, channel: Union[int, str],
     # endregion
 
     # region Output setup of heater to PID (5).
-    ut.safe_write(f' OUTMODE {s_or_w}  5 {channel}', 0.5, tc_rm)
+    util.safe_write(f' OUTMODE {s_or_w}  5 {channel}', 0.5, tc_rm)
     # endregion
 
 
@@ -39,11 +39,11 @@ def set_temp(tc_rm: Resource, temp: float, lna_or_load: str) -> None:
     """Sets the temp of either the lna or load in the cryostat."""
     # region Send sample heater cmd if LNA or warmup cmd if Load.
     if lna_or_load == 'lna':
-        ut.safe_write(f'SETP 0 {temp}', 0.5, tc_rm)  # Sample heater to 20k
-        ut.safe_write('RANGE 0 8', 0.5, tc_rm)
+        util.safe_write(f'SETP 0 {temp}', 0.5, tc_rm)  # Sample heater to 20k
+        util.safe_write('RANGE 0 8', 0.5, tc_rm)
     elif lna_or_load == 'load':
-        ut.safe_write(f'SETP 1 {temp}', 0.5, tc_rm)
-        ut.safe_write('RANGE 1 1', 0.5, tc_rm)
+        util.safe_write(f'SETP 1 {temp}', 0.5, tc_rm)
+        util.safe_write('RANGE 1 1', 0.5, tc_rm)
     sleep(2)  # This time could possibly be modified.
     # endregion
 
@@ -56,13 +56,13 @@ def _check_temp(tc_rm: Resource,  channel: int, target_temp: float) -> int:
     # endregion.
 
     # region Check temperature at 0 and 10s if stable check is 1
-    temp = ut.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
+    temp = util.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
     if temp < target_temp - error_target or temp > target_temp + error_target:
         check = 0
     if target_temp - error_target < temp < target_temp + error_target:
         check = 0
         sleep(10)
-        temp = ut.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
+        temp = util.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
         if target_temp - error_target < temp < target_temp + error_target:
             check = 1
     return check
@@ -72,9 +72,9 @@ def _check_temp(tc_rm: Resource,  channel: int, target_temp: float) -> int:
 def load_temp_stabilisation(tc_rm, channel, temp):
     """Stabilises cryostat at given temperature."""
     # region Check temperature until within range for 10 seconds.
-    ut.safe_write(f'SCAN{channel},0', 4, tc_rm)
+    util.safe_write(f'SCAN{channel},0', 4, tc_rm)
     while _check_temp(tc_rm, channel, temp) == 0:
         sleep(0.5)
-    ut.safe_write(f'SCAN{channel},0', 0.5, tc_rm)
+    util.safe_write(f'SCAN{channel},0', 0.5, tc_rm)
     return 1
     # endregion

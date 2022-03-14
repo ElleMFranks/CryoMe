@@ -16,21 +16,22 @@ import logging
 import os
 import pathlib
 
-import matplotlib.offsetbox as ob
-import matplotlib.pyplot as pp
-import matplotlib.ticker as tk
+import matplotlib.offsetbox as offsetbox
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import tabulate as tb
+import tabulate
 
 import lnas
-import outputs as out
-import config_handling as cfg
+import outputs
+import config_handling
 # endregion
 
 
 def _save_plot(
-        results: out.Results, meas_settings: cfg.MeasurementSettings,
+        results: outputs.Results, 
+        meas_settings: config_handling.MeasurementSettings,
         lna_biases: list[lnas.LNABiasSet], save_path: pathlib.Path,
         bias_id: Optional[int] = None,
         calibration_id: Optional[int] = None) -> None:
@@ -66,7 +67,7 @@ def _save_plot(
     # endregion
 
     # region Set figure.
-    fig, axis = pp.subplots()
+    fig, axis = plt.subplots()
     fig.set_size_inches(20.92, 11.77)
     fig.set_dpi(91.79)
     fig.tight_layout(pad=5)
@@ -82,7 +83,7 @@ def _save_plot(
     # endregion
 
     # region Create bias data text box to go on plot.
-    tb.PRESERVE_WHITESPACE = True
+    tabulate.PRESERVE_WHITESPACE = True
 
     if lna_2_bias is None or meas_settings.is_calibration:
         lna_2_g_v_data = ['NA', 'NA', 'NA']
@@ -99,10 +100,10 @@ def _save_plot(
         bias_row_1 = ['VG / V', *lna_1_bias.lna_g_v_strs(), *lna_2_g_v_data]
         bias_row_2 = ['VD / V', *lna_1_bias.lna_d_v_strs(), *lna_2_d_v_data]
         bias_row_3 = ['ID / mA', *lna_1_bias.lna_d_i_strs(), *lna_2_d_i_data]
-        bias_table = tb.tabulate(
+        bias_table = tabulate.tabulate(
             [bias_header, bias_row_1, bias_row_2, bias_row_3],
             headers="firstrow", disable_numparse=True, tablefmt="plain")
-        plot_bias_box = ob.AnchoredText(bias_table, loc='lower right')
+        plot_bias_box = offsetbox.AnchoredText(bias_table, loc='lower right')
     # endregion
 
     # region Set up basic plot parameters
@@ -112,8 +113,8 @@ def _save_plot(
     axis.set_xlim(
         results.freq_array[0], results.freq_array[len(results.freq_array) - 1])
     axis.set_ylim(0, +160)
-    axis.xaxis.set_minor_locator(tk.AutoMinorLocator(10))
-    axis.yaxis.set_minor_locator(tk.AutoMinorLocator(10))
+    axis.xaxis.set_minor_locator(ticker.AutoMinorLocator(10))
+    axis.yaxis.set_minor_locator(ticker.AutoMinorLocator(10))
     axis.grid(linestyle='--', which='major', linewidth=pixel_line_width)
     axis.grid(linestyle='--', which='minor', linewidth=pixel_line_width - 0.3)
     axis.tick_params('both', colors=font_color, labelsize=lab_font)
@@ -126,7 +127,7 @@ def _save_plot(
         plot_details = (
                 f'Cryostat Chain: {meas_settings.lna_cryo_layout.cryo_chain}  '
                 + f'Calibration: {calibration_id}')
-        plot_detail_box = ob.AnchoredText(plot_details, loc='upper right')
+        plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
         axis.add_artist(plot_detail_box)
         axis.set_title(plot_title, color=font_color, fontsize=lab_font + 2)
         axis.plot(results.freq_array, results.loss_cor_noise_temp,
@@ -141,7 +142,7 @@ def _save_plot(
                        + f' - LNA ID/s: {meas_settings.lna_id_str}' \
                        + f' - Session ID: {meas_settings.session_id}' \
                        + f' - Bias ID: {bias_id}'
-        plot_detail_box = ob.AnchoredText(plot_details, loc='upper right')
+        plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
         axis.add_artist(plot_detail_box)
         # endregion
 
@@ -182,13 +183,13 @@ def _save_plot(
     fig.savefig(save_path)
     # fig.show()
     sleep(0.5)  # Pause before/after close - box glitch.
-    pp.close('all')
+    plt.close('all')
     sleep(0.5)
     # endregion
 
 
 def save_standard_results(
-        settings: cfg.Settings, results: out.Results, bias_id: int,
+        settings: config_handling.Settings, results: outputs.Results, bias_id: int,
         lna_1_bias: lnas.LNABiasSet,
         lna_2_bias: Optional[lnas.LNABiasSet] = None) -> None:
     """Update settings log and create raw results CSV.
@@ -344,7 +345,7 @@ def save_standard_results(
 
 def save_calibration_results(
         be_biases: list[lnas.LNABiasSet], be_stages: list[lnas.StageBiasSet],
-        settings: cfg.Settings, results: out.Results) -> None:
+        settings: config_handling.Settings, results: outputs.Results) -> None:
     """Save calibration results and update calibration settings log.
 
     Args:

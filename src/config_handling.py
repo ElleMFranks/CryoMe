@@ -21,11 +21,11 @@ import pathlib
 import numpy as np
 import pandas as pd
 
-import error_handling as err
-import instruments as instr
+import error_handling
+import instruments
 import lnas
-import outputs as out
-import util as ut
+import outputs
+import util
 # endregion
 
 
@@ -33,24 +33,24 @@ def settings_config(config, cryo_chain: int) -> Settings:
     """Put user settings into class instances."""
     # region Instrumentation Settings.
     # region Signal Analyser Settings
-    sig_an_settings = instr.SignalAnalyserSettings(
-        instr.SpecAnFreqSettings(
+    sig_an_settings = instruments.SignalAnalyserSettings(
+        instruments.SpecAnFreqSettings(
             config['signal_analyser_settings']['center_freq'],
             config['signal_analyser_settings']['marker_freq'],
             config['signal_analyser_settings']['freq_span']),
-        instr.SpecAnBWSettings(
+        instruments.SpecAnBWSettings(
             config['signal_analyser_settings']['vid_bw'],
             config['signal_analyser_settings']['res_bw'],
             config['signal_analyser_settings']['power_bw']),
-        instr.SpecAnAmplSettings(
+        instruments.SpecAnAmplSettings(
             config['signal_analyser_settings']['atten'],
             config['signal_analyser_settings']['ref_level']),
         config['available_instruments']['sig_an_en'])
     # endregion
 
     # region Signal Generator Settings.
-    sig_gen_settings = instr.SignalGeneratorSettings(
-        instr.FreqSweepSettings(
+    sig_gen_settings = instruments.SignalGeneratorSettings(
+        instruments.FreqSweepSettings(
             config['signal_generator_settings']['min_freq'],
             config['signal_generator_settings']['max_freq'],
             config['signal_generator_settings']['freq_step_size'],
@@ -60,14 +60,14 @@ def settings_config(config, cryo_chain: int) -> Settings:
     # endregion
 
     # region Temperature Controller Settings
-    temp_ctrl_settings = instr.TempControllerSettings(
-        instr.TempCtrlChannels(
+    temp_ctrl_settings = instruments.TempControllerSettings(
+        instruments.TempCtrlChannels(
             config['temperature_controller_settings']['allchn_load_lsch'],
             config['temperature_controller_settings']['chn1_lna_lsch'],
             config['temperature_controller_settings']['chn2_lna_lsch'],
             config['temperature_controller_settings']['chn3_lna_lsch'],
             config['temperature_controller_settings']['extra_sensors_en']),
-        instr.TempTargets(
+        instruments.TempTargets(
             config['temperature_controller_settings']['t_hot_target'],
             config['temperature_controller_settings']['t_cold_target']),
         cryo_chain,
@@ -75,24 +75,24 @@ def settings_config(config, cryo_chain: int) -> Settings:
     # endregion
 
     # region Bias Power Supply Settings.
-    bias_psu_settings = instr.BiasPSUSettings(
-        instr.GVSearchSettings(
+    bias_psu_settings = instruments.BiasPSUSettings(
+        instruments.GVSearchSettings(
             config['bias_psu_settings']['g_v_low_lim'],
             config['bias_psu_settings']['g_v_up_lim'],
             config['bias_psu_settings']['num_g_v_brd_steps'],
             config['bias_psu_settings']['num_g_v_mid_steps'],
             config['bias_psu_settings']['num_g_v_nrw_steps']),
-        instr.PSULimits(
+        instruments.PSULimits(
             config['bias_psu_settings']['v_step_lim'],
             config['bias_psu_settings']['d_i_lim']),
-        instr.PSUMetaSettings(
+        instruments.PSUMetaSettings(
             config['measurement_settings']['psu_safe_init'],
             config['available_instruments']['bias_psu_en'],
             config['measurement_settings']['instr_buffer_time']))
     # endregion
 
     # region Switch Settings.
-    switch_settings = instr.SwitchSettings(
+    switch_settings = instruments.SwitchSettings(
         cryo_chain,
         config['available_instruments']['switch_en'])
     # endregion
@@ -115,7 +115,7 @@ def settings_config(config, cryo_chain: int) -> Settings:
         config['measurement_settings']['stage_1_2_same'],
         config['measurement_settings']['stage_2_3_same'])
 
-    analysis_sub_bws = out.AnalysisBandwidths(
+    analysis_sub_bws = outputs.AnalysisBandwidths(
         config['analysis_bandwidths']['ana_bw_1_min_max'],
         config['analysis_bandwidths']['ana_bw_2_min_max'],
         config['analysis_bandwidths']['ana_bw_3_min_max'],
@@ -182,7 +182,7 @@ def settings_config(config, cryo_chain: int) -> Settings:
                 config['bias_sweep_settings']['d_i_max'],
                 config['bias_sweep_settings']['alt_temp_sweep_skips']),
             nominal_bias, lna_cryo_layout),
-        instr.InstrumentSettings(
+        instruments.InstrumentSettings(
             sig_an_settings, sig_gen_settings, temp_ctrl_settings,
             bias_psu_settings, switch_settings,
             config['measurement_settings']['instr_buffer_time']),
@@ -471,17 +471,17 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             misc: Additional information relevant to the session.
         """
         # region Variable error handling.
-        err.validate_session_info(session_info)
-        err.validate_misc(misc)
-        err.validate_cal_info(cal_info, session_info)
-        err.validate_lna_info(lna_info)
+        error_handling.validate_session_info(session_info)
+        error_handling.validate_misc(misc)
+        error_handling.validate_cal_info(cal_info, session_info)
+        error_handling.validate_lna_info(lna_info)
         # endregion
 
         # region Initialise subclasses.
-        SessionInfo.__init__(self, *ut.get_dataclass_args(session_info))
-        Misc.__init__(self, *ut.get_dataclass_args(misc))
-        CalInfo.__init__(self, *ut.get_dataclass_args(cal_info))
-        LNAInfo.__init__(self, *ut.get_dataclass_args(lna_info))
+        SessionInfo.__init__(self, *util.get_dataclass_args(session_info))
+        Misc.__init__(self, *util.get_dataclass_args(misc))
+        CalInfo.__init__(self, *util.get_dataclass_args(cal_info))
+        LNAInfo.__init__(self, *util.get_dataclass_args(lna_info))
         # endregion
 
         # region Initialise attributes to set later.
@@ -624,19 +624,19 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
             lna_cryo_layout: The layout of the LNAs in the cryostat.
         """
         # region Check variables for errors.
-        err.validate_meas_sequence(meas_sequence)
-        err.check_nominals(nominal_bias)
-        err.validate_sweep_setup_vars(sweep_setup_vars)
-        err.validate_lna_sequence(meas_sequence.lna_sequence,
+        error_handling.validate_meas_sequence(meas_sequence)
+        error_handling.check_nominals(nominal_bias)
+        error_handling.validate_sweep_setup_vars(sweep_setup_vars)
+        error_handling.validate_lna_sequence(meas_sequence.lna_sequence,
                               lna_cryo_layout.lnas_per_chain)
         # endregion
 
         # region Set args to attributes.
-        MeasSequence.__init__(self, *ut.get_dataclass_args(meas_sequence))
+        MeasSequence.__init__(self, *util.get_dataclass_args(meas_sequence))
         if nominal_bias is not None:
-            NominalBias.__init__(self, *ut.get_dataclass_args(nominal_bias))
-        SweepSetupVars.__init__(self, *ut.get_dataclass_args(sweep_setup_vars))
-        LNACryoLayout.__init__(self, *ut.get_dataclass_args(lna_cryo_layout))
+            NominalBias.__init__(self, *util.get_dataclass_args(nominal_bias))
+        SweepSetupVars.__init__(self, *util.get_dataclass_args(sweep_setup_vars))
+        LNACryoLayout.__init__(self, *util.get_dataclass_args(lna_cryo_layout))
         # endregion
 
         # region Calculate additional attributes from args.
@@ -745,7 +745,7 @@ class FileStructure:
         """Sets up the normal and calibration settings logs."""
         # region Setup standard settings log.
         if not os.path.isfile(self.settings_path):
-            settings_col_titles = out.Results.std_settings_column_titles()
+            settings_col_titles = outputs.Results.std_settings_column_titles()
             with open(self.settings_path, 'w',
                       newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -755,7 +755,7 @@ class FileStructure:
 
         # region Setup calibration settings log.
         if not os.path.isfile(self.cal_settings_path):
-            cal_settings_col_titles = out.Results.cal_settings_column_titles()
+            cal_settings_col_titles = outputs.Results.cal_settings_column_titles()
             with open(self.cal_settings_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -767,8 +767,8 @@ class FileStructure:
         """Sets up the results log."""
         # region Setup results log
         if not os.path.isfile(self.res_log_path):
-            res_log_col_header = out.Results.results_ana_log_header()
-            res_log_col_titles = out.Results.results_ana_log_column_titles()
+            res_log_col_header = outputs.Results.results_ana_log_header()
+            res_log_col_titles = outputs.Results.results_ana_log_column_titles()
             with open(self.res_log_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -793,6 +793,6 @@ class Settings:
     """
     meas_settings: MeasurementSettings
     sweep_settings: SweepSettings
-    instr_settings: instr.InstrumentSettings
+    instr_settings: instruments.InstrumentSettings
     file_struc: FileStructure
 # endregion

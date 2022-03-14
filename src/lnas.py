@@ -22,14 +22,14 @@ LNAs under test, and the backend LNAs are handled.
 # region Import modules.
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import (Optional, Union)
-import copy as cp
+from typing import Optional, Union
+import copy
 
 from pyvisa import Resource
 
-import bias_ctrl as bc
-import config_handling as cfg
-import util as ut
+import bias_ctrl
+import config_handling
+import util
 # endregion
 
 
@@ -60,7 +60,7 @@ class StageSettings:
     """
     lna_position: str
     d_i_limit: float = 10
-    card_chnl: Optional[bc.CardChnl] = None
+    card_chnl: Optional[bias_ctrl.CardChnl] = None
 # endregion
 
 
@@ -89,7 +89,7 @@ class StageBiasSet(IndivBias, StageSettings):
                 voltage drop.
         """
 
-        StageSettings.__init__(self, *ut.get_dataclass_args(stage_settings))
+        StageSettings.__init__(self, *util.get_dataclass_args(stage_settings))
         self.correct_d_v = correct_d_v
 
         # region Set drain resistance depending on passed position.
@@ -106,7 +106,7 @@ class StageBiasSet(IndivBias, StageSettings):
         # endregion
 
         # region Set args to attributes.
-        IndivBias.__init__(self, *ut.get_dataclass_args(bias))
+        IndivBias.__init__(self, *util.get_dataclass_args(bias))
         # endregion
 
         # region Calculate additional attributes from args.
@@ -170,13 +170,13 @@ class StageBiasSet(IndivBias, StageSettings):
         self._g_v = value
 
     @property
-    def card_chnl(self) -> bc.CardChnl:
+    def card_chnl(self) -> bias_ctrl.CardChnl:
         """Card and channel on power supply."""
         return self._card_chnl
 
     @card_chnl.setter
-    def card_chnl(self, value: Optional[bc.CardChnl]) -> None:
-        if not (isinstance(value, bc.CardChnl) or value is None):
+    def card_chnl(self, value: Optional[bias_ctrl.CardChnl]) -> None:
+        if not (isinstance(value, bias_ctrl.CardChnl) or value is None):
             raise Exception('Must be type CardChnl.')
         self._card_chnl = value
 
@@ -264,8 +264,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
         # region Set args to attributes.
         LNACryoLayout.__init__(
-            self, *ut.get_dataclass_args(lna_cryo_layout))
-        LNAStages.__init__(self, *ut.get_dataclass_args(lna_stages))
+            self, *util.get_dataclass_args(lna_cryo_layout))
+        LNAStages.__init__(self, *util.get_dataclass_args(lna_stages))
 
         self.lna_position = lna_position
         # endregion
@@ -283,17 +283,17 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Set additional attributes based on args.
         # region Handle channels/drain impedances based on LNA position.
         if self.lna_position == 'LNA1':
-            self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 1)
-            self.stage_2.card_chnl = bc.CardChnl(self.cryo_chain, 2)
-            self.stage_3.card_chnl = bc.CardChnl(self.cryo_chain, 3)
+            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 1)
+            self.stage_2.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 2)
+            self.stage_3.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 3)
         elif self.lna_position == 'LNA2':
-            self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 4)
-            self.stage_2.card_chnl = bc.CardChnl(self.cryo_chain, 5)
-            self.stage_3.card_chnl = bc.CardChnl(self.cryo_chain, 6)
+            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 4)
+            self.stage_2.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 5)
+            self.stage_3.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 6)
         elif self.lna_position == 'CRBE':
-            self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 7)
+            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 7)
         elif self.lna_position == 'RTBE':
-            self.stage_1.card_chnl = bc.CardChnl(self.cryo_chain, 8)
+            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 8)
         # endregion
 
         # region Handle same stage conditions.
@@ -467,17 +467,17 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Measure bias conditions.
         # region Stage 1.
         if psx_rm is not None and self.stage_1 is not None:
-            meas_col_data.append(ut.safe_query(
+            meas_col_data.append(util.safe_query(
                     f'Bias:MEASure:VG:'
                     f'CArd{self.stage_1.card_chnl.card}:'
                     f'CHannel{self.stage_1.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
-            meas_col_data.append(ut.safe_query(
+            meas_col_data.append(util.safe_query(
                     f'Bias:MEASure:VD:'
                     f'CArd{self.stage_1.card_chnl.card}:'
                     f'CHannel{self.stage_1.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
-            meas_col_data.append((ut.safe_query(
+            meas_col_data.append((util.safe_query(
                     f'Bias:MEASure:ID:'
                     f'CArd{self.stage_1.card_chnl.card}:'
                     f'CHannel{self.stage_1.card_chnl.chnl}?',
@@ -491,19 +491,19 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Stage 2.
         if psx_rm is not None and self.stage_2 is not None:
             meas_col_data.append(
-                ut.safe_query(
+                util.safe_query(
                     f'Bias:MEASure:VG:'
                     f'CArd{self.stage_2.card_chnl.card}:'
                     f'CHannel{self.stage_2.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
             meas_col_data.append(
-                ut.safe_query(
+                util.safe_query(
                     f'Bias:MEASure:VD:'
                     f'CArd{self.stage_2.card_chnl.card}:'
                     f'CHannel{self.stage_2.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
             meas_col_data.append(
-                (ut.safe_query(
+                (util.safe_query(
                     f'Bias:MEASure:ID:'
                     f'CArd{self.stage_2.card_chnl.card}:'
                     f'CHannel{self.stage_2.card_chnl.chnl}?',
@@ -515,17 +515,17 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Stage 3.
         if psx_rm is not None and self.stage_3 is not None:
 
-            meas_col_data.append(ut.safe_query(
+            meas_col_data.append(util.safe_query(
                     f'Bias:MEASure:VG:'
                     f'CArd{self.stage_3.card_chnl.card}:'
                     f'CHannel{self.stage_3.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
-            meas_col_data.append(ut.safe_query(
+            meas_col_data.append(util.safe_query(
                     f'Bias:MEASure:VD:'
                     f'CArd{self.stage_3.card_chnl.card}:'
                     f'CHannel{self.stage_3.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
-            meas_col_data.append((ut.safe_query(
+            meas_col_data.append((util.safe_query(
                     f'Bias:MEASure:ID:'
                     f'CArd{self.stage_3.card_chnl.card}:'
                     f'CHannel{self.stage_3.card_chnl.chnl}?',
@@ -762,7 +762,7 @@ class NominalLNASettings:
         lna_1_nom_bias (LNABiasSet):
         lna_2_nom_bias Optional(LNABiasSet):
     """
-    def __init__(self, settings: cfg.Settings) -> None:
+    def __init__(self, settings: config_handling.Settings) -> None:
         """Constructor for the NominalLNASettings class.
 
         Args:
@@ -774,28 +774,28 @@ class NominalLNASettings:
         # region Construct stages.
         self.lna_1_nom_stg = StageBiasSet(
             StageSettings('LNA1'),
-            IndivBias(cp.copy(settings.sweep_settings.d_i_nominal),
-                      cp.copy(settings.sweep_settings.d_v_nominal)))
+            IndivBias(copy.copy(settings.sweep_settings.d_i_nominal),
+                      copy.copy(settings.sweep_settings.d_v_nominal)))
 
         self.lna_2_nom_stg = StageBiasSet(
             StageSettings('LNA2'),
-            IndivBias(cp.copy(settings.sweep_settings.d_i_nominal),
-                      cp.copy(settings.sweep_settings.d_v_nominal)))
+            IndivBias(copy.copy(settings.sweep_settings.d_i_nominal),
+                      copy.copy(settings.sweep_settings.d_v_nominal)))
         # endregion
 
         # region Construct LNAs from stages.
         self.lna_1_nom_bias = LNABiasSet(
             'LNA1', meas_settings.lna_cryo_layout, d_i_lim,
-            LNAStages(cp.deepcopy(self.lna_1_nom_stg),
-                      cp.deepcopy(self.lna_1_nom_stg),
-                      cp.deepcopy(self.lna_1_nom_stg)))
+            LNAStages(copy.deepcopy(self.lna_1_nom_stg),
+                      copy.deepcopy(self.lna_1_nom_stg),
+                      copy.deepcopy(self.lna_1_nom_stg)))
 
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             self.lna_2_nom_bias = LNABiasSet(
                 'LNA2', meas_settings.lna_cryo_layout, d_i_lim,
-                LNAStages(cp.deepcopy(self.lna_2_nom_stg),
-                          cp.deepcopy(self.lna_2_nom_stg),
-                          cp.deepcopy(self.lna_2_nom_stg)))
+                LNAStages(copy.deepcopy(self.lna_2_nom_stg),
+                          copy.deepcopy(self.lna_2_nom_stg),
+                          copy.deepcopy(self.lna_2_nom_stg)))
         else:
             self.lna_2_nom_bias = None
         # endregion

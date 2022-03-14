@@ -11,14 +11,14 @@ import logging
 
 import numpy as np
 import pandas as pd
-import pyvisa as pv
+import pyvisa
 
-import bias_ctrl as bc
-import chain_select as cs
-import instruments as instr
+import bias_ctrl
+import chain_select
+import instruments
 import lnas
-import meas_algorithms as ma
-import config_handling as cfg
+import meas_algorithms
+import config_handling
 # endregion
 
 
@@ -34,14 +34,14 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
     # region Alternating Temperatures.
     if meas_settings.measure_method == 'AT':
         log.info('Triggered alternating temperature measurement.')
-        ma.alternating_temps(
+        meas_algorithms.alternating_temps(
             settings, lna_biases, res_managers, trimmed_input_data)
     # endregion
 
     # region All Cold Then All Hot.
     elif meas_settings.measure_method == 'ACTAH':
         log.info('Triggered all cold then all hot measurement.')
-        ma.all_cold_to_all_hot(
+        meas_algorithms.all_cold_to_all_hot(
             settings, lna_biases, res_managers, trimmed_input_data)
     # endregion
 
@@ -52,7 +52,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         # region Set up LNA1.
         lna_1_man = meas_settings.direct_lnas.manual_lna_settings.lna_1_man
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
-            bc.bias_set(res_managers.psu_rm, lna_1_man,
+            bias_ctrl.bias_set(res_managers.psu_rm, lna_1_man,
                         settings.instr_settings.bias_psu_settings,
                         settings.instr_settings.buffer_time)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
@@ -62,7 +62,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             lna_2_man = meas_settings.direct_lnas.manual_lna_settings.lna_2_man
             if settings.instr_settings.bias_psu_settings.bias_psu_en:
-                bc.bias_set(res_managers.psu_rm, lna_2_man,
+                bias_ctrl.bias_set(res_managers.psu_rm, lna_2_man,
                             settings.instr_settings.bias_psu_settings,
                             settings.instr_settings.buffer_time)
                 lna_2_man.lna_measured_column_data(res_managers.psu_rm)
@@ -72,7 +72,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
 
         lna_man_biases = [lna_1_man, lna_2_man]
 
-        ma.manual_entry_measurement(
+        meas_algorithms.manual_entry_measurement(
             settings, lna_man_biases, res_managers, trimmed_input_data)
         # endregion
     # endregion
@@ -80,7 +80,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
     # region Calibration.
     elif meas_settings.measure_method == 'Calibration':
         log.info('Triggered calibration measurement.')
-        ma.calibration_measurement(
+        meas_algorithms.calibration_measurement(
             settings, res_managers, trimmed_input_data.trimmed_loss)
     # endregion
 
@@ -118,7 +118,7 @@ def _comment_handling(comment_en: bool) -> str:
 
 
 def _res_manager_setup(
-        instr_settings: instr.InstrumentSettings) -> instr.ResourceManagers:
+        instr_settings: instruments.InstrumentSettings) -> instruments.ResourceManagers:
     """Sets up resource managers for instrumentation."""
 
     # region Unpack settings
@@ -129,7 +129,7 @@ def _res_manager_setup(
     # endregion
 
     # region Initialise resource managers.
-    res_manager = pv.ResourceManager()
+    res_manager = pyvisa.ResourceManager()
     res_manager.list_resources()
     # endregion
 
@@ -166,9 +166,9 @@ def _res_manager_setup(
         psu_rm.write_termination = '\n'
         # Ensure psx is initialised safely
         if bias_psu_settings.psu_safe_init:
-            bc.psu_safe_init(
+            bias_ctrl.psu_safe_init(
                 psu_rm, instr_settings.buffer_time,
-                instr.PSULimits(bias_psu_settings.v_step_lim,
+                instruments.PSULimits(bias_psu_settings.v_step_lim,
                              bias_psu_settings.d_i_lim),
                 bias_psu_settings.g_v_lower_lim)
     # endregion
@@ -193,11 +193,11 @@ def _res_manager_setup(
     # endregion
 
     # region Create class instance to keep ResourceManagers together.
-    return instr.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
+    return instruments.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
     # endregion
 
 
-def start_session(settings: cfg.Settings) -> None:
+def start_session(settings: config_handling.Settings) -> None:
     """Begins a session using the settings passed from Cryome.
 
     Args:
@@ -238,7 +238,7 @@ def start_session(settings: cfg.Settings) -> None:
     log.cdebug('Loss trimmed.')
 
     # region Save trimmed loss and calibration data as an object.
-    trimmed_input_data = cfg.TrimmedInputs(trimmed_loss, trimmed_cal_data)
+    trimmed_input_data = config_handling.TrimmedInputs(trimmed_loss, trimmed_cal_data)
     # endregion
     # endregion
 
@@ -260,7 +260,7 @@ def start_session(settings: cfg.Settings) -> None:
 
     # region Ensure correct cryostat channel is set
     if instr_settings.switch_settings.switch_en:
-        cs.cryo_chain_switch(0.5, meas_settings)
+        chain_select.cryo_chain_switch(0.5, meas_settings)
         log.info('Switch set.')
     # endregion
 
@@ -276,7 +276,7 @@ def start_session(settings: cfg.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-    cs.back_end_lna_setup(settings, res_managers.psu_rm)
+    chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
     # endregion
 
     # region Set up nominal LNA bias points.
@@ -315,9 +315,9 @@ def start_session(settings: cfg.Settings) -> None:
     # region Turn PSX off safely.
     if bias_psu_settings.bias_psu_en:
         log.info('Turning off PSU...')
-        bc.psu_safe_init(
+        bias_ctrl.psu_safe_init(
             res_managers.psu_rm, instr_settings.buffer_time,
-            instr.PSULimits(bias_psu_settings.v_step_lim,
+            instruments.PSULimits(bias_psu_settings.v_step_lim,
                          bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
         log.info('PSU turned off.')

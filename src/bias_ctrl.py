@@ -11,16 +11,16 @@ psu_safe_init.
 from __future__ import annotations
 from dataclasses import dataclass
 from itertools import product
-import logging
-from typing import Union
 from time import sleep
+from typing import Union
+import logging
 
 from pyvisa import Resource
 import numpy as np
 
-import instruments as instr
+import instruments
 import lnas
-import util as ut
+import util
 # endregion
 
 
@@ -52,7 +52,7 @@ class CardChnl:
 
 def psu_safe_init(
         psu_rm: Resource, buffer_time: float,
-        psu_lims: instr.PSULimits, g_v_low_lim: float) -> None:
+        psu_lims: instruments.PSULimits, g_v_low_lim: float) -> None:
     """Safely disables all enabled channels, switches global en off.
 
     Args:
@@ -73,7 +73,7 @@ def psu_safe_init(
     # region Go through each channel on each card and safely disable.
     for state in product(card, channel):
         card_chnl = CardChnl(state[0], state[1])
-        is_ch_on = ut.safe_query(
+        is_ch_on = util.safe_query(
             f'Bias:ENable:CArd{card_chnl.card}:Channel{card_chnl.chnl}?',
             buffer_time, psu_rm, 'psx')
 
@@ -82,14 +82,14 @@ def psu_safe_init(
             # Set gate voltage
             g_v_targ = GOrDVTarget('g', g_v_low_lim)
             d_v_targ = GOrDVTarget('d', 0)
-            exc_psu_lims = instr.PSULimits(
+            exc_psu_lims = instruments.PSULimits(
                 psu_lims.v_step_lim, 3 * psu_lims.d_i_lim)
             _safe_set_v(psu_rm, card_chnl, g_v_targ, exc_psu_lims, buffer_time)
             # Set drain voltage
             _safe_set_v(psu_rm, card_chnl, d_v_targ, exc_psu_lims, buffer_time)
 
             # Disable channel
-            ut.safe_write(f'Bias:ENable:CA{state[0]}:CHannel{state[1]} 0',
+            util.safe_write(f'Bias:ENable:CA{state[0]}:CHannel{state[1]} 0',
                           buffer_time, psu_rm)
         # endregion
 
@@ -106,7 +106,7 @@ def global_bias_en(
         psu_rm: Resource, buffer_time: float,
         on_off: int) -> None:
     """Enables/disables psu."""
-    ut.safe_write(f'BIAS:ENable:SYStem {on_off}', buffer_time, psu_rm)
+    util.safe_write(f'BIAS:ENable:SYStem {on_off}', buffer_time, psu_rm)
 
 
 def _local_bias_en(
@@ -118,7 +118,7 @@ def _local_bias_en(
     channels = card_chnl.chnl
     # region If channel is passed as int, no need to loop, directly set.
     if isinstance(channels, int):  # Need this because no enumerate(int)
-        ut.safe_write(
+        util.safe_write(
             f"Bias:ENable:CArd{card}:CHannel{channels} {on_or_off}",
             buffer_time, psu_rm)
     # endregion
@@ -126,7 +126,7 @@ def _local_bias_en(
     # region If channel passed as list of channels, loop through and en.
     else:
         for i, _ in enumerate(channels):
-            ut.safe_write(
+            util.safe_write(
                 f"Bias:ENable:CArd{card}:CHannel {channels[i]} {on_or_off}",
                 buffer_time, psu_rm)
     # endregion
@@ -139,7 +139,7 @@ def _get_psu_v(
 
     # region Get the measured value from the psu.
     if set_or_meas == 'meas':
-        psu_v = ut.safe_query(
+        psu_v = util.safe_query(
             f"Bias:Measure:V{g_or_d}:CArd{card_chnl.card}:"
             f"CHannel{card_chnl.chnl}?",
             buffer_time, psu_rm, 'psu', True)
@@ -147,7 +147,7 @@ def _get_psu_v(
 
     # region Get the set value from the psu.
     elif set_or_meas == 'set':
-        psu_v = ut.safe_query(
+        psu_v = util.safe_query(
             f"Bias:Set:V{g_or_d}:CArd{card_chnl.card}:"
             f"CHannel{card_chnl.chnl}?",
             buffer_time, psu_rm, 'psu', True)
@@ -169,7 +169,7 @@ def _get_psu_d_i(
         buffer_time: float) -> float:
     """Returns current measured by psu bias supply in mA"""
     # region Get and return the measured current from the psu.
-    psu_d_i = ut.safe_query(
+    psu_d_i = util.safe_query(
         f"Bias:Measure:Id:CArd{card_chnl.card}:CHannel{card_chnl.chnl}?",
         buffer_time, psu_rm, 'psu', True)
     return 1000 * psu_d_i
@@ -181,7 +181,7 @@ def _set_psu_v(
         buffer_time: float, g_or_d_v_target: GOrDVTarget) -> None:
     """ Called by _safe_set_v. Sets gate/drain psu voltage directly."""
     # region Write the given voltage to the psu.
-    ut.safe_write(f"BIAS:SET:V{g_or_d_v_target.g_or_d}:"
+    util.safe_write(f"BIAS:SET:V{g_or_d_v_target.g_or_d}:"
                   f"CA{card_chnl.card}:CH{card_chnl.chnl} "
                   f"{g_or_d_v_target.v_target}",
                   buffer_time, psu_rm)
@@ -190,7 +190,7 @@ def _set_psu_v(
 
 def direct_set_stage(
         psu_rm: Resource, card_chnl: CardChnl,
-        psu_lims: instr.PSULimits, buffer_time: float,
+        psu_lims: instruments.PSULimits, buffer_time: float,
         g_d_vs: list[GOrDVTarget]) -> None:
     """Set a stage by requesting gate and drain targets directly."""
     # region Safely set drain and then gate voltages using _safe_set_v.
@@ -243,7 +243,7 @@ def _gate_or_drain(g_or_d: str) -> str:
 
 def _safe_set_v(
         psu_rm: Resource, card_chnl: CardChnl,
-        g_or_d_v_target: GOrDVTarget, psu_lims: instr.PSULimits,
+        g_or_d_v_target: GOrDVTarget, psu_lims: instruments.PSULimits,
         buffer_time: float) -> Union[float, str]:
     """ Safely sets psu to a target voltage in increments.
 
@@ -505,8 +505,8 @@ def _adapt_search_stage(
 
 def _safe_set_stage(
         psu_rm: Resource, stage_bias: lnas.StageBiasSet,
-        psu_set: instr.BiasPSUSettings, card_chnl: CardChnl,
-        psu_lims: instr.PSULimits) -> float:
+        psu_set: instruments.BiasPSUSettings, card_chnl: CardChnl,
+        psu_lims: instruments.PSULimits) -> float:
     """Find required gate V for requested drain I at given drain V.
 
     Employs an adaptive search in order to find a gate voltage which
@@ -669,7 +669,7 @@ def _safe_set_stage(
 
 def bias_set(
         psu_rm: Resource, target_lna_bias: lnas.LNABiasSet,
-        psu_set: instr.BiasPSUSettings, buffer_time: float) -> None:
+        psu_set: instruments.BiasPSUSettings, buffer_time: float) -> None:
     """Set the psu to the LNA bias values requested.
 
     When called will set each relevant channel of the psu to the
@@ -689,17 +689,17 @@ def bias_set(
     psu_stg_2_lims = None
     psu_stg_3_lims = None
 
-    psu_stg_1_lims = instr.PSULimits(
+    psu_stg_1_lims = instruments.PSULimits(
          psu_set.v_step_lim, target_lna_bias.stage_1.d_i_lim)
 
     if hasattr(target_lna_bias, 'stage_2'):
         if target_lna_bias.stage_2 is not None:
-            psu_stg_2_lims = instr.PSULimits(
+            psu_stg_2_lims = instruments.PSULimits(
                 psu_set.v_step_lim, target_lna_bias.stage_2.d_i_lim)
 
     if hasattr(target_lna_bias, 'stage_3'):
         if target_lna_bias.stage_3 is not None:
-            psu_stg_3_lims = instr.PSULimits(
+            psu_stg_3_lims = instruments.PSULimits(
                 psu_set.v_step_lim, target_lna_bias.stage_3.d_i_lim)
     # endregion
 

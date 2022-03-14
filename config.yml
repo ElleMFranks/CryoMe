@@ -64,7 +64,7 @@ signal_analyser_settings:
   vid_bw: 10          # hz
   
 signal_generator_settings:
-  freq_step_size: 0.2      # ghz
+  freq_step_size: 1      # ghz
   max_freq: 116          # ghz
   min_freq: 67           # ghz
   vna_or_sig_gen: 'sig gen'  # either 'vna' or 'sig gen'

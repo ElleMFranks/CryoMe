@@ -14,13 +14,13 @@ higher.
 from __future__ import annotations
 import logging
 import os
-import pathlib as pl
+import pathlib
 import sys
 
-import yaml as ym
+import yaml
 
-import config_handling as cfg
-import start_session as ss
+import config_handling
+import start_session
 # endregion
 
 
@@ -66,9 +66,9 @@ def main():
     # endregion
 
     # region Load in settings yaml file.
-    with open(pl.Path(str(os.getcwd()) + '\\config.yml'),
+    with open(pathlib.Path(str(os.getcwd()) + '\\config.yml'),
               encoding='utf-8') as _f:
-        yaml_config = ym.safe_load(_f)
+        yaml_config = yaml.safe_load(_f)
     # endregion
 
     # region Measure each chain as requested.
@@ -84,7 +84,7 @@ def main():
         # endregion
 
         # region Set up measurement settings.
-        settings = cfg.settings_config(yaml_config, cryo_chain)
+        settings = config_handling.settings_config(yaml_config, cryo_chain)
         # endregion
 
         # region Configure session ID and log file writer.
@@ -99,7 +99,7 @@ def main():
 
         # region Trigger measurement
         try:
-            ss.start_session(settings)
+            start_session.start_session(settings)
         # Pylint broad-except disabled as sys.exc_info()[0] logged.
         except Exception as _e:  # pylint: disable=broad-except
             log.exception(sys.exc_info()[0])

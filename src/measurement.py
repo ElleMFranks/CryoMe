@@ -13,7 +13,7 @@ in outputs.py and returned.
 # region Import modules.
 from __future__ import annotations
 from time import sleep
-from typing import (Union, Optional)
+from typing import Union, Optional
 import logging
 import random
 
@@ -22,15 +22,15 @@ import numpy as np
 import tqdm
 
 import heater_ctrl
-import instruments as instr
-import outputs as out
-import config_handling as cfg
-import util as ut
+import instruments
+import outputs
+import config_handling
+import util
 # endregion
 
 
 def _get_temp_target(
-        hot_or_cold: str, tc_settings: instr.TempControllerSettings) -> float:
+        hot_or_cold: str, tc_settings: instruments.TempControllerSettings) -> float:
     """Returns the hot or cold temperature target."""
     log = logging.getLogger(__name__)
     if hot_or_cold == 'Cold':
@@ -45,7 +45,7 @@ def _get_temp_target(
 
 
 def _get_temps(tc_rm, temp_target: float,
-               instr_settings: instr.InstrumentSettings) -> list[float]:
+               instr_settings: instruments.InstrumentSettings) -> list[float]:
     """Returns the measured temperatures on the requested channels."""
     # region Get and return temperatures for requested temp sensors.
     buffer_time = instr_settings.buffer_time
@@ -54,23 +54,23 @@ def _get_temps(tc_rm, temp_target: float,
         # region Measure and store load, lna, and extra sensor temps.
         tc_rm.write(f'SCAN {tc_settings.load_lsch},0')
         sleep(5)
-        load_temp = ut.safe_query(
+        load_temp = util.safe_query(
             f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
         tc_rm.write(f'SCAN {tc_settings.lna_lsch},0')
         sleep(5)
-        lna_temp = ut.safe_query(
+        lna_temp = util.safe_query(
             f'KRDG? {tc_settings.lna_lsch}', buffer_time, tc_rm,
             'lakeshore', True)
         if tc_settings.extra_sensors_en:
             tc_rm.write(f'SCAN {tc_settings.extra_1_lsch},0')
             sleep(5)
-            extra_1_temp = ut.safe_query(
+            extra_1_temp = util.safe_query(
                 f'KRDG? {tc_settings.extra_1_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
             tc_rm.write(f'SCAN {tc_settings.extra_2_lsch},0')
             sleep(5)
-            extra_2_temp = ut.safe_query(
+            extra_2_temp = util.safe_query(
                 f'KRDG? {tc_settings.extra_2_lsch}', buffer_time, tc_rm,
                 'lakeshore', True)
         else:
@@ -97,7 +97,7 @@ def _get_temps(tc_rm, temp_target: float,
 
 
 def _temp_set_get(tc_rm: Resource, temp_target: float,
-                  instr_settings: instr.InstrumentSettings) -> list:
+                  instr_settings: instruments.InstrumentSettings) -> list:
     """Sets/gets temperatures, ensure stability/status of heater."""
 
     # region Unpack objects/set up logger/set initial variables.
@@ -110,13 +110,13 @@ def _temp_set_get(tc_rm: Resource, temp_target: float,
         if tc_rm is not None:
             # region Set Lakeshore to target temp, wait for stabilisation.
             # Check for heater errors before and after.
-            pre_heater_status = ut.safe_query(
+            pre_heater_status = util.safe_query(
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
             heater_ctrl.set_temp(tc_rm, temp_target, 'load')
             heater_ctrl.load_temp_stabilisation(
                 tc_rm, tc_settings.load_lsch, temp_target)
             pre_loop_temps = _get_temps(tc_rm, temp_target, instr_settings)
-            post_heater_status = ut.safe_query(
+            post_heater_status = util.safe_query(
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
             # endregion
 
@@ -139,8 +139,8 @@ def _temp_set_get(tc_rm: Resource, temp_target: float,
 
 
 def _meas_loop(
-        settings: cfg.Settings, hot_or_cold: str,
-        res_managers: instr.ResourceManagers) -> out.LoopInstanceResult:
+        settings: config_handling.Settings, hot_or_cold: str,
+        res_managers: instruments.ResourceManagers) -> outputs.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
     Checks if hot or cold, sets load to target temp, then moves through
@@ -219,7 +219,7 @@ def _meas_loop(
 
             # region Store pre-loop temperatures, and during loop load temp.
             if tc_rm is not None:
-                load_temp = ut.safe_query(
+                load_temp = util.safe_query(
                     f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
                     'lakeshore', True)
                 if temp_target - 1 > load_temp > temp_target + 1:
@@ -237,8 +237,8 @@ def _meas_loop(
 
             # region Measure and store marker power at requested frequency.
             if spec_an_rm is not None:
-                ut.safe_query('*OPC?', buffer_time, spec_an_rm, 'spec an')
-                marker_power = ut.safe_query(
+                util.safe_query('*OPC?', buffer_time, spec_an_rm, 'spec an')
+                marker_power = util.safe_query(
                     ':CALC:MARK1:Y?', buffer_time, spec_an_rm, 'spec an')
                 powers.append(float(marker_power.strip()))
             else:
@@ -289,17 +289,17 @@ def _meas_loop(
 
     # region Return loop instance result.
     log.info(f'{hot_or_cold} measurement complete.')
-    return out.LoopInstanceResult(
+    return outputs.LoopInstanceResult(
         hot_or_cold, powers, load_temps, lna_temps,
-        out.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
+        outputs.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
                         pre_loop_extra_1_temps, post_loop_extra_1_temps,
                         pre_loop_extra_2_temps, post_loop_extra_2_temps))
     # endregion
 
 
 def _closest_temp_then_other(
-        init_temp: float, res_managers: instr.ResourceManagers,
-        settings: cfg.Settings) -> list[out.LoopInstanceResult]:
+        init_temp: float, res_managers: instruments.ResourceManagers,
+        settings: config_handling.Settings) -> list[outputs.LoopInstanceResult]:
     """Triggers measurement loops, first closest temp, then other."""
 
     tc_settings = settings.instr_settings.temp_ctrl_settings
@@ -322,11 +322,11 @@ def _closest_temp_then_other(
 
 
 def measurement(
-        settings: cfg.Settings,
-        res_managers: instr.ResourceManagers,
-        trimmed_input_data: cfg.TrimmedInputs,
+        settings: config_handling.Settings,
+        res_managers: instruments.ResourceManagers,
+        trimmed_input_data: config_handling.TrimmedInputs,
         hot_cold_count: Optional[int] = None
-        ) -> Union[out.Results, out.LoopInstanceResult]:
+        ) -> Union[outputs.Results, outputs.LoopInstanceResult]:
     """Conducts a full measurement using the chosen algorithm.
 
     Function works differently depending on the measurement method
@@ -371,7 +371,7 @@ def measurement(
     if meas_settings.measure_method in ['AT', 'MEM']:
         # region Get current temperature of the load
         if res_managers.tc_rm is not None:
-            init_temp = ut.safe_query(
+            init_temp = util.safe_query(
                 'KRDG? {tc_settings.load_lsch', instr_settings.buffer_time,
                 res_managers.tc_rm, 'lakeshore', True)
         else:
@@ -387,9 +387,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        standard_results = out.Results(
-            out.LoopPair(loop_res[1], loop_res[0]),
-            out.ResultsMetaInfo(
+        standard_results = outputs.Results(
+            outputs.LoopPair(loop_res[1], loop_res[0]),
+            outputs.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,
@@ -424,7 +424,7 @@ def measurement(
     if meas_settings.measure_method == 'Calibration':
         # region Get current temperature of the load
         if res_managers.tc_rm is not None:
-            init_temp = ut.safe_query(
+            init_temp = util.safe_query(
                 f'KRDG? {tc_settings.load_lsch}', instr_settings.buffer_time,
                 res_managers.tc_rm, 'lakeshore', True)
         else:
@@ -439,9 +439,9 @@ def measurement(
         # endregion
 
         # region Save and return results.
-        calibration_results = out.Results(
-            out.LoopPair(loop_res[1], loop_res[0]),
-            out.ResultsMetaInfo(
+        calibration_results = outputs.Results(
+            outputs.LoopPair(loop_res[1], loop_res[0]),
+            outputs.ResultsMetaInfo(
                 meas_settings.comment, sig_gen_settings.freq_array,
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,

@@ -9,20 +9,20 @@ direct set method, or a safe set method.
 
 # region Import modules.
 from __future__ import annotations
-import logging
 from time import sleep
+import logging
 
 from pyvisa import Resource
 import nidaqmx
 
-import bias_ctrl as bc
-import instruments as instr
-import config_handling as cfg
+import bias_ctrl
+import instruments
+import config_handling
 # endregion
 
 
 def cryo_chain_switch(
-        buffer_time: float, meas_settings: cfg.MeasurementSettings) -> None:
+        buffer_time: float, meas_settings: config_handling.MeasurementSettings) -> None:
     """Controls the switch between the signal and cryostat chain.
 
     Args:
@@ -89,7 +89,7 @@ def cryo_chain_switch(
 
 
 def back_end_lna_setup(
-        settings: cfg.Settings, psu_rm: Resource) -> None:
+        settings: config_handling.Settings, psu_rm: Resource) -> None:
     """Safely sets back end LNA biases for requested cryostat chain.
 
     Args:
@@ -122,16 +122,16 @@ def back_end_lna_setup(
     if psu_rm is not None and use_g_v_or_d_i == 'g v':
         # region If direct set uncor manual input g/dV to biasing.
 
-        bc.direct_set_stage(
-            psu_rm, bc.CardChnl(chain, 8),
-            instr.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
-            [bc.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
-                bc.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
-        bc.direct_set_stage(
-            psu_rm, bc.CardChnl(chain, 7),
-            instr.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
-            [bc.GOrDVTarget('g', crbe_lna.stage_1.g_v),
-                bc.GOrDVTarget('d', crbe_lna.stage_1.d_v_at_psu)])
+        bias_ctrl.direct_set_stage(
+            psu_rm, bias_ctrl.CardChnl(chain, 8),
+            instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+            [bias_ctrl.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
+                bias_ctrl.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
+        bias_ctrl.direct_set_stage(
+            psu_rm, bias_ctrl.CardChnl(chain, 7),
+            instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+            [bias_ctrl.GOrDVTarget('g', crbe_lna.stage_1.g_v),
+                bias_ctrl.GOrDVTarget('d', crbe_lna.stage_1.d_v_at_psu)])
         # endregion
 
         # region Get measured back-end data.
@@ -144,8 +144,8 @@ def back_end_lna_setup(
         # This will algorithmically find the requested current at
         # required drain voltage, need to remember in this case
         # drain voltage is corrected.
-        bc.bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
-        bc.bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
+        bias_ctrl.bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
+        bias_ctrl.bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
         # endregion
 
         # region Get measured back-end data.
