@@ -53,8 +53,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         lna_1_man = meas_settings.direct_lnas.manual_lna_settings.lna_1_man
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
             bias_ctrl.bias_set(res_managers.psu_rm, lna_1_man,
-                        settings.instr_settings.bias_psu_settings,
-                        settings.instr_settings.buffer_time)
+                               settings.instr_settings.bias_psu_settings,
+                               settings.instr_settings.buffer_time)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
         # endregion
 
@@ -63,8 +63,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
             lna_2_man = meas_settings.direct_lnas.manual_lna_settings.lna_2_man
             if settings.instr_settings.bias_psu_settings.bias_psu_en:
                 bias_ctrl.bias_set(res_managers.psu_rm, lna_2_man,
-                            settings.instr_settings.bias_psu_settings,
-                            settings.instr_settings.buffer_time)
+                                   settings.instr_settings.bias_psu_settings,
+                                   settings.instr_settings.buffer_time)
                 lna_2_man.lna_measured_column_data(res_managers.psu_rm)
         else:
             lna_2_man = None
@@ -117,8 +117,8 @@ def _comment_handling(comment_en: bool) -> str:
     # endregion
 
 
-def _res_manager_setup(
-        instr_settings: instruments.InstrumentSettings) -> instruments.ResourceManagers:
+def _res_manager_setup(instr_settings: instruments.InstrumentSettings
+                       ) -> instruments.ResourceManagers:
     """Sets up resource managers for instrumentation."""
 
     # region Unpack settings
@@ -193,7 +193,8 @@ def _res_manager_setup(
     # endregion
 
     # region Create class instance to keep ResourceManagers together.
-    return instruments.ResourceManagers(sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
+    return instruments.ResourceManagers(
+        sig_an_rm, sig_gen_rm, temp_ctrl_rm, psu_rm)
     # endregion
 
 
@@ -238,7 +239,8 @@ def start_session(settings: config_handling.Settings) -> None:
     log.cdebug('Loss trimmed.')
 
     # region Save trimmed loss and calibration data as an object.
-    trimmed_input_data = config_handling.TrimmedInputs(trimmed_loss, trimmed_cal_data)
+    trimmed_input_data = config_handling.TrimmedInputs(
+        trimmed_loss, trimmed_cal_data)
     # endregion
     # endregion
 
@@ -293,8 +295,6 @@ def start_session(settings: config_handling.Settings) -> None:
     log.cdebug('Nominal LNA bias objects set up.')
     # endregion
 
-
-
     # region Trigger measurement.
     log.info('Triggering measurement...')
     # region Trigger measurement with power supply enabled.
@@ -318,7 +318,7 @@ def start_session(settings: config_handling.Settings) -> None:
         bias_ctrl.psu_safe_init(
             res_managers.psu_rm, instr_settings.buffer_time,
             instruments.PSULimits(bias_psu_settings.v_step_lim,
-                         bias_psu_settings.d_i_lim),
+                                  bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
         log.info('PSU turned off.')
     # endregion

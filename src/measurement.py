@@ -29,8 +29,8 @@ import util
 # endregion
 
 
-def _get_temp_target(
-        hot_or_cold: str, tc_settings: instruments.TempControllerSettings) -> float:
+def _get_temp_target(hot_or_cold: str,
+                     tc_settings: instruments.TempControllerSettings) -> float:
     """Returns the hot or cold temperature target."""
     log = logging.getLogger(__name__)
     if hot_or_cold == 'Cold':
@@ -140,7 +140,8 @@ def _temp_set_get(tc_rm: Resource, temp_target: float,
 
 def _meas_loop(
         settings: config_handling.Settings, hot_or_cold: str,
-        res_managers: instruments.ResourceManagers) -> outputs.LoopInstanceResult:
+        res_managers: instruments.ResourceManagers
+        ) -> outputs.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
     Checks if hot or cold, sets load to target temp, then moves through
@@ -207,7 +208,8 @@ def _meas_loop(
     while i < len(inter_freqs_array):
         try:
             # region Set signal generator to intermediate frequency.
-            if sig_gen_rm is not None and sig_gen_settings.vna_or_sig_gen == 'vna':
+            if sig_gen_rm is not None \
+                    and sig_gen_settings.vna_or_sig_gen == 'vna':
                 sig_gen_rm.write(f':SENSE:FREQ:CW {inter_freqs_array[i]} GHz')
             elif sig_gen_rm is not None and \
                     sig_gen_settings.vna_or_sig_gen == 'sig gen':
@@ -292,14 +294,15 @@ def _meas_loop(
     return outputs.LoopInstanceResult(
         hot_or_cold, powers, load_temps, lna_temps,
         outputs.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
-                        pre_loop_extra_1_temps, post_loop_extra_1_temps,
-                        pre_loop_extra_2_temps, post_loop_extra_2_temps))
+                             pre_loop_extra_1_temps, post_loop_extra_1_temps,
+                             pre_loop_extra_2_temps, post_loop_extra_2_temps))
     # endregion
 
 
 def _closest_temp_then_other(
         init_temp: float, res_managers: instruments.ResourceManagers,
-        settings: config_handling.Settings) -> list[outputs.LoopInstanceResult]:
+        settings: config_handling.Settings
+        ) -> list[outputs.LoopInstanceResult]:
     """Triggers measurement loops, first closest temp, then other."""
 
     tc_settings = settings.instr_settings.temp_ctrl_settings

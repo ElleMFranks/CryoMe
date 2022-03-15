@@ -16,21 +16,21 @@ import logging
 import os
 import pathlib
 
-import matplotlib.offsetbox as offsetbox
+from matplotlib import offsetbox
+from matplotlib import ticker
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import tabulate
 
+import config_handling
 import lnas
 import outputs
-import config_handling
 # endregion
 
 
 def _save_plot(
-        results: outputs.Results, 
+        results: outputs.Results,
         meas_settings: config_handling.MeasurementSettings,
         lna_biases: list[lnas.LNABiasSet], save_path: pathlib.Path,
         bias_id: Optional[int] = None,
@@ -127,7 +127,8 @@ def _save_plot(
         plot_details = (
                 f'Cryostat Chain: {meas_settings.lna_cryo_layout.cryo_chain}  '
                 + f'Calibration: {calibration_id}')
-        plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
+        plot_detail_box = offsetbox.AnchoredText(
+            plot_details, loc='upper right')
         axis.add_artist(plot_detail_box)
         axis.set_title(plot_title, color=font_color, fontsize=lab_font + 2)
         axis.plot(results.freq_array, results.loss_cor_noise_temp,
@@ -142,7 +143,8 @@ def _save_plot(
                        + f' - LNA ID/s: {meas_settings.lna_id_str}' \
                        + f' - Session ID: {meas_settings.session_id}' \
                        + f' - Bias ID: {bias_id}'
-        plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
+        plot_detail_box = offsetbox.AnchoredText(
+            plot_details, loc='upper right')
         axis.add_artist(plot_detail_box)
         # endregion
 
@@ -189,8 +191,8 @@ def _save_plot(
 
 
 def save_standard_results(
-        settings: config_handling.Settings, results: outputs.Results, bias_id: int,
-        lna_1_bias: lnas.LNABiasSet,
+        settings: config_handling.Settings, results: outputs.Results,
+        bias_id: int, lna_1_bias: lnas.LNABiasSet,
         lna_2_bias: Optional[lnas.LNABiasSet] = None) -> None:
     """Update settings log and create raw results CSV.
 

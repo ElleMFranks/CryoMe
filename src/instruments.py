@@ -118,13 +118,13 @@ class TempCtrlChannels:
             the temperature sensor on the load inside the cryostat.
         chn1_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the first cryostat chain LNA
-            under testat.
+            under test.
         chn2_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the second cryostat chain LNA
-            under testat.
+            under test.
         chn3_lna_lsch (str): A string containing the lakeshore channel
             of the temperature sensor on the third cryostat chain LNA
-            under testat.
+            under test.
     """
     load_lsch: str
     chn1_lna_lsch: str
@@ -289,7 +289,8 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         util.safe_query('*OPC?', buffer_time, sarm, 'spec an')
         util.safe_write('*CLS', buffer_time, sarm)
         log.info(str(sarm.query('*IDN?'))[:-2])
-        util.safe_write(f':FREQ:CENT {self.center_freq} GHz', buffer_time, sarm)
+        util.safe_write(
+            f':FREQ:CENT {self.center_freq} GHz', buffer_time, sarm)
         util.safe_write(
             f':CALC:MARK1:X {self.marker_freq} Ghz', buffer_time, sarm)
         util.safe_write(f':BAND:RES {self.res_bw} MHz', buffer_time, sarm)
@@ -297,10 +298,10 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         util.safe_write(f':FREQ:SPAN {self.freq_span} Mhz', buffer_time, sarm)
         util.safe_write('INIT:CONT 1', buffer_time, sarm)
         util.safe_write(f':DISP:WIND1:TRAC:Y:RLEV {self.ref_lvl} dBm',
-                      buffer_time, sarm)
+                        buffer_time, sarm)
         util.safe_write(':CALC:MARK1:FUNC BPOW', buffer_time, sarm)
         util.safe_write(f':CALC:MARK1:FUNC:BAND:SPAN {self.power_bw} MHz',
-                      buffer_time, sarm)
+                        buffer_time, sarm)
         util.safe_write(f':POW:ATT {self.atten} dB', buffer_time, sarm)
         util.safe_write(':POW:GAIN:BAND LOW', buffer_time, sarm)
         util.safe_write(':POW:GAIN ON', buffer_time, sarm)
@@ -414,8 +415,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         log.info("VNA initialised successfully.")
         # endregion
 
-    def sig_gen_init(
-        self, sig_gen_rm: Resource, buffer_time: float) -> None:
+    def sig_gen_init(self, sig_gen_rm: Resource, buffer_time: float) -> None:
         """Initialises the signal generator to 10GHz 0dBm."""
         util.safe_write(
             f'PL {self.sig_gen_pwr_lvls[0]} DM', buffer_time, sig_gen_rm)
@@ -431,7 +431,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
     """Settings for the Lakeshore temperature controller.
 
     Attributes:
-        cryo_chain (int): The cryostat chain currently under testat.
+        cryo_chain (int): The cryostat chain currently under test.
         temp_ctrl_en (bool): Setting for debugging, if temp controller
             not connected then temp_ctrl queries give synthetic results
             and write commands are skipped.
@@ -450,7 +450,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         Args:
             temp_ctrl_channels: The sensor channels on the lakeshore.
             temp_targets: The hot and cold temperature targets (K).
-            cryo_chain: The cryostat chain currently under testat.
+            cryo_chain: The cryostat chain currently under test.
             temp_ctrl_en: Setting for debugging, if temp controller not
                 connected then temp_ctrl queries give synthetic results
                 and write commands are skipped.
@@ -504,11 +504,14 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         # region initialise sample/warmup heater.
         if sample_or_warm_up == 'sample':
             if self.cryo_chain == 1:
-                heater_ctrl.heater_setup(lakeshore_rm, self.chn1_lna_lsch, 'sample')
+                heater_ctrl.heater_setup(
+                    lakeshore_rm, self.chn1_lna_lsch, 'sample')
             elif self.cryo_chain == 2:
-                heater_ctrl.heater_setup(lakeshore_rm, self.chn2_lna_lsch, 'sample')
+                heater_ctrl.heater_setup(
+                    lakeshore_rm, self.chn2_lna_lsch, 'sample')
             elif self.cryo_chain == 3:
-                heater_ctrl.heater_setup(lakeshore_rm, self.chn3_lna_lsch, 'sample')
+                heater_ctrl.heater_setup(
+                    lakeshore_rm, self.chn3_lna_lsch, 'sample')
         elif sample_or_warm_up == 'warm up':
             heater_ctrl.heater_setup(lakeshore_rm, self.load_lsch, 'warmup')
         else:
@@ -618,7 +621,7 @@ class SwitchSettings:
     """Class containing the settings for the cryostat chain switch.
 
     Constructor Arguments:
-        cryo_chain (int): The cryostat chain currently under testat.
+        cryo_chain (int): The cryostat chain currently under test.
         switch_en (bool): Setting for debugging, if switch not
             connected then switch queries give synthetic results and
             write commands are skipped.

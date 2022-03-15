@@ -45,7 +45,8 @@ def validate_misc(misc: config_handling.Misc) -> None:
         util.yes_no('Order', misc.order, '')
 
 
-def validate_cal_info(cal_info: config_handling.CalInfo, session_info: config_handling.SessionInfo) -> None:
+def validate_cal_info(cal_info: config_handling.CalInfo,
+                      session_info: config_handling.SessionInfo) -> None:
     """Cal info error handling."""
     if cal_info.is_calibration \
             and session_info.measure_method != 'Calibration':

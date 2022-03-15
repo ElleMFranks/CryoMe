@@ -22,7 +22,8 @@ import config_handling
 
 
 def cryo_chain_switch(
-        buffer_time: float, meas_settings: config_handling.MeasurementSettings) -> None:
+        buffer_time: float,
+        meas_settings: config_handling.MeasurementSettings) -> None:
     """Controls the switch between the signal and cryostat chain.
 
     Args:

@@ -333,7 +333,8 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
         """
 
         # region Calculate corrected temperature
-        _a = ((1 - (1 / loss[index])) / (0.23036 * 10 * math.log10(loss[index])))
+        _a = ((1 - (1 / loss[index]))
+              / (0.23036 * 10 * math.log10(loss[index])))
 
         ts1 = (load_t / loss[index])
         ts2 = 0
@@ -628,8 +629,9 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Noise Temp Max (K)', 'Noise Temp Range (K)']
         return res_ana_log_col_titles
 
-    def results_ana_log_data(self, meas_settings: config_handling.MeasurementSettings,
-                             bias_id: int) -> list:
+    def results_ana_log_data(
+            self, meas_settings: config_handling.MeasurementSettings,
+            bias_id: int) -> list:
         """Returns results analysis log data row."""
 
         fwb = f'{self.freq_array[0]:.2f} -> {self.freq_array[-1]:.2f}'
@@ -775,9 +777,9 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.hot.pre_post_temps.post_loop_extra_2_temps))
 
     @staticmethod
-    def output_file_path(
-            directory: pathlib.Path, meas_settings: config_handling.MeasurementSettings,
-            bias_id: int, csv_or_png: str) -> pathlib.Path:
+    def output_file_path(directory: pathlib.Path,
+                         meas_settings: config_handling.MeasurementSettings,
+                         bias_id: int, csv_or_png: str) -> pathlib.Path:
         """Returns the output csv or png path."""
 
         l_str = f'LNA {meas_settings.lna_id_str} '

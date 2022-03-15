@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""meas_algorithmeasurement.py - Decides how each full measurement happens.
+"""meas_algorithm.py - Decides how each full measurement happens.
 
 Contains the different measurement algorithms which can be used for the
 y factor measurement:
@@ -173,8 +173,9 @@ def all_cold_to_all_hot(
         result = outputs.Results(
                      outputs.LoopPair(cold_array[i], hot_array[i]),
                      outputs.ResultsMetaInfo(
-                         meas_settings.comment, freq_array, meas_settings.order,
-                         meas_settings.is_calibration, meas_settings.analysis_bws,
+                         meas_settings.comment, freq_array,
+                         meas_settings.order, meas_settings.is_calibration,
+                         meas_settings.analysis_bws,
                          trimmed_input_data.trimmed_loss,
                          trimmed_input_data.trimmed_cal_data))
 
@@ -302,9 +303,9 @@ def alternating_temps(
         # endregion
 
 
-def calibration_measurement(
-        settings: config_handling.Settings, res_managers: instruments.ResourceManagers,
-        trimmed_loss: list[float]) -> None:
+def calibration_measurement(settings: config_handling.Settings,
+                            res_managers: instruments.ResourceManagers,
+                            trimmed_loss: list[float]) -> None:
     """Triggers and saves a calibration measurement.
 
     Calibration measurements are output into the calibration folder into

@@ -616,7 +616,7 @@ def _safe_set_stage(
 
         while j < psu_set.num_of_g_v_mid_steps + 1:
             # region Middle level.
-            # region Get and append iteration current to meas listat.
+            # region Get and append iteration current to meas list.
             mid_d_i_meas.append(
                 _mid_nrw_get_d_i(mid_g_v_range, brd_d_i_meas, j, i))
             # endregion
@@ -638,7 +638,7 @@ def _safe_set_stage(
 
             while k < psu_set.num_of_g_v_nrw_steps + 1:
                 # region Narrow level.
-                # region Get and append iteration current to meas listat.
+                # region Get and append iteration current to meas list.
                 nrw_d_i_meas.append(
                     _mid_nrw_get_d_i(nrw_g_v_range, mid_d_i_meas, k, j))
                 # endregion

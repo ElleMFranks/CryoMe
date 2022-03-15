@@ -67,12 +67,13 @@ class StageSettings:
 # region Mid level classes.
 class StageBiasSet(IndivBias, StageSettings):
     """The gate and drain settings for a single lna stage.
+
     Attributes:
         d_resistance (float): The resistance of the drain wire.
         d_v_at_psu (float): The voltage at the power supply before the
             voltage drop across the drain wire.
         d_i_lim (float): The drain current limit for the stage (mA).
-        correct_d_v (bool): Whether to correct the drain voltage for 
+        correct_d_v (bool): Whether to correct the drain voltage for
             wire voltage drop.
     """
     __doc__ += f'\n    {IndivBias.__doc__}\n'
@@ -217,7 +218,7 @@ class LNACryoLayout:
             measurement session, either 1, 2, or 3.
         lnas_per_chain (int): How many LNAs per cryostat chain, 1 or 2.
         stages_per_lna (int): The technical number of stages in the lnas
-            under testat. If an amplifier is 3 stage, but the second and
+            under test. If an amplifier is 3 stage, but the second and
             third are the same, this number is 3, and the stage_2_3_same
             variable should be set true.
         stage_1_2_same (bool): If the first and second stage of the lnas
