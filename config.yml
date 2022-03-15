@@ -64,10 +64,10 @@ signal_analyser_settings:
   vid_bw: 10          # hz
   
 signal_generator_settings:
-  freq_step_size: 1      # ghz
+  freq_step_size: 0.2      # ghz
   max_freq: 116          # ghz
   min_freq: 67           # ghz
-  vna_or_sig_gen: 'sig gen'  # either 'vna' or 'sig gen'
+  vna_or_sig_gen: 'vna'  # either 'vna' or 'sig gen'
   
 temperature_controller_settings:
   # sensor channel variables named in format:
@@ -128,8 +128,8 @@ analysis_bandwidths:
   ana_bw_5_min_max: [] # If not required then []
 
 available_instruments:
-  bias_psu_en: False
-  sig_an_en: False
-  sig_gen_en: False
-  switch_en: False
-  temp_ctrl_en: False
+  bias_psu_en: True
+  sig_an_en: True
+  sig_gen_en: True
+  switch_en: True
+  temp_ctrl_en: True
