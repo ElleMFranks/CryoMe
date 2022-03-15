@@ -13,7 +13,7 @@ from time import sleep
 
 from pyvisa import Resource
 
-import util as ut
+import util
 # endregion
 
 
