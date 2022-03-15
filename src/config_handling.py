@@ -285,7 +285,7 @@ class LNACryoLayout:
             measurement session, either 1, 2, or 3.
         lnas_per_chain (int): How many LNAs per cryostat chain, 1 or 2.
         stages_per_lna (int): The technical number of stages in the lnas
-            under testat. If an amplifier is 3 stage, but the second and
+            under test. If an amplifier is 3 stage, but the second and
             third are the same, this number is 3, and the stage_2_3_same
             variable should be set true.
         stage_2_3_same (bool): If the second and third stage of the lnas
@@ -318,7 +318,7 @@ class DirectLNAs:
 
 @dataclass()
 class LNAIDs:
-    """Object containing the LNA ID for each of the LNAs under testat.
+    """Object containing the LNA ID for each of the LNAs under test.
 
     Constructor Attributes:
         chain_1_lna_1_id (Optional[int]): LNA ID for chain 1 lna 1.
@@ -421,7 +421,7 @@ class LNAInfo:
     Constructor Attributes:
         direct_lnas (DirectLNAs): User input manual/backend LNA
             biases/settings.
-        lna_ids (LNAIDs): The LNA ID for each of the LNAs under testat.
+        lna_ids (LNAIDs): The LNA ID for each of the LNAs under test.
         lna_cryo_layout (LNACryoLayout): Settings describing layout of
             LNAs under test in the cryostat.
     """
@@ -432,11 +432,11 @@ class LNAInfo:
 
 @dataclass
 class LNAsUTIDs:
-    """Object containing the LNA IDs of the LNAs under testat.
+    """Object containing the LNA IDs of the LNAs under test.
 
     Constructor Attributes:
-        lna_1_id (int): ID of the first LNA in the chain under testat.
-        lna_2_id (int): ID of the second LNA in the chain under testat.
+        lna_1_id (int): ID of the first LNA in the chain under test.
+        lna_2_id (int): ID of the second LNA in the chain under test.
     """
     lna_1_id: int
     lna_2_id: int
@@ -449,7 +449,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
     """Non-instrument settings for a measurement session.
 
     Attributes:
-        lna_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under testat.
+        lna_ut_ids (LNAsUTIDs): The LNA IDs of the LNAs under test.
         lna_id_str (str): String of the LNAs ut IDs for saving results.
         session_id (int): The ID of the measurement session.
         comment (str): User defined string for additional information
@@ -507,7 +507,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def lna_ut_ids(self) -> LNAsUTIDs:
-        """The IDs of the LNA/s under testat."""
+        """The IDs of the LNA/s under test."""
         return self._lna_ut_ids
 
     @lna_ut_ids.setter
@@ -516,7 +516,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
 
     @property
     def lna_id_str(self) -> str:
-        """The string of the LNA ID/s for the LNA/s under testat."""
+        """The string of the LNA ID/s for the LNA/s under test."""
         return self._lna_id_str
 
     @lna_id_str.setter
@@ -628,15 +628,19 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
         error_handling.check_nominals(nominal_bias)
         error_handling.validate_sweep_setup_vars(sweep_setup_vars)
         error_handling.validate_lna_sequence(meas_sequence.lna_sequence,
-                              lna_cryo_layout.lnas_per_chain)
+                                             lna_cryo_layout.lnas_per_chain)
         # endregion
 
         # region Set args to attributes.
-        MeasSequence.__init__(self, *util.get_dataclass_args(meas_sequence))
+        MeasSequence.__init__(
+            self, *util.get_dataclass_args(meas_sequence))
         if nominal_bias is not None:
-            NominalBias.__init__(self, *util.get_dataclass_args(nominal_bias))
-        SweepSetupVars.__init__(self, *util.get_dataclass_args(sweep_setup_vars))
-        LNACryoLayout.__init__(self, *util.get_dataclass_args(lna_cryo_layout))
+            NominalBias.__init__(
+                self, *util.get_dataclass_args(nominal_bias))
+        SweepSetupVars.__init__(
+            self, *util.get_dataclass_args(sweep_setup_vars))
+        LNACryoLayout.__init__(
+            self, *util.get_dataclass_args(lna_cryo_layout))
         # endregion
 
         # region Calculate additional attributes from args.
@@ -736,7 +740,7 @@ class FileStructure:
         """Sets the directory for & returns the path of the log file.
         """
         log_path = pathlib.Path(str(self.results_directory)
-                           + f'\\Session Logs\\Session {session_id}')
+                                + f'\\Session Logs\\Session {session_id}')
         os.makedirs(log_path, exist_ok=True)
         log_path = pathlib.Path(str(log_path) + f'\\session_{session_id}.log')
         return log_path
@@ -755,7 +759,8 @@ class FileStructure:
 
         # region Setup calibration settings log.
         if not os.path.isfile(self.cal_settings_path):
-            cal_settings_col_titles = outputs.Results.cal_settings_column_titles()
+            cal_settings_col_titles = \
+                outputs.Results.cal_settings_column_titles()
             with open(self.cal_settings_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
@@ -768,7 +773,8 @@ class FileStructure:
         # region Setup results log
         if not os.path.isfile(self.res_log_path):
             res_log_col_header = outputs.Results.results_ana_log_header()
-            res_log_col_titles = outputs.Results.results_ana_log_column_titles()
+            res_log_col_titles = \
+                outputs.Results.results_ana_log_column_titles()
             with open(self.res_log_path,
                       'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
