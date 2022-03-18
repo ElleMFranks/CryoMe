@@ -8,6 +8,17 @@ are in settings.yml, edit there to change operation of program.
 Use of __future__ import to avoid problems with type hinting and
 circular importing mean that this code will only work with Python 3.7 or
 higher.
+
+ToDo:
+    Priority:
+        * LNA Temperature Setting
+        * Bias data saving
+        * Catch open log errors
+
+    Additional
+
+Questions:
+    * 
 """
 
 # region Import modules

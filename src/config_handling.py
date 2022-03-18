@@ -69,7 +69,8 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
             config['temperature_controller_settings']['extra_sensors_en']),
         instruments.TempTargets(
             config['temperature_controller_settings']['t_hot_target'],
-            config['temperature_controller_settings']['t_cold_target']),
+            config['temperature_controller_settings']['t_cold_target'],
+            config['temperature_controller_settings']['t_lna_target']),
         cryo_chain,
         config['available_instruments']['temp_ctrl_en'])
     # endregion

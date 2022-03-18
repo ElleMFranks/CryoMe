@@ -17,7 +17,6 @@ from typing import Union, Optional
 import logging
 import random
 
-from pyvisa import Resource
 import numpy as np
 import tqdm
 
@@ -27,116 +26,6 @@ import outputs
 import config_handling
 import util
 # endregion
-
-
-def _get_temp_target(hot_or_cold: str,
-                     tc_settings: instruments.TempControllerSettings) -> float:
-    """Returns the hot or cold temperature target."""
-    log = logging.getLogger(__name__)
-    if hot_or_cold == 'Cold':
-        temp_target = float(tc_settings.cold_target)
-    elif hot_or_cold == 'Hot':
-        temp_target = float(tc_settings.hot_target)
-    else:
-        raise Exception('Hot or cold not passed correctly')
-    log.info(f'Initiating {hot_or_cold.lower()} measurement.')
-    log.info(f'Setting load to {temp_target} K.')
-    return temp_target
-
-
-def _get_temps(tc_rm, temp_target: float,
-               instr_settings: instruments.InstrumentSettings) -> list[float]:
-    """Returns the measured temperatures on the requested channels."""
-    # region Get and return temperatures for requested temp sensors.
-    buffer_time = instr_settings.buffer_time
-    tc_settings = instr_settings.temp_ctrl_settings
-    if tc_rm is not None:
-        # region Measure and store load, lna, and extra sensor temps.
-        tc_rm.write(f'SCAN {tc_settings.load_lsch},0')
-        sleep(5)
-        load_temp = util.safe_query(
-            f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
-            'lakeshore', True)
-        tc_rm.write(f'SCAN {tc_settings.lna_lsch},0')
-        sleep(5)
-        lna_temp = util.safe_query(
-            f'KRDG? {tc_settings.lna_lsch}', buffer_time, tc_rm,
-            'lakeshore', True)
-        if tc_settings.extra_sensors_en:
-            tc_rm.write(f'SCAN {tc_settings.extra_1_lsch},0')
-            sleep(5)
-            extra_1_temp = util.safe_query(
-                f'KRDG? {tc_settings.extra_1_lsch}', buffer_time, tc_rm,
-                'lakeshore', True)
-            tc_rm.write(f'SCAN {tc_settings.extra_2_lsch},0')
-            sleep(5)
-            extra_2_temp = util.safe_query(
-                f'KRDG? {tc_settings.extra_2_lsch}', buffer_time, tc_rm,
-                'lakeshore', True)
-        else:
-            extra_1_temp = 'NA'
-            extra_2_temp = 'NA'
-        tc_rm.write(f'SCAN {tc_settings.load_lsch},0')
-        sleep(5)
-        # endregion
-
-    # region Provide dummy temperature measurement values for debugging.
-    else:
-        load_temp = temp_target
-        lna_temp = 21
-        if tc_settings.extra_sensors_en:
-            extra_1_temp = 40
-            extra_2_temp = 30
-        else:
-            extra_1_temp = 'NA'
-            extra_2_temp = 'NA'
-    # endregion
-
-    return [load_temp, lna_temp, extra_1_temp, extra_2_temp]
-    # endregion
-
-
-def _temp_set_get(tc_rm: Resource, temp_target: float,
-                  instr_settings: instruments.InstrumentSettings) -> list:
-    """Sets/gets temperatures, ensure stability/status of heater."""
-
-    # region Unpack objects/set up logger/set initial variables.
-    log = logging.getLogger(__name__)
-    temp_set = False
-    tc_settings = instr_settings.temp_ctrl_settings
-    # endregion
-
-    while not temp_set:
-        if tc_rm is not None:
-            # region Set Lakeshore to target temp, wait for stabilisation.
-            # Check for heater errors before and after.
-            pre_heater_status = util.safe_query(
-                'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
-            heater_ctrl.set_temp(tc_rm, temp_target, 'load')
-            heater_ctrl.load_temp_stabilisation(
-                tc_rm, tc_settings.load_lsch, temp_target)
-            pre_loop_temps = _get_temps(tc_rm, temp_target, instr_settings)
-            post_heater_status = util.safe_query(
-                'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
-            # endregion
-
-            # region If set without problem, exit loop, else warning.
-            if (temp_target - 1 < pre_loop_temps[0] < temp_target + 1) \
-                    and pre_heater_status == '0\r' \
-                    and post_heater_status == '0\r':
-                temp_set = True
-            else:
-                log.warning(f'Failed heating loop, trying again.'
-                            f'Pre-set status: {pre_heater_status}.  '
-                            f'Post-set status: {post_heater_status}.  '
-                            f'Temperature: {pre_loop_temps[0]}K.  '
-                            f'Target: {temp_target}K.')
-            # endregion
-        else:
-            temp_set = True
-
-    return pre_loop_temps
-
 
 def _meas_loop(
         settings: config_handling.Settings, hot_or_cold: str,
@@ -177,12 +66,14 @@ def _meas_loop(
     # endregion
 
     # region Decide target temperature.
-    temp_target = _get_temp_target(hot_or_cold, tc_settings)
+    temp_target = heater_ctrl.get_load_temp_target(hot_or_cold, tc_settings)
     # endregion
 
     if tc_rm is not None:
-        pre_loop_temps = _temp_set_get(
+        heater_ctrl.set_loop_temps(
             tc_rm, temp_target, settings.instr_settings)
+        pre_loop_temps = heater_ctrl.get_loop_temps(
+            tc_rm, settings.instr_settings)
     else:
         pre_loop_temps = [temp_target + 0.1, 18, 22, 10]
     pre_loop_lna_temp = pre_loop_temps[1]
@@ -203,8 +94,8 @@ def _meas_loop(
         desc="Loop Prog", leave=True, position=0,
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')
-    i = 0
 
+    i = 0
     while i < len(inter_freqs_array):
         try:
             # region Set signal generator to intermediate frequency.
@@ -226,7 +117,7 @@ def _meas_loop(
                     'lakeshore', True)
                 if temp_target - 1 > load_temp > temp_target + 1:
                     log.warning('Fallen out of temp range during measurement.')
-                    pre_loop_temps = _temp_set_get(
+                    pre_loop_temps = heater_ctrl.set_loop_temps(
                         tc_rm, temp_target, settings.instr_settings)
             else:
                 load_temp = temp_target + (round(random.uniform(-0.1, 0.1), 2))
@@ -273,7 +164,8 @@ def _meas_loop(
     # endregion
 
     # region Measure post loop lna temperature.
-    post_loop_temps = _get_temps(tc_rm, temp_target, settings.instr_settings)
+    post_loop_temps = heater_ctrl.get_loop_temps(
+        tc_rm, temp_target, settings.instr_settings)
     post_loop_lna_temp = post_loop_temps[1]
     post_loop_extra_1_temp = post_loop_temps[2]
     post_loop_extra_2_temp = post_loop_temps[3]
@@ -375,7 +267,7 @@ def measurement(
         # region Get current temperature of the load
         if res_managers.tc_rm is not None:
             init_temp = util.safe_query(
-                'KRDG? {tc_settings.load_lsch', instr_settings.buffer_time,
+                f'KRDG? {tc_settings.load_lsch}', instr_settings.buffer_time,
                 res_managers.tc_rm, 'lakeshore', True)
         else:
             init_temp = 20

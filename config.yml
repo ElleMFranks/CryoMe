@@ -79,6 +79,7 @@ temperature_controller_settings:
   extra_sensors_en: False
   t_cold_target: 20.2    # kelvin - to give 20k
   t_hot_target: 50.9     # 60.9k - to give 60k
+  t_lna_target: 20.2     # kelvin
   
 back_end_lna_settings: # cryo/room-temp_backend_all/chain#_drain_voltage/current
   be_d_i_limit: 20       # ma

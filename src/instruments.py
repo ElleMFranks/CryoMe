@@ -140,9 +140,11 @@ class TempTargets:
     Constructor Attributes:
         hot_target (float): The target hot temp in Kelvin of the load.
         cold_target (float): The target cold temp in Kelvin of the load.
+        lna_target (float): The target lna temperature in Kelvin,
     """
     hot_target: float
     cold_target: float
+    lna_target: float
 # endregion
 
 
