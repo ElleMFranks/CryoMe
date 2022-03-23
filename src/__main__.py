@@ -11,9 +11,7 @@ higher.
 
 ToDo:
     Priority:
-        * LNA Temperature Setting
         * Bias data saving
-        * Catch open log errors
 
     Additional
 
@@ -31,7 +29,7 @@ import sys
 import yaml
 
 import config_handling
-import start_session
+import session
 # endregion
 
 
@@ -108,9 +106,13 @@ def main():
         log.addHandler(file_handler)
         # endregion
 
+        # region Check input files are closed.
+        settings.file_struc.check_files_closed()
+        # endregion
+
         # region Trigger measurement
         try:
-            start_session.start_session(settings)
+            session.start_session(settings)
         # Pylint broad-except disabled as sys.exc_info()[0] logged.
         except Exception as _e:  # pylint: disable=broad-except
             log.exception(sys.exc_info()[0])

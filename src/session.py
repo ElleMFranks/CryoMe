@@ -52,7 +52,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         # region Set up LNA1.
         lna_1_man = meas_settings.direct_lnas.manual_lna_settings.lna_1_man
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
-            bias_ctrl.bias_set(res_managers.psu_rm, lna_1_man,
+            bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_1_man,
                                settings.instr_settings.bias_psu_settings,
                                settings.instr_settings.buffer_time)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
@@ -62,7 +62,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             lna_2_man = meas_settings.direct_lnas.manual_lna_settings.lna_2_man
             if settings.instr_settings.bias_psu_settings.bias_psu_en:
-                bias_ctrl.bias_set(res_managers.psu_rm, lna_2_man,
+                bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_2_man,
                                    settings.instr_settings.bias_psu_settings,
                                    settings.instr_settings.buffer_time)
                 lna_2_man.lna_measured_column_data(res_managers.psu_rm)

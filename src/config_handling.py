@@ -777,11 +777,66 @@ class FileStructure:
             res_log_col_titles = \
                 outputs.Results.results_ana_log_column_titles()
             with open(self.res_log_path,
-                      'a', newline='', encoding='utf-8') as file:
+                        'a', newline='', encoding='utf-8') as file:
                 writer = csv.writer(
                     file, quoting=csv.QUOTE_NONE, escapechar='\\')
                 writer.writerows([res_log_col_header, res_log_col_titles])
+
         # endregion
+
+    def check_files_closed(self) -> None:
+        """Check logs are closed and prompt user to close them."""
+        # region Check logs are closed
+        ready = False
+        count = 0
+        files_to_check = [self.cal_settings_path, self.in_cal_file_path,
+                          self.loss_path, self.settings_path, 
+                          self.res_log_path]
+        while not ready:
+            for file_to_check in files_to_check:
+                try:
+                    with open(file_to_check, 'a', newline='', 
+                              encoding='utf-8') as file:
+                        pass
+                except:
+                    count += 1
+                    input(f'Please close {file_to_check} and press enter.')
+
+            if count != 0:
+                count = 0
+            else:
+                ready = True
+        # endregion
+
+    def write_to_file(
+            self, path: Path, data: Any, 
+            mode: str, row_or_rows:str) -> None:
+        """Writes data to a csv file specified.
+        
+        Args:
+            path: The filepath of the file to write to.
+            data: Whatever needs to be written to the file.
+            mode: See open() documentation.
+            row_or_rows: Either 'row' or 'rows'.
+        """
+        complete = False
+
+        while not complete:
+            try:
+                with open(path, mode, newline='', encoding='utf-8') as file:
+                    writer = csv.writer(
+                        file, quoting=csv.QUOTE_NONE, escapechar='\\')
+                    if row_or_rows == 'rows':
+                        writer.writerows(data)
+                    elif row_or_rows == 'row':
+                        writer.writerow(data)
+                        writer.writerow('\n')
+                    else:
+                        raise Exception('Incorrect row or rows argument.')
+                complete = True
+            except:
+                input(f'Please close {location} and press enter.')
+                continue
 # endregion
 
 

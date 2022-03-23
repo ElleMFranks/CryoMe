@@ -252,26 +252,15 @@ def save_standard_results(
     # endregion
 
     # region Add row to settings log.
-    with open(
-            file_struc.settings_path, 'a',
-            newline='', encoding="utf-8") as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
-                            delimiter=',', escapechar='\\')
-        writer.writerow(set_col_data)
-        writer.writerow('\n')
-    # endregion
+    file_struc.write_to_file(
+        file_struc.settings_path, set_col_data, 'a', 'row')
     log.info('Settings log updated. Updating results log...')
     # endregion
 
     # region Update results log.
     res_log_data = results.results_ana_log_data(meas_settings, bias_id)
-    with open(
-            file_struc.res_log_path, 'a',
-            newline='', encoding="utf-8") as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL,
-                            delimiter=',', escapechar='\\')
-        writer.writerow(res_log_data)
-        writer.writerow('\n')
+    file_struc.write_to_file(
+        file_struc.res_log_path, res_log_data, 'a', 'row')
     log.info('Results log updated. Saving plot...')
     # endregion
 
@@ -331,16 +320,10 @@ def save_standard_results(
     # endregion
 
     # region Save to results output csv
-    with open(
-        results.output_file_path(
-            file_struc.results_directory, meas_settings, bias_id, 'csv'),
-            'w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file,
-                            quoting=csv.QUOTE_NONE,
-                            escapechar='\\')
-        writer.writerows(results_csv_data)
-    # endregion
-
+    file_struc.write_to_file(
+        results.output_file_path(file_struc.results_directory, meas_settings, 
+                                 bias_id, 'csv'),
+        results_csv_data, 'w', 'rows')
     log.info('Results pre-analysed, plotted, and saved.\n')
     # endregion
 
@@ -415,12 +398,9 @@ def save_calibration_results(
         *crbe_lna_bias.lna_meas_column_data,
         *rtbe_lna_bias.lna_meas_column_data]
 
-    with open(settings.file_struc.cal_settings_path, 'a',
-              newline='', encoding='utf-8') as file:
-        writer = csv.writer(
-            file, quoting=csv.QUOTE_MINIMAL, delimiter=',', escapechar='\\')
-        writer.writerow(cal_settings_col_data)
-        writer.writerow('\n')
+    settings.file_struc.write_to_file(
+        settings.file_struc.cal_settings_path, cal_settings_col_data, 
+        'a', 'row')
     log.info('Calibration settings saved.')
     # endregion
 
@@ -449,9 +429,9 @@ def save_calibration_results(
     for i, _ in enumerate(results.freq_array):
         cal_results_csv_data.append(cal_results_col_data[i, :])
 
-    with open(cal_csv_path, 'w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        writer.writerows(cal_results_csv_data)
+    settings.file_struc.write_to_file(
+        cal_csv_path, cal_results_csv_data, 'w', 'rows')
+
     log.info('Results plotted and saved.\n')
     # endregion
     # endregion

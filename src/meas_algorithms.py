@@ -17,7 +17,7 @@ the back end LNAs present.
 # region Import modules.
 from __future__ import annotations
 from itertools import product
-import copy as cp
+import copy
 import logging
 
 import tqdm
@@ -68,6 +68,7 @@ def all_cold_to_all_hot(
     lna_1_array = []
     lna_2_array = []
     prev_lna_ut = 0
+    direct_set_index = 0
     states = list(product(
         hot_cold, sweep_settings.lna_sequence, sweep_settings.stage_sequence,
         sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
@@ -116,38 +117,58 @@ def all_cold_to_all_hot(
             lna_2_bias.sweep_setup(
                 stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
         # endregion
-
         # endregion
 
         # region Set and store LNA 1 PSU settings.
-        if res_managers.psu_rm is not None and (
+        # Adaptive search function here searches gate voltages for a
+        # value which gives a requested drain current at a given drain
+        # voltage.
+        if res_managers.psu_rm is not None and temp_ut == 0 and (
                 lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
-            bias_ctrl.bias_set(
+            bias_ctrl.adaptive_bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
                 settings.instr_settings.buffer_time)
 
+        # After running through all biases at once, gate voltages are
+        # known for each setting needed, as calling adaptive set will
+        # store the gate voltage in the lna object. To speed up 
+        # measurement, we directly set the gate voltage instead of 
+        # searching for it.
+        if res_managers.psu_rm is not None and temp_ut != 0 and (
+                lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+            bias_ctrl.direct_set_lna(
+                res_managers.psu_rm, lna_1_array[direct_set_index],
+                settings.instr_settings.bias_psu_settings,
+                settings.instr_settings.buffer_ctrl)
+
         lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
 
         if temp_ut == 0:
-            lna_1_array.append(cp.deepcopy(lna_1_bias))
+            lna_1_array.append(copy.deepcopy(lna_1_bias))
         # endregion
 
         # region Set and store LNA 2 PSU settings.
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-            if res_managers.psu_rm is not None and (
+            if res_managers.psu_rm is not None and temp_ut == 0 and (
                     lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
-                bias_ctrl.bias_set(
+                bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
                     settings.instr_settings.buffer_time)
+            if res_managers.psu_rm is not None and temp_ut != 0 and (
+                    lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+                bias_ctrl.direct_set_lna(
+                    res_managers.psu_rm, lna_2_array[direct_set_index],
+                    settings.instr_settings.bias_psu_settings,
+                    settings.instr_settings.buffer_ctrl)
 
             lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
-            lna_2_array.append(cp.deepcopy(lna_2_bias))
+            lna_2_array.append(copy.deepcopy(lna_2_bias))
 
         else:
             if temp_ut == 0:
-                lna_2_array.append(cp.deepcopy(lna_2_bias))
+                lna_2_array.append(copy.deepcopy(lna_2_bias))
         # endregion
 
         # region Trigger measurement
@@ -158,6 +179,7 @@ def all_cold_to_all_hot(
         else:
             hot_array.append(measurement.measurement(
                 settings, res_managers, trimmed_input_data, temp_ut))
+            direct_set_index += 1
 
         print('\n')
 
@@ -264,7 +286,7 @@ def alternating_temps(
             # region LNA 1.
             if res_managers.psu_rm is not None and (
                     lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
-                bias_ctrl.bias_set(
+                bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
                     settings.instr_settings.buffer_time)
@@ -276,7 +298,7 @@ def alternating_temps(
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                 if res_managers.psu_rm is not None and (
                         lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
-                    bias_ctrl.bias_set(
+                    bias_ctrl.adaptive_bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,
                         settings.instr_settings.buffer_time)

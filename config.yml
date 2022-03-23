@@ -129,8 +129,8 @@ analysis_bandwidths:
   ana_bw_5_min_max: [] # If not required then []
 
 available_instruments:
-  bias_psu_en: True
-  sig_an_en: True
-  sig_gen_en: True
-  switch_en: True
-  temp_ctrl_en: True
+  bias_psu_en: False
+  sig_an_en: False
+  sig_gen_en: False
+  switch_en: False
+  temp_ctrl_en: False

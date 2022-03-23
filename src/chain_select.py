@@ -145,8 +145,8 @@ def back_end_lna_setup(
         # This will algorithmically find the requested current at
         # required drain voltage, need to remember in this case
         # drain voltage is corrected.
-        bias_ctrl.bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
-        bias_ctrl.bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
+        bias_ctrl.adaptive_bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
+        bias_ctrl.adaptive_bias_set(psu_rm, crbe_lna, psu_settings, buffer_time)
         # endregion
 
         # region Get measured back-end data.

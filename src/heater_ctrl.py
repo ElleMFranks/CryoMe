@@ -10,7 +10,7 @@ temperature, and check the temperature is stable.
 from __future__ import annotations
 import logging
 from typing import Union
-from time import sleep
+from time import sleep, perf_counter
 
 from pyvisa import Resource
 
@@ -61,22 +61,19 @@ def _check_temp(tc_rm: Resource,  channel: int, target_temp: float,
         st_time: Time to check stabilisation over.
      """
     # region Set function variables.
-    check = 0
+    check = False
     error_target = 1  # Error is 2X this variable, usually 0.4.
     # endregion.
 
     # region Check temperature at 0 and 10s if stable check is 1
     temp = util.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
-    if temp < target_temp - error_target or temp > target_temp + error_target:
-        check = False
     if target_temp - error_target < temp < target_temp + error_target:
-        check = False
         sleep(st_time)
         temp = util.safe_query(
             f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
         if target_temp - error_target < temp < target_temp + error_target:
-            check = True
-    return check
+            return True
+        
     # endregion
 
 
@@ -91,9 +88,18 @@ def temp_stabilisation(tc_rm: Resource, channel: int, temp: float,
         st_time: Time to check stabilisation over.
     """
     # region Check temperature until within range for st_time seconds.
+    start = perf_counter()
     util.safe_write(f'SCAN{channel},0', 4, tc_rm)
     while not _check_temp(tc_rm, channel, temp, st_time):
         sleep(0.5)
+        time = perf_counter() - start
+        if time > 420:
+            user_response = input(
+            f'Temperature is {temp}K, continue waiting to stabilise y/n?')
+            if user_response == 'y':
+                return True
+            else:
+                start = perf_counter() - 360
     util.safe_write(f'SCAN{channel},0', 0.5, tc_rm)
     # endregion
 

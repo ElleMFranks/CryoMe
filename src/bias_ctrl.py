@@ -200,6 +200,39 @@ def direct_set_stage(
     _safe_set_v(psu_rm, card_chnl, g_v_target, psu_lims, buffer_time)
     # endregion
 
+def direct_set_lna(psu_rm: Resource, lna_bias: lnas.LNABiasSet, 
+                   psu_settings: instruments.BiasPSUSettings,
+                   buffer_time: float) -> None:
+    """Sets an LNA using known gate voltages."""
+
+    # region Set stage 3.
+    if hasattr(lna_bias, 'stage_3'):
+        stage = lna_bias.stage_3
+        direct_set_stage(
+            psu_rm, stage.card_chnl, 
+            instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
+            buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
+                          GOrDVTarget('g', stage.g_v)])
+    # endregion
+
+    # region Set stage 2.
+    if hasattr(lna_bias, 'stage_2'):
+        stage = lna_bias.stage_2
+        direct_set_stage(
+            psu_rm, stage.card_chnl, 
+            instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
+            buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
+                          GOrDVTarget('g', stage.g_v)])
+    # endregion
+
+    # region Set stage 1.
+    stage = lna_bias.stage_1
+    direct_set_stage(
+        psu_rm, stage.card_chnl, 
+        instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
+        buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
+                        GOrDVTarget('g', stage.g_v)])
+    # endregion
 
 def _get_step_to_target(v_set_diff: float, v_step_lim: float,
                         v_set_status: float) -> float:
@@ -667,7 +700,7 @@ def _safe_set_stage(
     # endregion
 
 
-def bias_set(
+def adaptive_bias_set(
         psu_rm: Resource, target_lna_bias: lnas.LNABiasSet,
         psu_set: instruments.BiasPSUSettings, buffer_time: float) -> None:
     """Set the psu to the LNA bias values requested.
