@@ -165,7 +165,7 @@ def _meas_loop(
 
     # region Measure post loop lna temperature.
     post_loop_temps = heater_ctrl.get_loop_temps(
-        tc_rm, temp_target, settings.instr_settings)
+        tc_rm, settings.instr_settings)
     post_loop_lna_temp = post_loop_temps[1]
     post_loop_extra_1_temp = post_loop_temps[2]
     post_loop_extra_2_temp = post_loop_temps[3]

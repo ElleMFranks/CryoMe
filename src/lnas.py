@@ -181,11 +181,16 @@ class StageBiasSet(IndivBias, StageSettings):
             raise Exception('Must be type CardChnl.')
         self._card_chnl = value
 
-    def header(self) -> str:
+    def header(self) -> list(str):
         """Return the header information for the stage instance."""
-        return str(f'GV = {self.g_v}V ' +
-                   f'DV = {self.d_v_at_psu:+.3f}V ' +
-                   f'DI = {self.d_i:.3f}mA ')
+        try:
+            gate = float(self.g_v)
+            gate = f'{gate:+.3f}'
+        except:
+            gate = 'NA'
+
+        return ['GV(V)', f'{gate}', 'DV(V)', f'{self.d_v_at_psu:+.3f}',
+                'DI(mA)', f'{self.d_i:.3f}', ' ']
 
     def bias_strs(self) -> list[str]:
         """Returns the array of bias values for the instance."""
@@ -567,20 +572,22 @@ class LNABiasSet(LNACryoLayout, LNAStages):
     def lna_header(self) -> list[str]:
         """Return the results csv file header."""
         # region Construct/return header strs dep on existing stages.
-        results_header = [f'{self.stage_1.header()}']
+        results_header = self.stage_1.header()
 
         # region Stage 2.
         if self.stage_2 is not None:
-            results_header.append(f'{self.stage_2.header()}')
+            results_header.extend(self.stage_2.header())
         else:
-            results_header.append('GV = NAV DV = NAV DI = NAmA ')
+            results_header.extend(['GV(V)', 'NA', 'DV(V)', 'NA', 
+                                   'DI(mA)', 'NA', ' '])
         # endregion
 
         # region Stage 3.
         if self.stage_3 is not None:
-            results_header.append(f'{self.stage_3.header()}')
+            results_header.extend(self.stage_3.header())
         else:
-            results_header.append('GV = NAV DV = NAV DI = NAmA ')
+            results_header.extend(['GV(V)', 'NA', 'DV(V)', 'NA', 
+                                   'DI(mA)', 'NA', ' '])
         return results_header
         # endregion
         # endregion
@@ -816,12 +823,13 @@ class BackEndLNASettings:
         use_g_v_or_d_i (str): Either 'd i' or 'g v', which of the two 
             to set on the psu.
         correct_be_d_v (bool): Whether to correct dv for wire voltage drop.
+        cryo_backend_en (bool): Whether or not to use the cryo backend.
     """
 
     def __init__(
             self, be_lna_biases: dict, use_g_v_or_d_i: str,
-            correct_be_d_v: bool, cryo_chain: int, be_d_i_lim: float = 20
-            ) -> None:
+            correct_be_d_v: bool, cryo_chain: int, cryo_backend_en:bool, 
+            be_d_i_lim: float = 20) -> None:
         """Constructor for the BackEndLNASettings class.
 
         Args:
@@ -830,9 +838,11 @@ class BackEndLNASettings:
             use_g_v_or_d_i: Either 'g v' or 'd i', which to set on psu.
             correct_be_d_v: Whether to correct dv for wire voltage drop.
             cryo_chain: The chain under test.
+            cryo_backend_en: Whether the cryo backend is used.
             be_d_i_lim: Drain current lim for the LNA in question (mA).
         """
 
+        self.cryo_backend_en = cryo_backend_en
         self.use_g_v_or_d_i = use_g_v_or_d_i
         self.correct_be_d_v = correct_be_d_v
         self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']

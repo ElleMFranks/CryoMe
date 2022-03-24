@@ -278,12 +278,12 @@ def save_standard_results(
     # region Figure out output file name.
     # Create file name in format: Raw Meas# LNA# Bias#.csv/png.
     results_header_1 = [
-        f'Project: {meas_settings.project_title}'
-        + f' - LNA ID/s: {meas_settings.lna_id_str}'
-        + f' - Session ID: {meas_settings.session_id}'
-        + f' - Bias ID: {bias_id}'
-        + f' - {results.date_str} {results.time_str}'
-        + f' - {meas_settings.comment}']
+        'Project:', f'{meas_settings.project_title}',
+        'LNA ID/s:', f'{meas_settings.lna_id_str}',
+        'Session ID:', f'{meas_settings.session_id}',
+        'Bias ID:', f'{bias_id}',
+        'Date/Time', f'{results.date_str} {results.time_str}',
+        'Comment:' f'{meas_settings.comment}']
     # endregion
 
     # region Set up header for output csv.
@@ -293,26 +293,36 @@ def save_standard_results(
         lna_1_header = lna_1_bias.lna_header()
         lna_2_header = lna_2_bias.lna_header()
         results_header_2 = [
-            f'L1S1: {lna_1_header[0]}   -   L1S2: {lna_1_header[1]}'
-            + f'   -   L1S3: {lna_1_header[2]}   -   L2S1: {lna_2_header[0]}'
-            + f'   -   L2S2: {lna_2_header[1]}   -   L2S3: {lna_2_header[2]}']
+            'L1S1:', *lna_1_header[0:6], 
+            'L1S2:', *lna_1_header[7:13],
+            'L1S3:', *lna_1_header[14:20]]
+        results_header_3 = [    
+            'L2S1:', *lna_2_header[0:6],
+            'L2S2:', *lna_2_header[7:13], 
+            'L2S3:', *lna_2_header[14:20]]
     else:
-        results_header_2 = [f'L1S1: {lna_1_header[0]}'
-                            + f'   -   L1S2: {lna_1_header[1]}'
-                            + f'   -   L1S3: {lna_1_header[2]}'
-                            + '   -   L2S1: GV = NAV DV = NAV DI = NAmA'
-                            + '   -   L2S2: GV = NAV DV = NAV DI = NAmA'
-                            + '   -   L2S3: GV = NAV DV = NAV DI = NAmA']
+        results_header_2 = ['L1S1:', *lna_1_header[0:6],
+                            'L1S2:', *lna_1_header[7:13],
+                            'L1S3:', *lna_1_header[14:20]]
+        results_header_3 = [
+            'L2S1:', 'GV(V)', 'NA', 'DV(V)', 'NA', 'DI(mA)', 'NA',
+            'L2S2:', 'GV(V)', 'NA', 'DV(V)', 'NA', 'DI(mA)', 'NA',
+            'L2S3:', 'GV(V)', 'NA', 'DV(V)', 'NA', 'DI(mA)', 'NA']
 
-    results_header_3 = [instr_settings.sig_an_settings.header()]
+    results_header_4 = [
+        'CRBE:', *crbe_lna.lna_header()[0:6], 
+        'RTBE:', *rtbe_lna.lna_header()[0:6]]
+
+    results_header_5 = [*instr_settings.sig_an_settings.header()]
     # endregion
 
     # region Set up column titles and data for csv output.
     results_col_titles = results.std_output_column_titles()
 
     results_col_data = results.std_output_data()
-    results_csv_data = [results_header_1, results_header_2, results_header_3,
-                        results_col_titles]
+    results_csv_data = [
+        results_header_1, results_header_2, results_header_3,
+        results_header_4, results_header_5, results_col_titles]
 
     # Add data for each frequency point measured
     for i, _ in enumerate(results.freq_array):
@@ -408,13 +418,14 @@ def save_calibration_results(
     log.info('Saving results...')
     # region Set up cal results csv header.
     cal_results_header_1 = [
-        f'Chain {cryo_chain} - Calibration: {cal_id}' +
-        f' - Project: {meas_settings.project_title}' +
-        f' - {results.date_str} {results.time_str} - '
-        f'{meas_settings.comment}']
+        'Chain', f'{cryo_chain}', 
+        'Calibration:', f'{cal_id}',
+        'Project:', f'{meas_settings.project_title}',
+        'Date/Time:', f'{results.date_str} {results.time_str}',
+        'Comment:', f'{meas_settings.comment}']
 
     cal_results_header_2 = [
-        f'CRBE: {crbe_stg.header()}   -   RTBE: {rtbe_stg.header()}']
+        'CRBE:', *crbe_stg.header()[0:6], 'RTBE:', *rtbe_stg.header()[0:6]]
 
     cal_results_header_3 = [settings.instr_settings.sig_an_settings.header()]
 

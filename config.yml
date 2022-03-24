@@ -2,21 +2,21 @@
 measurement_settings:
   comment_en: False       # True prompts user input session comment.
   dark_mode_plot: True    # True saves plots in dark mode palette.
-  in_cal_file_id: 1       # decides which calibration file to use.
   instr_buffer_time: 0.3  # seconds to wait between isntr commands.
   inter_freq_factor: 8    # multiplier factor from sig gen.
-  is_calibration: True    # enables calibration handling.
   lnas_per_chain: 0       # how many lnas per chain?
   order: 1                # leave as 1 unless explicitly known why.
-  project_title: 'Sig Gen Test'   # becomes folder title.
+  project_title: 'Mornin'   # becomes folder title.
   psu_safe_init: True
   stage_1_2_same: False   # if True l1s1: l1s2 and l2s1: l2s2
   stage_2_3_same: False   # if True l1s2: l1s3 and l2s2: l2s3
   stages_per_lna: 0       # how many stages per lna?
+  in_cal_file_id: 2       # decides which calibration file to use.
+  is_calibration: False    # enables calibration handling.
   # for measure_method:
   # allcoldtoallhot: 'ACTAH', manualentrymeasure: 'MEM',
   # alternatingtemps: 'AT',  calibration: 'Calibration'
-  measure_method: 'Calibration'  # chooses the measurement algorithm.
+  measure_method: 'ACTAH'  # chooses the measurement algorithm.
 
 lna_ids:
   chain_1_lna_1_id: 21     # lna id number for 1st lna in chain 1.
@@ -34,7 +34,6 @@ bias_sweep_settings:
     - 1
   stage_sequence:          # which order to sweep stages in.
     - 1
-    - 2
   d_i_max: 5               # ma
   d_i_min: 5               # ma
   d_i_nominal: 6.0         # ma
@@ -64,7 +63,7 @@ signal_analyser_settings:
   vid_bw: 10          # hz
   
 signal_generator_settings:
-  freq_step_size: 0.2      # ghz
+  freq_step_size: 4      # ghz
   max_freq: 116          # ghz
   min_freq: 67           # ghz
   vna_or_sig_gen: 'vna'  # either 'vna' or 'sig gen'
@@ -85,6 +84,7 @@ back_end_lna_settings: # cryo/room-temp_backend_all/chain#_drain_voltage/current
   be_d_i_limit: 20       # ma
   use_g_v_or_d_i: 'd i'  # Either 'd i' or 'g v'
   correct_be_d_v: False  # Whether to correct dv for wire voltage drop
+  cryo_backend_en: True  # Whether or not to use the cryo backend LNA
   
   crbe_chn1_d_v: 1.2    # v
   crbe_chn1_d_i: 12    # ma

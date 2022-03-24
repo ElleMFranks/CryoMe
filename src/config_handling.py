@@ -149,6 +149,7 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         config['back_end_lna_settings']['use_g_v_or_d_i'],
         config['back_end_lna_settings']['correct_be_d_v'],
         cryo_chain,
+        config['back_end_lna_settings']['cryo_backend_en'],
         config['back_end_lna_settings']['be_d_i_limit'])
     # endregion
     # endregion

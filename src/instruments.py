@@ -317,13 +317,13 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
 
     def header(self):
         """Return spectrum analyser settings as output header."""
-        header = str(f'Center Frequency     = {self.center_freq}GHz' +
-                     f'    Marker Frequency     = {self.marker_freq}GHz' +
-                     f'    Resolution Bandwidth = {self.res_bw}MHz' +
-                     f'    Video Bandwidth      = {self.vid_bw}Hz' +
-                     f'    Frequency Span       = {self.freq_span}MHz' +
-                     f'    Power Bandwidth      = {self.power_bw}MHz' +
-                     f'    Attenuation          = {self.atten}dB')
+        header = ['Center Frequency (GHz)', f'{self.center_freq}',
+                  'Marker Frequency (GHz)', f'{self.marker_freq}',
+                  'Resolution Bandwidth (MHz)', f'{self.res_bw}',
+                  'Video Bandwidth (Hz)', f'{self.vid_bw}',
+                  'Frequency Span (MHz)', f'{self.freq_span}',
+                  'Power Bandwidth (MHz)', f'{self.power_bw}',
+                  'Attenuation (dB)', f'{self.atten}']
         return header
 
     def spec_an_col_data(self) -> tuple:
