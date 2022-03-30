@@ -54,7 +54,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
             bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_1_man,
                                settings.instr_settings.bias_psu_settings,
-                               settings.instr_settings.buffer_time)
+                               settings.instr_settings.buffer_time,
+                               settings.file_struc)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
         # endregion
 
@@ -64,7 +65,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
             if settings.instr_settings.bias_psu_settings.bias_psu_en:
                 bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_2_man,
                                    settings.instr_settings.bias_psu_settings,
-                                   settings.instr_settings.buffer_time)
+                                   settings.instr_settings.buffer_time,
+                                   settings.file_struc)
                 lna_2_man.lna_measured_column_data(res_managers.psu_rm)
         else:
             lna_2_man = None
@@ -278,7 +280,7 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-if bias_psu_settings.skip_psu_init:
+    if bias_psu_settings.skip_psu_init:
         check_skip_be_setup = False
         while not check_skip_be_setup:
             user_check = input(

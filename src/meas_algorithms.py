@@ -128,7 +128,8 @@ def all_cold_to_all_hot(
             bias_ctrl.adaptive_bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
-                settings.instr_settings.buffer_time)
+                settings.instr_settings.buffer_time,
+                settings.file_struc)
 
         # After running through all biases at once, gate voltages are
         # known for each setting needed, as calling adaptive set will
@@ -155,13 +156,15 @@ def all_cold_to_all_hot(
                 bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
-                    settings.instr_settings.buffer_time)
+                    settings.instr_settings.buffer_time,
+                    settings.file_struc)
             if res_managers.psu_rm is not None and temp_ut != 0 and (
                     lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
                 bias_ctrl.direct_set_lna(
                     res_managers.psu_rm, lna_2_array[direct_set_index],
                     settings.instr_settings.bias_psu_settings,
-                    settings.instr_settings.buffer_time)
+                    settings.instr_settings.buffer_time,
+                    settings.file_struc)
 
             lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
             lna_2_array.append(copy.deepcopy(lna_2_bias))
@@ -289,7 +292,8 @@ def alternating_temps(
                 bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
-                    settings.instr_settings.buffer_time)
+                    settings.instr_settings.buffer_time,
+                    settings.file_struc)
 
             lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
             # endregion
@@ -301,7 +305,8 @@ def alternating_temps(
                     bias_ctrl.adaptive_bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,
-                        settings.instr_settings.buffer_time)
+                        settings.instr_settings.buffer_time,
+                        settings.file_struc)
                 lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
             # endregion
             # endregion
