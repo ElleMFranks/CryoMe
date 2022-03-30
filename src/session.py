@@ -185,7 +185,7 @@ def _res_manager_setup(instr_settings: instruments.InstrumentSettings
                 sig_gen_rm, instr_settings.buffer_time)
     if temp_ctrl_settings.temp_ctrl_en:
         temp_ctrl_settings.lakeshore_init(
-            temp_ctrl_rm, instr_settings.buffer_time, 'warm up')
+            temp_ctrl_rm, instr_settings.buffer_time)
     if bias_psu_settings.bias_psu_en:
         bias_psu_settings.psx_init(
             psu_rm, instr_settings.buffer_time, 0,
