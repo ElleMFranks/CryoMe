@@ -278,7 +278,7 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-    if not bias_psu_settings.skip_psu_init:
+if bias_psu_settings.skip_psu_init:
         check_skip_be_setup = False
         while not check_skip_be_setup:
             user_check = input(
@@ -288,6 +288,8 @@ def start_session(settings: config_handling.Settings) -> None:
                 check_skip_be_setup = True
             if user_check == 'y':
                 check_skip_be_setup = True
+    else:
+        chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
     # endregion
 
     # region Set up nominal LNA bias points.
