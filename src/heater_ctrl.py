@@ -26,7 +26,7 @@ def heater_setup(tc_rm: Resource, channel: Union[int, str],
     # region Convert str argument to string.
     if sample_or_warmup == 'sample':
         s_or_w = 0
-        util.safe_write(f'HTRSET {s_or_w} 100 0.2 ')
+        util.safe_write(f'HTRSET {s_or_w} 100 0.2', 0.5, tc_rm)
     elif sample_or_warmup == 'warmup':
         s_or_w = 1
         util.safe_write(f'HTRSET {s_or_w} 2 0 0.3', 0.5, tc_rm)

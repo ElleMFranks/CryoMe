@@ -153,10 +153,12 @@ def back_end_lna_setup(
         # drain voltage is corrected.
         if be_biases.rt_backend_en:
             bias_ctrl.adaptive_bias_set(
-                psu_rm, rtbe_lna, psu_settings, buffer_time)
+                psu_rm, rtbe_lna, psu_settings, buffer_time,
+                settings.file_struc, False)
         if be_biases.cryo_backend_en:
             bias_ctrl.adaptive_bias_set(
-                psu_rm, crbe_lna, psu_settings, buffer_time)
+                psu_rm, crbe_lna, psu_settings, buffer_time,
+                settings.file_struc, False)
         # endregion
 
         # region Get measured back-end data.

@@ -793,7 +793,7 @@ class FileStructure:
                                          'Drain Current (mA)'])
         else:
             lna_1_directory = LNACSVPaths(None, None, None)
-        self.lna_1_directory = lna_1_directory
+        self._lna_1_directory = lna_1_directory
 
     @property
     def lna_2_directory(self) -> pathlib.Path:
@@ -830,7 +830,7 @@ class FileStructure:
                                          'Drain Current (mA)'])
         else:
             lna_2_directory = LNACSVPaths(None, None, None)
-        self.lna_2_directory = lna_2_directory
+        self._lna_2_directory = lna_2_directory
 
 
     def get_log_path(self, session_id: int) -> pathlib.Path:

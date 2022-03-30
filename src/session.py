@@ -54,7 +54,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
             bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_1_man,
                                settings.instr_settings.bias_psu_settings,
-                               settings.instr_settings.buffer_time)
+                               settings.instr_settings.buffer_time,
+                               settings.file_struc)
             lna_1_man.lna_measured_column_data(res_managers.psu_rm)
         # endregion
 
@@ -64,7 +65,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
             if settings.instr_settings.bias_psu_settings.bias_psu_en:
                 bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_2_man,
                                    settings.instr_settings.bias_psu_settings,
-                                   settings.instr_settings.buffer_time)
+                                   settings.instr_settings.buffer_time,
+                                   settings.file_struc)
                 lna_2_man.lna_measured_column_data(res_managers.psu_rm)
         else:
             lna_2_man = None
@@ -185,7 +187,7 @@ def _res_manager_setup(instr_settings: instruments.InstrumentSettings
                 sig_gen_rm, instr_settings.buffer_time)
     if temp_ctrl_settings.temp_ctrl_en:
         temp_ctrl_settings.lakeshore_init(
-            temp_ctrl_rm, instr_settings.buffer_time, 'warm up')
+            temp_ctrl_rm, instr_settings.buffer_time)
     if bias_psu_settings.bias_psu_en:
         bias_psu_settings.psx_init(
             psu_rm, instr_settings.buffer_time, 0,
@@ -278,7 +280,7 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-    if not bias_psu_settings.skip_psu_init:
+    if bias_psu_settings.skip_psu_init:
         check_skip_be_setup = False
         while not check_skip_be_setup:
             user_check = input(
@@ -288,6 +290,8 @@ def start_session(settings: config_handling.Settings) -> None:
                 check_skip_be_setup = True
             if user_check == 'y':
                 check_skip_be_setup = True
+    else:
+        chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
     # endregion
 
     # region Set up nominal LNA bias points.

@@ -516,6 +516,7 @@ def _adapt_search_stage(
         # region Report and return closest to target gate voltage
         # region If present closest, return present gate voltage.
         if abs(prev_dist_from_targ) > abs(pres_dist_from_targ):
+            print(f'GV: {g_v_range[index]:+.3f} V    DI: {d_i_meas_arr[index]:+.3f} mA')
             log.info(f'COMPLETED STAGE SET\n'
                      f'TARGET: {d_i_target:.3f} mA - '
                      f'ACHIEVED: {d_i_meas_arr[index]:.3f} mA - '
@@ -524,6 +525,7 @@ def _adapt_search_stage(
         # endregion
 
         # region If previous closest, return previous gate voltage.
+        print(f'GV: {g_v_range[index - 1]:+.3f} V    DI: {d_i_meas_arr[index - 1]:+.3f} mA')
         log.info(f'COMPLETED STAGE SET\n'
                  f'TARGET DI: {d_i_target:.3f} mA - '
                  f'ACHIEVED DI: {d_i_meas_arr[index - 1]:.3f} mA - '
@@ -595,6 +597,8 @@ def _safe_set_stage(
         psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[0]),
         psu_lims, psu_set.buffer_time)
 
+    print(f'GV = {brd_g_v_range[0]:+.3f} V    DI = {init_brd_d_i:+.3f} mA')
+
     bias_conditions.append([stage_bias.d_v_at_psu, 
                             stage_bias.target_d_v_at_lna, 
                             brd_g_v_range[0],
@@ -617,7 +621,7 @@ def _safe_set_stage(
                        GOrDVTarget('g', g_v_range[index]))
             sleep(psu_set.buffer_time)
             _d_i = _get_psu_d_i(psu_rm, card_chnl, psu_set.buffer_time)
-            bias_status_str = f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}'
+            bias_status_str = f'GV = {g_v_range[index]:+.3f} V    DI = {_d_i:+.3f} mA'
             log.cdebug(bias_status_str)
             print(bias_status_str, end='\r')
             bias_conditions.append([stage_bias.d_v_at_psu, 
@@ -647,7 +651,7 @@ def _safe_set_stage(
             psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[i]), psu_lims,
             psu_set.buffer_time)
         brd_d_i_meas.append(d_i)
-        print(f'GV = {brd_g_v_range[i]:+.3f}    DI = {d_i:+.3f}', end='\r')
+        print(f'GV = {brd_g_v_range[i]:+.3f} V    DI = {d_i:+.3f} mA', end='\r')
         # endregion
 
         bias_conditions.append([stage_bias.d_v_at_psu, 
@@ -758,7 +762,7 @@ def adaptive_bias_set(
         psu_rm: Resource, target_lna_bias: lnas.LNABiasSet,
         psu_set: instruments.BiasPSUSettings, buffer_time: float,
         file_struc: config_handling.FileStructure,
-        bias_logging_en: bool) -> None:
+        bias_logging_en: bool=True) -> None:
     """Set the psu to the LNA bias values requested.
 
     When called will set each relevant channel of the psu to the
@@ -774,6 +778,9 @@ def adaptive_bias_set(
             command which is sent to any of the instruments.
         bias_logging_en: Whether to log bias conditions during search.
     """
+    stage_1_bias_conditions = None
+    stage_2_bias_conditions = None
+    stage_3_bias_conditions = None
 
     # region Get power supply limits.
     psu_stg_2_lims = None
