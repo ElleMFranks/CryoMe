@@ -140,7 +140,7 @@ def all_cold_to_all_hot(
             bias_ctrl.direct_set_lna(
                 res_managers.psu_rm, lna_1_array[direct_set_index],
                 settings.instr_settings.bias_psu_settings,
-                settings.instr_settings.buffer_ctrl)
+                settings.instr_settings.buffer_time)
 
         lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
 
@@ -161,7 +161,7 @@ def all_cold_to_all_hot(
                 bias_ctrl.direct_set_lna(
                     res_managers.psu_rm, lna_2_array[direct_set_index],
                     settings.instr_settings.bias_psu_settings,
-                    settings.instr_settings.buffer_ctrl)
+                    settings.instr_settings.buffer_time)
 
             lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
             lna_2_array.append(copy.deepcopy(lna_2_bias))

@@ -185,6 +185,7 @@ class PSUMetaSettings:
     psu_safe_init: bool
     bias_psu_en: bool
     buffer_time: float
+    skip_psu_init: bool
 # endregion
 
 
@@ -494,30 +495,24 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
             raise Exception('')
         # endregion
 
-    def lakeshore_init(self, lakeshore_rm: Resource, buffer_time: float,
-                       sample_or_warm_up: str = 'warm up') -> None:
+    def lakeshore_init(
+            self, lakeshore_rm: Resource, buffer_time: float) -> None:
         """Initialise the lakeshore to correct channels."""
         # region Print Lakeshore ID
+        ls_rm = lakeshore_rm
         log = logging.getLogger(__name__)
         log.info(util.safe_query(
-            '*IDN?', buffer_time, lakeshore_rm, 'lakeshore', False, True)[:-2])
+            '*IDN?', buffer_time, ls_rm, 'lakeshore', False, True)[:-2])
         # endregion
 
-        # region initialise sample/warmup heater.
-        if sample_or_warm_up == 'sample':
-            if self.cryo_chain == 1:
-                heater_ctrl.heater_setup(
-                    lakeshore_rm, self.chn1_lna_lsch, 'sample')
-            elif self.cryo_chain == 2:
-                heater_ctrl.heater_setup(
-                    lakeshore_rm, self.chn2_lna_lsch, 'sample')
-            elif self.cryo_chain == 3:
-                heater_ctrl.heater_setup(
-                    lakeshore_rm, self.chn3_lna_lsch, 'sample')
-        elif sample_or_warm_up == 'warm up':
-            heater_ctrl.heater_setup(lakeshore_rm, self.load_lsch, 'warmup')
-        else:
-            raise Exception('must be either "sample" or "warm up".')
+        # region initialise sample and warmup heater.
+        if self.cryo_chain == 1:
+            heater_ctrl.heater_setup(ls_rm, self.chn1_lna_lsch, 'sample')
+        elif self.cryo_chain == 2:
+            heater_ctrl.heater_setup(ls_rm, self.chn2_lna_lsch, 'sample')
+        elif self.cryo_chain == 3:
+            heater_ctrl.heater_setup(ls_rm, self.chn3_lna_lsch, 'sample')
+        heater_ctrl.heater_setup(ls_rm, self.load_lsch, 'warmup')
         log.info("Lakeshore initialised.")
         # endregion
 

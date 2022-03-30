@@ -108,7 +108,8 @@ def back_end_lna_setup(
     log.info('Setting up back end LNAs...')
 
     # region Unpack LNA bias variables.
-    rtbe_lna = be_biases.rtbe_chain_a_lna
+    if be_biases.rt_backend_en:
+        rtbe_lna = be_biases.rtbe_chain_a_lna
     if be_biases.cryo_backend_en:
         if chain == 1:
             crbe_lna = be_biases.crbe_chain_1_lna
@@ -123,11 +124,12 @@ def back_end_lna_setup(
     # region Send requests to bias ctrl to set room-temp/cryo BELNAs.
     if psu_rm is not None and use_g_v_or_d_i == 'g v':
         # region If direct set uncor manual input g/dV to biasing.
-        bias_ctrl.direct_set_stage(
-            psu_rm, bias_ctrl.CardChnl(chain, 8),
-            instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
-            [bias_ctrl.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
-             bias_ctrl.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
+        if be_biases.rt_backend_en:
+            bias_ctrl.direct_set_stage(
+                psu_rm, bias_ctrl.CardChnl(chain, 8),
+                instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+                [bias_ctrl.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
+                 bias_ctrl.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
         if be_biases.cryo_backend_en:
             bias_ctrl.direct_set_stage(
                 psu_rm, bias_ctrl.CardChnl(chain, 7),
@@ -138,7 +140,8 @@ def back_end_lna_setup(
         # endregion
 
         # region Get measured back-end data.
-        rtbe_lna.lna_measured_column_data(psu_rm, True)
+        if be_biases.rt_backend_en:
+            rtbe_lna.lna_measured_column_data(psu_rm, True)
         if be_biases.cryo_backend_en:
             crbe_lna.lna_measured_column_data(psu_rm, True)
         # endregion
@@ -148,14 +151,17 @@ def back_end_lna_setup(
         # This will algorithmically find the requested current at
         # required drain voltage, need to remember in this case
         # drain voltage is corrected.
-        bias_ctrl.adaptive_bias_set(psu_rm, rtbe_lna, psu_settings, buffer_time)
+        if be_biases.rt_backend_en:
+            bias_ctrl.adaptive_bias_set(
+                psu_rm, rtbe_lna, psu_settings, buffer_time)
         if be_biases.cryo_backend_en:
             bias_ctrl.adaptive_bias_set(
                 psu_rm, crbe_lna, psu_settings, buffer_time)
         # endregion
 
         # region Get measured back-end data.
-        rtbe_lna.lna_measured_column_data(psu_rm, True)
+        if be_biases.rt_backend_en:
+            rtbe_lna.lna_measured_column_data(psu_rm, True)
         if be_biases.cryo_backend_en:
             crbe_lna.lna_measured_column_data(psu_rm, True)
         # endregion

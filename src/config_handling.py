@@ -12,7 +12,7 @@ constructors.
 # region Import modules.
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 import csv
 import math
 import os
@@ -89,7 +89,8 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         instruments.PSUMetaSettings(
             config['measurement_settings']['psu_safe_init'],
             config['available_instruments']['bias_psu_en'],
-            config['measurement_settings']['instr_buffer_time']))
+            config['measurement_settings']['instr_buffer_time'],
+            config['measurement_settings']['skip_psu_init']))
     # endregion
 
     # region Switch Settings.
@@ -150,12 +151,13 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         config['back_end_lna_settings']['correct_be_d_v'],
         cryo_chain,
         config['back_end_lna_settings']['cryo_backend_en'],
+        config['back_end_lna_settings']['rt_backend_en'],
         config['back_end_lna_settings']['be_d_i_limit'])
     # endregion
     # endregion
 
     # region Return settings.
-    return Settings(
+    settings = Settings(
         MeasurementSettings(
             SessionInfo(
                 config['measurement_settings']['project_title'],
@@ -192,7 +194,16 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
             config['measurement_settings']['project_title'],
             config['measurement_settings']['in_cal_file_id'],
             cryo_chain))
+    
+    settings.file_struc.lna_1_directory = \
+        settings.meas_settings.lna_ut_ids.lna_1_id
+    if settings.meas_settings.lna_ut_ids.lna_2_id is not None:
+        settings.file_struc.lna_2_directory = \
+            settings.meas_settings.lna_ut_ids.lna_2_id
+    
+    return settings
     # endregion
+
 
 
 # region Base Level Classes.
@@ -486,7 +497,7 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
         LNAInfo.__init__(self, *util.get_dataclass_args(lna_info))
         # endregion
 
-        # region Initialise attributes to set later.
+        # region Initialise attributes.
         if self.lna_cryo_layout.cryo_chain == 1:
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_1_lna_1_id,
@@ -668,6 +679,12 @@ class SweepSettings(MeasSequence, SweepSetupVars, NominalBias, LNACryoLayout):
                     self.lna_sequence.remove(2)
         # endregion
 
+@dataclass
+class LNACSVPaths:
+    """Paths for bias conditions csv for each stage of an LNA."""
+    stage_1: Optional[pathlib.Path]
+    stage_2: Optional[pathlib.Path]
+    stage_3: Optional[pathlib.Path]
 
 class FileStructure:
     """Cryome file path structure.
@@ -726,17 +743,94 @@ class FileStructure:
         self.res_log_path = pathlib.Path(
             str(self.results_directory) +
             f'\\{project_title} Results Log.csv')
+        self.lna_bias_directory = pathlib.Path(
+            f'{self.results_directory}\\LNA Bias Data')
         # endregion
 
         # region Check results/calibration folder exist, if not create.
         os.makedirs(self.cal_directory, exist_ok=True)
         os.makedirs(self.results_directory, exist_ok=True)
+        os.makedirs(self.lna_bias_directory, exist_ok=True)
         # endregion
 
         # region If normal and cal settings logs don't exist make them.
         self._settings_log_setup()
         self._results_log_setup()
         # endregion
+
+    @property
+    def lna_1_directory(self) -> Optional[LNACSVPaths]:
+        return self._lna_1_directory
+
+    @lna_1_directory.setter
+    def lna_1_directory(self, lna_1_id: int) -> None:
+        """Directory for first LNA bias csvs."""
+        # region Ensure all stages of LNA have bias conditions csv set up.
+        if isinstance(lna_1_id, int):
+            stage_1 = f'LNA {lna_1_id} Stage 1.csv'
+            stage_1_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_1}')
+            stage_2 = f'LNA {lna_1_id} Stage 2.csv'
+            stage_2_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_2}')
+            stage_3 = f'LNA {lna_1_id} Stage 3.csv'
+            stage_3_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_3}')
+            stages = [stage_1_path, stage_2_path, stage_3_path]
+            lna_1_directory = LNACSVPaths(
+                stage_1_path, stage_2_path, stage_3_path)
+
+            for stage in stages:
+                if not os.path.isfile(stage):
+                    with open(stage, 'w',
+                              newline='', encoding='utf-8') as file:
+                        writer = csv.writer(
+                            file, quoting=csv.QUOTE_NONE, escapechar='\\')
+                        writer.writerow(['Drain V at PSU (V)',
+                                         'Drain V at LNA (V)',
+                                         'Gate Voltage (V)',
+                                         'Drain Current (mA)'])
+        else:
+            lna_1_directory = LNACSVPaths(None, None, None)
+        self.lna_1_directory = lna_1_directory
+
+    @property
+    def lna_2_directory(self) -> pathlib.Path:
+        return self._lna_2_directory
+    
+    @lna_2_directory.setter
+    def lna_2_directory(
+            self, lna_2_id: Optional[int]) -> Optional[LNACSVPaths]:
+        """Directory for second LNA bias csvs."""
+        # region Ensure all stages of LNA have bias conditions csv set up.
+        if isinstance(lna_2_id, int):
+            stage_1 = f'LNA {lna_2_id} Stage 1.csv'
+            stage_1_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_1}')
+            stage_2 = f'LNA {lna_2_id} Stage 2.csv'
+            stage_2_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_2}')
+            stage_3 = f'LNA {lna_2_id} Stage 3.csv'
+            stage_3_path = pathlib.Path(
+                f'{self.lna_bias_directory}\\{stage_3}')
+            stages = [stage_1_path, stage_2_path, stage_3_path]
+            lna_2_directory = LNACSVPaths(
+                stage_1_path, stage_2_path, stage_3_path)
+
+            for stage in stages:
+                if not os.path.isfile(stage):
+                    with open(stage, 'w',
+                              newline='', encoding='utf-8') as file:
+                        writer = csv.writer(
+                            file, quoting=csv.QUOTE_NONE, escapechar='\\')
+                        writer.writerow(['Drain V at PSU (V)',
+                                         'Drain V at LNA (V)',
+                                         'Gate Voltage (V)',
+                                         'Drain Current (mA)'])
+        else:
+            lna_2_directory = LNACSVPaths(None, None, None)
+        self.lna_2_directory = lna_2_directory
+
 
     def get_log_path(self, session_id: int) -> pathlib.Path:
         """Sets the directory for & returns the path of the log file.
@@ -785,6 +879,39 @@ class FileStructure:
 
         # endregion
 
+    @staticmethod
+    def output_file_path(directory: pathlib.Path,
+                         meas_settings: MeasurementSettings,
+                         bias_id: int, csv_or_png: str) -> pathlib.Path:
+        """Returns the output csv or png path."""
+        # region Return the output file path.
+        l_str = f'LNA {meas_settings.lna_id_str} '
+        s_str = f'Session {meas_settings.session_id} '
+        b_str = f'Bias {bias_id}'
+        a_str = f'Alg {meas_settings.measure_method}'
+
+        while len(l_str) < 11:
+            l_str += ' '
+        while len(s_str) < 12:
+            s_str += ' '
+
+        session_folder = f'\\{s_str}{l_str}{a_str}'
+        session_folder_dir = str(directory) + session_folder
+        os.makedirs(session_folder_dir, exist_ok=True)
+
+        results_csv_title = f'\\{s_str}{l_str}{b_str}.csv'
+        results_png_title = f'\\{s_str}{l_str}{b_str}.png'
+
+        results_csv_path = pathlib.Path(
+            str(directory) + session_folder + results_csv_title)
+        results_png_path = pathlib.Path(
+            str(directory) + session_folder + results_png_title)
+        if csv_or_png == 'csv':
+            return results_csv_path
+        if csv_or_png == 'png':
+            return results_png_path
+        # endregion
+
     def check_files_closed(self) -> None:
         """Check logs are closed and prompt user to close them."""
         # region Check logs are closed
@@ -809,9 +936,9 @@ class FileStructure:
                 ready = True
         # endregion
 
-    def write_to_file(
-            self, path: Path, data: Any, 
-            mode: str, row_or_rows:str) -> None:
+    @staticmethod
+    def write_to_file(path: pathlib.Path, data: Any, 
+                      mode: str, row_or_rows: str) -> None:
         """Writes data to a csv file specified.
         
         Args:
@@ -831,12 +958,11 @@ class FileStructure:
                         writer.writerows(data)
                     elif row_or_rows == 'row':
                         writer.writerow(data)
-                        writer.writerow('\n')
                     else:
                         raise Exception('Incorrect row or rows argument.')
                 complete = True
             except:
-                input(f'Please close {location} and press enter.')
+                input(f'Please close {path} and press enter.')
                 continue
 # endregion
 

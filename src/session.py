@@ -165,7 +165,7 @@ def _res_manager_setup(instr_settings: instruments.InstrumentSettings
         psu_rm.read_termination = '\n'
         psu_rm.write_termination = '\n'
         # Ensure psx is initialised safely
-        if bias_psu_settings.psu_safe_init:
+        if bias_psu_settings.psu_safe_init and not bias_psu_settings.skip_psu_init:
             bias_ctrl.psu_safe_init(
                 psu_rm, instr_settings.buffer_time,
                 instruments.PSULimits(bias_psu_settings.v_step_lim,
@@ -278,7 +278,16 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-    chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+    if not bias_psu_settings.skip_psu_init:
+        check_skip_be_setup = False
+        while not check_skip_be_setup:
+            user_check = input(
+                'Are you sure you want to skip back end LNA biasing setup? (y/n): ')
+            if user_check == 'n':
+                chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+                check_skip_be_setup = True
+            if user_check == 'y':
+                check_skip_be_setup = True
     # endregion
 
     # region Set up nominal LNA bias points.
@@ -312,6 +321,11 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
     # endregion
 
+    if not settings.meas_settings.is_calibration:
+        config_handling.FileStructure.write_to_file(settings.file_struc.res_log_path, '', 'a', 'row')
+        config_handling.FileStructure.write_to_file(settings.file_struc.settings_path, '', 'a', 'row')
+    else:
+        config_handling.FileStructure.write_to_file(settings.file_struc.cal_settings_path, '', 'a', 'row')
     # region Turn PSX off safely.
     if bias_psu_settings.bias_psu_en:
         log.info('Turning off PSU...')

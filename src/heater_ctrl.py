@@ -67,17 +67,19 @@ def _check_temp(tc_rm: Resource,  channel: int, target_temp: float,
 
     # region Check temperature at 0 and 10s if stable check is 1
     temp = util.safe_query(f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
+    print(f'Channel {channel}, Target: {target_temp:+.2f} K, Currently: {temp:+.2f} K', end='\r')
     if target_temp - error_target < temp < target_temp + error_target:
         sleep(st_time)
         temp = util.safe_query(
             f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
+        print(f'Channel {channel}, Target: {target_temp:+.2f}, Currently: {temp:+.2f} K', end='\r')
         if target_temp - error_target < temp < target_temp + error_target:
+            print(f'Channel {channel}, Target: {target_temp:+.2f}, Currently: {temp:+.2f} K')
             return True
-        
     # endregion
 
 
-def temp_stabilisation(tc_rm: Resource, channel: int, temp: float,
+def temp_stabilisation(tc_rm: Resource, channel: int, target_temp: float,
                             st_time: float = 10) -> bool:
     """Stabilises cryostat at given temperature.
     
@@ -90,12 +92,12 @@ def temp_stabilisation(tc_rm: Resource, channel: int, temp: float,
     # region Check temperature until within range for st_time seconds.
     start = perf_counter()
     util.safe_write(f'SCAN{channel},0', 4, tc_rm)
-    while not _check_temp(tc_rm, channel, temp, st_time):
+    while not _check_temp(tc_rm, channel, target_temp, st_time):
         sleep(0.5)
         time = perf_counter() - start
         if time > 420:
             user_response = input(
-            f'Temperature is {temp}K, continue waiting to stabilise y/n?')
+            f'Continue waiting to stabilise y/n?')
             if user_response == 'y':
                 return True
             else:
@@ -182,7 +184,7 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
     load_temp_set = False
     lna_temp_set = False
     tc_settings = instr_settings.temp_ctrl_settings
-    lna_temp_target = tc_settings.lna_temp_target
+    lna_temp_target = tc_settings.lna_target
     # endregion
 
     if tc_rm is not None:
@@ -204,7 +206,7 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
             # endregion
 
             # region If LNA set without problem then exit loop.
-            if (lna_temp_target - 1 < lna_temp < lna_temp_target + 1) \
+            if (lna_temp_target - 1 < float(lna_temp) < lna_temp_target + 1) \
                     and pre_heater_status == '0\r' \
                     and post_heater_status == '0\r':
                 lna_temp_set = True

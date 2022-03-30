@@ -11,9 +11,6 @@ higher.
 
 ToDo:
     Priority:
-        * Bias data saving
-        * Make CryoBackEnd LNA Optional
-        * Finish replot script
 
     Additional
 

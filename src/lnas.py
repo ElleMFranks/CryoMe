@@ -452,8 +452,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             elif self.stage_3.g_v == 'NA':
                 column_data.append(f'{self.stage_3.g_v}')
             else:
-                column_data.extend((f'{self.stage_3.g_v:+.3f}'
-                                    f'{self.stage_3.target_d_v_at_lna:+.3f}'
+                column_data.extend((f'{self.stage_3.g_v:+.3f}',
+                                    f'{self.stage_3.target_d_v_at_lna:+.3f}',
                                     f'{self.stage_3.d_i:+.3f}'))
             # endregion
 
@@ -509,11 +509,11 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                     f'CHannel{self.stage_2.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True))
             meas_col_data.append(
-                (util.safe_query(
+                util.safe_query(
                     f'Bias:MEASure:ID:'
                     f'CArd{self.stage_2.card_chnl.card}:'
                     f'CHannel{self.stage_2.card_chnl.chnl}?',
-                    0.5, psx_rm, 'psx', True) * 1000))
+                    0.5, psx_rm, 'psx', True) * 1000)
         elif psx_rm is not None and self.stage_2 is None:
             meas_col_data.extend(['NA', 'NA', 'NA'])
         # endregion
@@ -828,8 +828,8 @@ class BackEndLNASettings:
 
     def __init__(
             self, be_lna_biases: dict, use_g_v_or_d_i: str,
-            correct_be_d_v: bool, cryo_chain: int, cryo_backend_en:bool, 
-            be_d_i_lim: float = 20) -> None:
+            correct_be_d_v: bool, cryo_chain: int, cryo_backend_en: bool, 
+            rt_backend_en: bool, be_d_i_lim: float = 20) -> None:
         """Constructor for the BackEndLNASettings class.
 
         Args:
@@ -843,6 +843,7 @@ class BackEndLNASettings:
         """
 
         self.cryo_backend_en = cryo_backend_en
+        self.rt_backend_en = rt_backend_en
         self.use_g_v_or_d_i = use_g_v_or_d_i
         self.correct_be_d_v = correct_be_d_v
         self.rtbe_gv = be_lna_biases['rtbe_chna_g_v']
