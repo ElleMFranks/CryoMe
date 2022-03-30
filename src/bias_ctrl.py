@@ -18,6 +18,7 @@ import logging
 from pyvisa import Resource
 import numpy as np
 
+import config_handling
 import instruments
 import lnas
 import util
@@ -573,6 +574,7 @@ def _safe_set_stage(
     log = logging.getLogger(__name__)
     brd_d_i_meas = []
     d_i_target = stage_bias.d_i
+    bias_conditions = []
     # endregion
 
     # region Set psu to target drain voltage accounting for wire v drop.
@@ -593,6 +595,11 @@ def _safe_set_stage(
         psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[0]),
         psu_lims, psu_set.buffer_time)
 
+    bias_conditions.append([stage_bias.d_v_at_psu, 
+                            stage_bias.target_d_v_at_lna, 
+                            brd_g_v_range[0],
+                            init_brd_d_i])
+
     if init_brd_d_i == 'over limit':
         return brd_g_v_range[0]  # Return the lowest g_v possible.
 
@@ -610,7 +617,14 @@ def _safe_set_stage(
                        GOrDVTarget('g', g_v_range[index]))
             sleep(psu_set.buffer_time)
             _d_i = _get_psu_d_i(psu_rm, card_chnl, psu_set.buffer_time)
-            log.cdebug(f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}')
+            bias_status_str = f'GV = {g_v_range[index]:+.3f}    DI = {_d_i:+.3f}'
+            log.cdebug(bias_status_str)
+            print(bias_status_str, end='\r')
+            bias_conditions.append([stage_bias.d_v_at_psu, 
+                                    stage_bias.target_d_v_at_lna,
+                                    g_v_range[index],
+                                    _d_i])
+            
         # endregion
 
         # region Final val of g_v_range already measured in outer loop.
@@ -633,7 +647,13 @@ def _safe_set_stage(
             psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[i]), psu_lims,
             psu_set.buffer_time)
         brd_d_i_meas.append(d_i)
+        print(f'GV = {brd_g_v_range[i]:+.3f}    DI = {d_i:+.3f}', end='\r')
         # endregion
+
+        bias_conditions.append([stage_bias.d_v_at_psu, 
+                                stage_bias.target_d_v_at_lna,
+                                brd_g_v_range[i],
+                                d_i])
 
         # region Process measured current to make adaptive search decisions.
         brd_lvl = _adapt_search_stage(brd_d_i_meas, d_i_target, brd_g_v_range,
@@ -686,7 +706,7 @@ def _safe_set_stage(
                     if not g_v_final[3]:
                         _set_psu_v(psu_rm, card_chnl, psu_set.buffer_time,
                                    GOrDVTarget('g', g_v_final[0]))
-                    return g_v_final[0]
+                    return g_v_final[0], bias_conditions
                 # endregion
                 # endregion
 
@@ -701,10 +721,44 @@ def _safe_set_stage(
     return max(brd_g_v_range)
     # endregion
 
+@dataclass
+class BiasConditions:
+    """Bias conditions for each LNA stage which has been adaptive set.
+    """
+    stage_1_biases: list
+    stage_2_biases: list
+    stage_3_biases: list
+
+def _bias_logging(file_struc: config_handling.FileStructure,
+                  lna_position: str, bias_conditions: BiasConditions
+                  ) -> None:
+    """Logs bias conditions to corresponding csv."""
+    # region Get LNA directory.
+    if lna_position == 'LNA1':
+            directory = file_struc.lna_1_directory
+
+    if lna_position == 'LNA2':
+        directory = file_struc.lna_2_directory
+    # endregion
+
+    # region Write conditions to csvs.
+    file_struc.write_to_file(directory.stage_1, 
+                             bias_conditions.stage_1_biases, 'a', 'rows')
+
+    if bias_conditions.stage_2_biases is not None:
+        file_struc.write_to_file(directory.stage_2,
+                                 bias_conditions.stage_2_biases, 'a', 'rows')
+
+    if bias_conditions.stage_3_biases is not None:
+        file_struc.write_to_file(directory.stage_3,
+                                 bias_conditions.stage_3_biases, 'a', 'rows')
+    # endregion
 
 def adaptive_bias_set(
         psu_rm: Resource, target_lna_bias: lnas.LNABiasSet,
-        psu_set: instruments.BiasPSUSettings, buffer_time: float) -> None:
+        psu_set: instruments.BiasPSUSettings, buffer_time: float,
+        file_struc: config_handling.FileStructure,
+        bias_logging_en: bool) -> None:
     """Set the psu to the LNA bias values requested.
 
     When called will set each relevant channel of the psu to the
@@ -718,6 +772,7 @@ def adaptive_bias_set(
             limits, and wide/narrow voltage step sizes.
         buffer_time: This is how long to wait in seconds after each
             command which is sent to any of the instruments.
+        bias_logging_en: Whether to log bias conditions during search.
     """
 
     # region Get power supply limits.
@@ -741,21 +796,35 @@ def adaptive_bias_set(
     # region Set each stage to target drain voltage and current
     # Return and store gate voltage
     _local_bias_en(psu_rm, target_lna_bias.stage_1.card_chnl, 1, buffer_time)
-    target_lna_bias.stage_1.g_v = _safe_set_stage(
+    print(f'Drain Voltage at LNA: {target_lna_bias.stage_1.target_d_v_at_lna:+.3f} V')
+    print(f'Drain Current Target: {target_lna_bias.stage_1.d_i:+.3f}')
+    target_lna_bias.stage_1.g_v, stage_1_bias_conditions = _safe_set_stage(
         psu_rm, target_lna_bias.stage_1, psu_set,
         target_lna_bias.stage_1.card_chnl, psu_stg_1_lims)
 
     if psu_stg_2_lims is not None:
+        print(f'Drain Voltage at LNA: {target_lna_bias.stage_2.target_d_v_at_lna:+.3f} V')
+        print(f'Drain Current Target: {target_lna_bias.stage_2.d_i:+.3f}')
         _local_bias_en(psu_rm, target_lna_bias.stage_2.card_chnl, 1,
                        buffer_time)
-        target_lna_bias.stage_2.g_v = _safe_set_stage(
+        target_lna_bias.stage_2.g_v, stage_2_bias_conditions = _safe_set_stage(
                 psu_rm, target_lna_bias.stage_2, psu_set,
                 target_lna_bias.stage_2.card_chnl, psu_stg_2_lims)
 
     if psu_stg_3_lims is not None:
+        print(f'Drain Voltage at LNA: {target_lna_bias.stage_3.target_d_v_at_lna:+.3f} V')
+        print(f'Drain Current Target: {target_lna_bias.stage_3.d_i:+.3f}')
         _local_bias_en(psu_rm, target_lna_bias.stage_3.card_chnl, 1,
                        buffer_time)
-        target_lna_bias.stage_3.g_v = _safe_set_stage(
+        target_lna_bias.stage_3.g_v, stage_3_bias_conditions = _safe_set_stage(
                 psu_rm, target_lna_bias.stage_3, psu_set,
                 target_lna_bias.stage_3.card_chnl, psu_stg_3_lims)
+
+    # region Write bias conditions to bias file.
+    if bias_logging_en:
+        bias_points =  BiasConditions(stage_1_bias_conditions,
+                                      stage_2_bias_conditions,
+                                      stage_3_bias_conditions)
+        _bias_logging(file_struc, target_lna_bias.lna_position, bias_points)
+    # endregion
     # endregion

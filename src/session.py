@@ -279,7 +279,15 @@ def start_session(settings: config_handling.Settings) -> None:
 
     # region Set back end (cryostat and room-temperature) LNAs.
     if not bias_psu_settings.skip_psu_init:
-        chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+        check_skip_be_setup = False
+        while not check_skip_be_setup:
+            user_check = input(
+                'Are you sure you want to skip back end LNA biasing setup? (y/n): ')
+            if user_check == 'n':
+                chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+                check_skip_be_setup = True
+            if user_check == 'y':
+                check_skip_be_setup = True
     # endregion
 
     # region Set up nominal LNA bias points.
@@ -313,6 +321,11 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
     # endregion
 
+    if not settings.meas_settings.is_calibration:
+        config_handling.FileStructure.write_to_file(settings.file_struc.res_log_path, '', 'a', 'row')
+        config_handling.FileStructure.write_to_file(settings.file_struc.settings_path, '', 'a', 'row')
+    else:
+        config_handling.FileStructure.write_to_file(settings.file_struc.cal_settings_path, '', 'a', 'row')
     # region Turn PSX off safely.
     if bias_psu_settings.bias_psu_en:
         log.info('Turning off PSU...')

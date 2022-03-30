@@ -309,9 +309,9 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
     # region Input Calibration Data.
     if not results_meta_info.is_calibration:
         in_cal_data_np = np.array(results_meta_info.trimmed_in_cal_data)
-        in_cal_noise_temps = in_cal_data_np[:, 8]
-        hot_cal_powers = in_cal_data_np[:, 3]
-        cold_cal_powers = in_cal_data_np[:, 2]
+        in_cal_noise_temps = in_cal_data_np[:, 8].astype(float)
+        hot_cal_powers = in_cal_data_np[:, 3].astype(float)
+        cold_cal_powers = in_cal_data_np[:, 2].astype(float)
         in_cal_data = InputCalData(cold_cal_powers, hot_cal_powers,
                                    in_cal_noise_temps)
     # endregion
@@ -328,9 +328,11 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
     # endregion
 
     # region Temperature correction internal function.
-    def _temp_correction(load_t, lna_t, index):
+    def _temp_correction(load_t: float, lna_t: float, index: int) -> float:
         """Corrects a temperature measurement for system loss.
         """
+        load_t = float(load_t)
+        lna_t = float(lna_t)
 
         # region Calculate corrected temperature
         _a = ((1 - (1 / loss[index]))
@@ -776,35 +778,4 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.hot.pre_post_temps.pre_loop_extra_2_temps,
             self.hot.pre_post_temps.post_loop_extra_2_temps))
 
-    @staticmethod
-    def output_file_path(directory: pathlib.Path,
-                         meas_settings: config_handling.MeasurementSettings,
-                         bias_id: int, csv_or_png: str) -> pathlib.Path:
-        """Returns the output csv or png path."""
-
-        l_str = f'LNA {meas_settings.lna_id_str} '
-        s_str = f'Session {meas_settings.session_id} '
-        b_str = f'Bias {bias_id}'
-        a_str = f'Alg {meas_settings.measure_method}'
-
-        while len(l_str) < 11:
-            l_str += ' '
-        while len(s_str) < 12:
-            s_str += ' '
-
-        session_folder = f'\\{s_str}{l_str}{a_str}'
-        session_folder_dir = str(directory) + session_folder
-        os.makedirs(session_folder_dir, exist_ok=True)
-
-        results_csv_title = f'\\{s_str}{l_str}{b_str}.csv'
-        results_png_title = f'\\{s_str}{l_str}{b_str}.png'
-
-        results_csv_path = pathlib.Path(
-            str(directory) + session_folder + results_csv_title)
-        results_png_path = pathlib.Path(
-            str(directory) + session_folder + results_png_title)
-        if csv_or_png == 'csv':
-            return results_csv_path
-        if csv_or_png == 'png':
-            return results_png_path
 # endregion

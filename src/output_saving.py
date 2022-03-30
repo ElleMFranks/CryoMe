@@ -267,7 +267,7 @@ def save_standard_results(
     # region Setup and save plot.
     lna_biases = [lna_1_bias, lna_2_bias]
     _save_plot(results, meas_settings, lna_biases,
-               results.output_file_path(file_struc.results_directory,
+               file_struc.output_file_path(file_struc.results_directory,
                                         meas_settings, bias_id, 'png'),
                bias_id)
     log.info('Plot saved. Saving raw results to be processed.')
@@ -331,7 +331,7 @@ def save_standard_results(
 
     # region Save to results output csv
     file_struc.write_to_file(
-        results.output_file_path(file_struc.results_directory, meas_settings, 
+        file_struc.output_file_path(file_struc.results_directory, meas_settings, 
                                  bias_id, 'csv'),
         results_csv_data, 'w', 'rows')
     log.info('Results pre-analysed, plotted, and saved.\n')
