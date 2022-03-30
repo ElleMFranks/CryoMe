@@ -26,8 +26,10 @@ def heater_setup(tc_rm: Resource, channel: Union[int, str],
     # region Convert str argument to string.
     if sample_or_warmup == 'sample':
         s_or_w = 0
+        util.safe_write(f'HTRSET {s_or_w} 100 0.2 ')
     elif sample_or_warmup == 'warmup':
         s_or_w = 1
+        util.safe_write(f'HTRSET {s_or_w} 2 0 0.3', 0.5, tc_rm)
     else:
         raise Exception('Neither sample nor warmup chosen.')
     # endregion
@@ -35,6 +37,8 @@ def heater_setup(tc_rm: Resource, channel: Union[int, str],
     # region Output setup of heater to PID (5).
     util.safe_write(f' OUTMODE {s_or_w}  5 {channel}', 0.5, tc_rm)
     # endregion
+
+    
 
 
 def set_temp(tc_rm: Resource, temp: float, lna_or_load: str) -> None:
@@ -242,7 +246,7 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
                 set_temp(tc_rm, load_temp_target, 'load')
 
             # region If load set without problem, exit loop, else warning.
-            if (load_temp_target - 1 < load_temp < load_temp_target + 1) \
+            if (load_temp_target - 1 < float(load_temp) < load_temp_target + 1) \
                     and pre_heater_status == '0\r' \
                     and post_heater_status == '0\r':
                 load_temp_set = True

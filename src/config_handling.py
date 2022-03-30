@@ -130,7 +130,8 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         manual_lna_settings = lnas.ManualLNASettings(
             config['manual_entry_lna_settings'],
             lna_cryo_layout,
-            config['bias_psu_settings']['d_i_lim'])
+            config['bias_psu_settings']['d_i_lim'],
+            config['manual_entry_lna_settings']['correct_man_d_v'])
     else:
         manual_lna_settings = None
     # endregion

@@ -208,22 +208,24 @@ def direct_set_lna(psu_rm: Resource, lna_bias: lnas.LNABiasSet,
 
     # region Set stage 3.
     if hasattr(lna_bias, 'stage_3'):
-        stage = lna_bias.stage_3
-        direct_set_stage(
-            psu_rm, stage.card_chnl, 
-            instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
-            buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
-                          GOrDVTarget('g', stage.g_v)])
+        if lna_bias.stage_3 is not None:
+            stage = lna_bias.stage_3
+            direct_set_stage(
+                psu_rm, stage.card_chnl, 
+                instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
+                buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
+                              GOrDVTarget('g', stage.g_v)])
     # endregion
 
     # region Set stage 2.
     if hasattr(lna_bias, 'stage_2'):
-        stage = lna_bias.stage_2
-        direct_set_stage(
-            psu_rm, stage.card_chnl, 
-            instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
-            buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
-                          GOrDVTarget('g', stage.g_v)])
+        if lna_bias.stage_2 is not None:
+            stage = lna_bias.stage_2
+            direct_set_stage(
+                psu_rm, stage.card_chnl, 
+                instruments.PSULimits(psu_settings.v_step_lim, stage.d_i_limit),
+                buffer_time, [GOrDVTarget('d', stage.d_v_at_psu),
+                              GOrDVTarget('g', stage.g_v)])
     # endregion
 
     # region Set stage 1.
