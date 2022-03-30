@@ -289,13 +289,13 @@ class LNABiasSet(LNACryoLayout, LNAStages):
         # region Set additional attributes based on args.
         # region Handle channels/drain impedances based on LNA position.
         if self.lna_position == 'LNA1':
-            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 1)
-            self.stage_2.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 2)
-            self.stage_3.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 3)
+            for i, stage in enumerate([self.stage_1, self.stage_2, self.stage_3]):
+                if stage is not None:
+                    stage.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, i+1)
         elif self.lna_position == 'LNA2':
-            self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 4)
-            self.stage_2.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 5)
-            self.stage_3.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 6)
+            for i, stage in enumerate([self.stage_1, self.stage_2, self.stage_3]):
+                if stage is not None:
+                    stage.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, i+4)
         elif self.lna_position == 'CRBE':
             self.stage_1.card_chnl = bias_ctrl.CardChnl(self.cryo_chain, 7)
         elif self.lna_position == 'RTBE':
@@ -452,8 +452,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             elif self.stage_3.g_v == 'NA':
                 column_data.append(f'{self.stage_3.g_v}')
             else:
-                column_data.extend((f'{self.stage_3.g_v:+.3f}'
-                                    f'{self.stage_3.target_d_v_at_lna:+.3f}'
+                column_data.extend((f'{self.stage_3.g_v:+.3f}',
+                                    f'{self.stage_3.target_d_v_at_lna:+.3f}',
                                     f'{self.stage_3.d_i:+.3f}'))
             # endregion
 
@@ -718,7 +718,7 @@ class ManualLNASettings:
     def __init__(
             self, manual_lna_biases: dict,
             lna_cryo_layout: LNACryoLayout, d_i_lim: float,
-            ) -> None:
+            correct_man_d_v: bool) -> None:
         """Constructor for the ManualLNASettings class.
 
         Args:
@@ -726,40 +726,73 @@ class ManualLNASettings:
             lna_cryo_layout: The layout config of the LNAs inside the
                 cryostat.
             d_i_lim: The current limit of the LNA (mA).
+            correct_man_d_v: Whether the drain voltage should be
+                corrected for voltage drop on the wire.
         """
+
+
+        lna_1_stage_1 = StageBiasSet(
+            StageSettings('LNA1', d_i_lim), 
+            IndivBias(manual_lna_biases['man_l1_s1_d_i'],                               
+                      manual_lna_biases['man_l1_s1_d_v']),
+            correct_man_d_v)
+
+        if manual_lna_biases['man_l1_s2_d_i'] is not None:
+            lna_1_stage_2 = StageBiasSet(
+                StageSettings('LNA1', d_i_lim),
+                IndivBias(manual_lna_biases['man_l1_s2_d_i'],
+                          manual_lna_biases['man_l1_s2_d_v']),
+                correct_man_d_v)
+        else:
+            lna_1_stage_2 = None
+
+        if manual_lna_biases['man_l1_s3_d_i'] is not None:
+            lna_1_stage_3 = StageBiasSet(
+                StageSettings('LNA1', d_i_lim),
+                IndivBias(manual_lna_biases['man_l1_s3_d_i'],
+                          manual_lna_biases['man_l1_s3_d_v']),
+                correct_man_d_v)
+        else:
+            lna_1_stage_3 = None
+
 
         # region Set lna stages from args.
         self.lna_1_stages = LNAStages(
-            StageBiasSet(StageSettings('LNA1', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l1_s1_d_i'],
-                                   manual_lna_biases['man_l1_s1_d_v'])),
-            StageBiasSet(StageSettings('LNA1', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l1_s2_d_i'],
-                                   manual_lna_biases['man_l1_s2_d_v'])),
-            StageBiasSet(StageSettings('LNA1', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l1_s3_d_i'],
-                                   manual_lna_biases['man_l1_s3_d_v']))
-        )
+            lna_1_stage_1, lna_1_stage_2, lna_1_stage_3)
 
-        self.lna_2_stages = LNAStages(
-            StageBiasSet(StageSettings('LNA2', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l2_s1_d_i'],
-                                   manual_lna_biases['man_l2_s1_d_v'])),
-            StageBiasSet(StageSettings('LNA2', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l2_s2_d_i'],
-                                   manual_lna_biases['man_l2_s2_d_v'])),
-            StageBiasSet(StageSettings('LNA2', d_i_lim),
-                         IndivBias(manual_lna_biases['man_l2_s3_d_i'],
-                                   manual_lna_biases['man_l2_s3_d_v']))
-        )
+        if lna_cryo_layout.lnas_per_chain == 2:
+            lna_2_stage_1 = StageBiasSet(
+                StageSettings('LNA2', d_i_lim),
+                IndivBias(manual_lna_biases['man_l2_s1_d_i'],
+                          manual_lna_biases['man_l2_s1_d_v']))
+            if manual_lna_biases['man_l2_s2_d_i'] is not None:
+                lna_2_stage_2 = StageBiasSet(
+                    StageSettings('LNA2', d_i_lim),
+                    IndivBias(manual_lna_biases['man_l2_s2_d_i'],
+                              manual_lna_biases['man_l2_s2_d_v']))
+            else:
+                lna_2_stage_2 = None
+            if manual_lna_biases['man_l2_s3_d_i'] is not None:
+                lna_2_stage_3 = StageBiasSet(
+                    StageSettings('LNA2', d_i_lim),
+                    IndivBias(manual_lna_biases['man_l2_s3_d_i'],
+                              manual_lna_biases['man_l2_s3_d_v']))
+            else:
+                lna_2_stage_3 = None
+
+            self.lna_2_stages = LNAStages(
+                lna_2_stage_1, lna_2_stage_2, lna_2_stage_3)
+        else:
+            self.lna_2_stages = None
         # endregion
 
         # region Set LNAs from stages and args.
         self.lna_1_man = LNABiasSet(
             'LNA1', lna_cryo_layout, d_i_lim, self.lna_1_stages)
 
-        self.lna_2_man = LNABiasSet(
-            'LNA2', lna_cryo_layout, d_i_lim, self.lna_2_stages)
+        if lna_cryo_layout.lnas_per_chain == 2:
+            self.lna_2_man = LNABiasSet(
+                'LNA2', lna_cryo_layout, d_i_lim, self.lna_2_stages)
         # endregion
 
 

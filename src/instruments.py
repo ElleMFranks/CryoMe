@@ -185,6 +185,7 @@ class PSUMetaSettings:
     psu_safe_init: bool
     bias_psu_en: bool
     buffer_time: float
+    skip_psu_init: bool
 # endregion
 
 

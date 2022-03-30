@@ -165,7 +165,7 @@ def _res_manager_setup(instr_settings: instruments.InstrumentSettings
         psu_rm.read_termination = '\n'
         psu_rm.write_termination = '\n'
         # Ensure psx is initialised safely
-        if bias_psu_settings.psu_safe_init:
+        if bias_psu_settings.psu_safe_init and not bias_psu_settings.skip_psu_init:
             bias_ctrl.psu_safe_init(
                 psu_rm, instr_settings.buffer_time,
                 instruments.PSULimits(bias_psu_settings.v_step_lim,
@@ -278,7 +278,8 @@ def start_session(settings: config_handling.Settings) -> None:
     # endregion
 
     # region Set back end (cryostat and room-temperature) LNAs.
-    chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+    if not bias_psu_settings.skip_psu_init:
+        chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
     # endregion
 
     # region Set up nominal LNA bias points.

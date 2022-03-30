@@ -2,5 +2,9 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/results
-/calibrations
+**/results
+**/calibrations
+**/.idea
+**/.vs
+**/.__pycache__
+/docs/~$audio YFactor HW Setup.docx

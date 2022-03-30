@@ -12,7 +12,7 @@ constructors.
 # region Import modules.
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 import csv
 import math
 import os
@@ -89,7 +89,8 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         instruments.PSUMetaSettings(
             config['measurement_settings']['psu_safe_init'],
             config['available_instruments']['bias_psu_en'],
-            config['measurement_settings']['instr_buffer_time']))
+            config['measurement_settings']['instr_buffer_time'],
+            config['measurement_settings']['skip_psu_init']))
     # endregion
 
     # region Switch Settings.
@@ -129,7 +130,8 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         manual_lna_settings = lnas.ManualLNASettings(
             config['manual_entry_lna_settings'],
             lna_cryo_layout,
-            config['bias_psu_settings']['d_i_lim'])
+            config['bias_psu_settings']['d_i_lim'],
+            config['manual_entry_lna_settings']['correct_man_d_v'])
     else:
         manual_lna_settings = None
     # endregion
@@ -810,7 +812,7 @@ class FileStructure:
         # endregion
 
     def write_to_file(
-            self, path: Path, data: Any, 
+            self, path: pathlib.Path, data: Any, 
             mode: str, row_or_rows:str) -> None:
         """Writes data to a csv file specified.
         
@@ -831,12 +833,11 @@ class FileStructure:
                         writer.writerows(data)
                     elif row_or_rows == 'row':
                         writer.writerow(data)
-                        writer.writerow('\n')
                     else:
                         raise Exception('Incorrect row or rows argument.')
                 complete = True
             except:
-                input(f'Please close {location} and press enter.')
+                input(f'Please close {path} and press enter.')
                 continue
 # endregion
 
