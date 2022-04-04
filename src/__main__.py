@@ -110,12 +110,13 @@ def main():
         # endregion
 
         # region Trigger measurement
-        try:
-            session.start_session(settings)
-        # Pylint broad-except disabled as sys.exc_info()[0] logged.
-        except Exception as _e:  # pylint: disable=broad-except
-            log.exception(sys.exc_info()[0])
-            input(f'Error {_e} logged, press Enter to exit...')
+        session.start_session(settings)
+        #try:
+        #    session.start_session(settings)
+        ## Pylint broad-except disabled as sys.exc_info()[0] logged.
+        #except Exception as _e:  # pylint: disable=broad-except
+        #    log.exception(sys.exc_info()[0])
+        #    input(f'Error {_e} logged, press Enter to exit...')
         # endregion
 
     input('Press Enter to exit...')

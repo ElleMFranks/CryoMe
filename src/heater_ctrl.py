@@ -76,9 +76,9 @@ def _check_temp(tc_rm: Resource,  channel: int, target_temp: float,
         sleep(st_time)
         temp = util.safe_query(
             f'KRDG? {channel}', 0.5, tc_rm, 'lakeshore', True)
-        print(f'Channel {channel}, Target: {target_temp:+.2f}, Currently: {temp:+.2f} K', end='\r')
+        print(f'Channel {channel}, Target: {target_temp:+.2f} K, Currently: {temp:+.2f} K', end='\r')
         if target_temp - error_target < temp < target_temp + error_target:
-            print(f'Channel {channel}, Target: {target_temp:+.2f}, Currently: {temp:+.2f} K')
+            print(f'Channel {channel}, Target: {target_temp:+.2f} K, Currently: {temp:+.2f} K      ')
             return True
     # endregion
 
