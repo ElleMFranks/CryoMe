@@ -651,7 +651,8 @@ def _safe_set_stage(
             psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[i]), psu_lims,
             psu_set.buffer_time)
         brd_d_i_meas.append(d_i)
-        print(f'GV = {brd_g_v_range[i]:+.3f} V    DI = {d_i:+.3f} mA', end='\r')
+        if isinstance(d_i, float):
+            print(f'GV = {brd_g_v_range[i]:+.3f} V    DI = {d_i:+.3f} mA', end='\r')
         # endregion
 
         bias_conditions.append([stage_bias.d_v_at_psu, 

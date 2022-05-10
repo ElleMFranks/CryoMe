@@ -255,13 +255,14 @@ def alternating_temps(
         states, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
+        lna_ut = state[0]
+        stage_ut = state[1]
+        d_v_ut = state[2]
+        d_i_ut = state[3]
 
         if i >= sweep_settings.alt_temp_sweep_skips:
             # region Get iterables from state object.
-            lna_ut = state[0]
-            stage_ut = state[1]
-            d_v_ut = state[2]
-            d_i_ut = state[3]
+            
             # endregion
 
             # region Configure LNA Biasing.

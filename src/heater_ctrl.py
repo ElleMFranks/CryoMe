@@ -178,18 +178,15 @@ def get_loop_temps(
     return [load_temp, lna_temp, extra_1_temp, extra_2_temp]
     # endregion
 
+def _set_lna_temp(
+        tc_rm: Resource,
+        instr_settings: instruments.InstrumentSettings) -> None:
+    """Sets and stabilises the LNA temperature."""
 
-def set_loop_temps(tc_rm: Resource, load_temp_target: float,
-                  instr_settings: instruments.InstrumentSettings) -> list:
-    """Sets/gets temperatures, ensure stability/status of heater."""
-
-    # region Unpack objects/set up logger/set initial variables.
-    log = logging.getLogger(__name__)
-    load_temp_set = False
-    lna_temp_set = False
     tc_settings = instr_settings.temp_ctrl_settings
+    log = logging.getLogger(__name__)
+    lna_temp_set = False
     lna_temp_target = tc_settings.lna_target
-    # endregion
 
     if tc_rm is not None:
         util.safe_write(f'SCAN {tc_settings.lna_lsch},0', 
@@ -201,7 +198,7 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
                 'HTRST? 0', instr_settings.buffer_time, tc_rm, 'lakeshore')
             set_temp(tc_rm, lna_temp_target, 'lna')
             temp_stabilisation(
-                tc_rm, tc_settings.lna_lsch, tc_settings.lna_target, 5)
+                tc_rm, tc_settings.lna_lsch, tc_settings.lna_target, 20)
             lna_temp = util.safe_query(
                 f'KRDG? {tc_settings.lna_lsch}', instr_settings.buffer_time, 
                 tc_rm, 'lakeshore')
@@ -224,6 +221,16 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
         else:
             lna_temp_set = True
 
+def _set_load_temp(
+        tc_rm: Resource,
+        instr_settings: instruments.InstrumentSettings,
+        load_temp_target: float) -> None:
+    """Sets and stabilises the load temperature."""
+
+    tc_settings = instr_settings.temp_ctrl_settings
+    log = logging.getLogger(__name__)
+    load_temp_set = False
+
     if tc_rm is not None:
         util.safe_write(f'SCAN {tc_settings.load_lsch},0', 
                     instr_settings.buffer_time, tc_rm)
@@ -234,7 +241,7 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
                 'HTRST? 1', instr_settings.buffer_time, tc_rm, 'lakeshore')
             set_temp(tc_rm, load_temp_target, 'load')
             temp_stabilisation(
-                tc_rm, tc_settings.load_lsch, load_temp_target, 5)
+                tc_rm, tc_settings.load_lsch, load_temp_target, 20)
             load_temp = util.safe_query(
                 f'KRDG? {tc_settings.load_lsch}', instr_settings.buffer_time, 
                 tc_rm, 'lakeshore')
@@ -259,3 +266,21 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
             # endregion
         else:
             load_temp_set = True
+
+def set_loop_temps(tc_rm: Resource, load_temp_target: float,
+                  instr_settings: instruments.InstrumentSettings,
+                  is_calibration: bool) -> list:
+    """Sets/gets temperatures, ensure stability/status of heater."""
+
+    if not is_calibration:
+        _set_lna_temp(tc_rm, instr_settings)
+
+    _set_load_temp(tc_rm, instr_settings, load_temp_target)
+
+    if not is_calibration:
+        _set_lna_temp(tc_rm, instr_settings)
+
+    util.safe_write(f'SCAN {instr_settings.temp_ctrl_settings.load_lsch},0', 
+                    instr_settings.buffer_time, tc_rm)
+
+    set_temp(tc_rm, load_temp_target, 'load')
