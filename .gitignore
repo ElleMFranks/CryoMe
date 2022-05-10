@@ -8,8 +8,19 @@
 **/.vs
 **/.__pycache__
 **/src/__pycache__
-/.vs/slnx.sqlite
+**/Config File Store
 /docs/~$audio YFactor HW Setup.docx
 /config.yml
-/src/test3.py
-/docs/Notes.txt
+/config1.yml
+/config2.yml
+/config3.yml
+/config4.yml
+/config5.yml
+/config6.yml
+/config7.yml
+/config8.yml
+/config9.yml
+/config10.yml
+/config11.yml
+/config12.yml
+/config13.yml

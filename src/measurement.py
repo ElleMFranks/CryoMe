@@ -71,7 +71,8 @@ def _meas_loop(
 
     if tc_rm is not None:
         heater_ctrl.set_loop_temps(
-            tc_rm, temp_target, settings.instr_settings)
+            tc_rm, temp_target, settings.instr_settings, 
+            settings.meas_settings.is_calibration)
         pre_loop_temps = heater_ctrl.get_loop_temps(
             tc_rm, settings.instr_settings)
     else:
@@ -120,7 +121,8 @@ def _meas_loop(
                     log.warning(
                         'Fallen out of temp range during measurement.')
                     pre_loop_temps = heater_ctrl.set_loop_temps(
-                        tc_rm, temp_target, settings.instr_settings)
+                        tc_rm, temp_target, settings.instr_settings, 
+                        settings.meas_settings.is_calibration)
             else:
                 load_temp = temp_target + (
                     round(random.uniform(-0.1, 0.1), 2))
@@ -210,14 +212,18 @@ def _closest_temp_then_other(
     hot = None
     cold = None
 
-    for _ in range(2):
-        if closer_to_hot:
-            hot = _meas_loop(settings, 'Hot', res_managers)
-            closer_to_hot = not closer_to_hot
-        else:
-            cold = _meas_loop(settings, 'Cold', res_managers)
-            closer_to_hot = not closer_to_hot
-
+#    for _ in range(2):
+#        if closer_to_hot:
+#            hot = _meas_loop(settings, 'Hot', res_managers)
+#            closer_to_hot = not closer_to_hot
+#        else:
+#            cold = _meas_loop(settings, 'Cold', res_managers)
+#            closer_to_hot = not closer_to_hot
+    
+    #Changed by Will to fix Cold then Hot measurements
+    cold = _meas_loop(settings, 'Cold', res_managers)
+    hot = _meas_loop(settings, 'Hot', res_managers)
+    
     return [hot, cold]
     # endregion
 

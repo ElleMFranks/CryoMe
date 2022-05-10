@@ -597,7 +597,7 @@ def _safe_set_stage(
         psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[0]),
         psu_lims, psu_set.buffer_time)
 
-    print(f'GV = {brd_g_v_range[0]:+.3f} V    DI = {init_brd_d_i:+.3f} mA')
+    print(f'GV = {brd_g_v_range[0]:+.3f} V    DI = {init_brd_d_i:+.3f} mA', end='\r')
 
     bias_conditions.append([stage_bias.d_v_at_psu, 
                             stage_bias.target_d_v_at_lna, 
@@ -651,7 +651,8 @@ def _safe_set_stage(
             psu_rm, card_chnl, GOrDVTarget('g', brd_g_v_range[i]), psu_lims,
             psu_set.buffer_time)
         brd_d_i_meas.append(d_i)
-        print(f'GV = {brd_g_v_range[i]:+.3f} V    DI = {d_i:+.3f} mA', end='\r')
+        if isinstance(d_i, float):
+            print(f'GV = {brd_g_v_range[i]:+.3f} V    DI = {d_i:+.3f} mA', end='\r')
         # endregion
 
         bias_conditions.append([stage_bias.d_v_at_psu, 
@@ -722,7 +723,7 @@ def _safe_set_stage(
     # region Handle condition if exit is never tripped.
     # If exit condition never tripped then the highest gate value in the
     # range must be the best we can do, so return that.
-    return max(brd_g_v_range)
+    return max(brd_g_v_range), bias_conditions
     # endregion
 
 @dataclass
@@ -804,14 +805,14 @@ def adaptive_bias_set(
     # Return and store gate voltage
     _local_bias_en(psu_rm, target_lna_bias.stage_1.card_chnl, 1, buffer_time)
     print(f'Drain Voltage at LNA: {target_lna_bias.stage_1.target_d_v_at_lna:+.3f} V')
-    print(f'Drain Current Target: {target_lna_bias.stage_1.d_i:+.3f}')
+    print(f'Drain Current Target: {target_lna_bias.stage_1.d_i:+.3f} mA')
     target_lna_bias.stage_1.g_v, stage_1_bias_conditions = _safe_set_stage(
         psu_rm, target_lna_bias.stage_1, psu_set,
         target_lna_bias.stage_1.card_chnl, psu_stg_1_lims)
 
     if psu_stg_2_lims is not None:
         print(f'Drain Voltage at LNA: {target_lna_bias.stage_2.target_d_v_at_lna:+.3f} V')
-        print(f'Drain Current Target: {target_lna_bias.stage_2.d_i:+.3f}')
+        print(f'Drain Current Target: {target_lna_bias.stage_2.d_i:+.3f} mA')
         _local_bias_en(psu_rm, target_lna_bias.stage_2.card_chnl, 1,
                        buffer_time)
         target_lna_bias.stage_2.g_v, stage_2_bias_conditions = _safe_set_stage(
@@ -820,7 +821,7 @@ def adaptive_bias_set(
 
     if psu_stg_3_lims is not None:
         print(f'Drain Voltage at LNA: {target_lna_bias.stage_3.target_d_v_at_lna:+.3f} V')
-        print(f'Drain Current Target: {target_lna_bias.stage_3.d_i:+.3f}')
+        print(f'Drain Current Target: {target_lna_bias.stage_3.d_i:+.3f} mA')
         _local_bias_en(psu_rm, target_lna_bias.stage_3.card_chnl, 1,
                        buffer_time)
         target_lna_bias.stage_3.g_v, stage_3_bias_conditions = _safe_set_stage(

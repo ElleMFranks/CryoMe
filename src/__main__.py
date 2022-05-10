@@ -52,7 +52,7 @@ import session
 # endregion
 
 
-def main():
+def main(config_index: int):
     """Main for CryoMe."""
 
     # region Print starting menu.
@@ -99,7 +99,7 @@ def main():
     # endregion
 
     # region Load in settings yaml file.
-    with open(pathlib.Path(str(os.getcwd()) + '\\config.yml'),
+    with open(pathlib.Path(str(os.getcwd()) + f'\\config{config_index}.yml'),
               encoding='utf-8') as _f:
         yaml_config = yaml.safe_load(_f)
     # endregion
@@ -108,8 +108,8 @@ def main():
     for i, cryo_chain in enumerate(
             yaml_config['bias_sweep_settings']['chain_sequence']):
 
-        input(f'Please ensure chain {cryo_chain} is connected to the PSU, '
-              f'then press enter.')
+        #input(f'Please ensure chain {cryo_chain} is connected to the PSU, '
+        #      f'then press enter.')
 
         # region Reset all class instances.
         if i > 0:
@@ -135,17 +135,25 @@ def main():
         # endregion
 
         # region Trigger measurement
-        try:
-            session.start_session(settings)
-        # Pylint broad-except disabled as sys.exc_info()[0] logged.
-        except Exception as _e:  # pylint: disable=broad-except
-            log.exception(sys.exc_info()[0])
-            input(f'Error {_e} logged, press Enter to exit...')
+        session.start_session(settings)
+        #try:
+        #    session.start_session(settings)
+        ## Pylint broad-except disabled as sys.exc_info()[0] logged.
+        #except Exception as _e:  # pylint: disable=broad-except
+        #    log.exception(sys.exc_info()[0])
+        #    input(f'Error {_e} logged, press Enter to exit...')
         # endregion
 
-    input('Press Enter to exit...')
+    #input('Press Enter to exit...')
+
     # endregion
 
 
 if __name__ == '__main__':
-    main()
+
+    i=1
+    while i < 5:
+        main(i)
+        i+=1
+
+    
