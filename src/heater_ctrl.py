@@ -35,10 +35,8 @@ def heater_setup(tc_rm: Resource, channel: Union[int, str],
     # endregion
 
     # region Output setup of heater to PID (5).
-    util.safe_write(f' OUTMODE {s_or_w}  5 {channel}', 0.5, tc_rm)
+    util.safe_write(f' OUTMODE {s_or_w},5,{channel},0,0,0', 0.5, tc_rm)
     # endregion
-
-    
 
 
 def set_temp(tc_rm: Resource, temp: float, lna_or_load: str) -> None:

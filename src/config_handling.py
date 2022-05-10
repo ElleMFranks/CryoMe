@@ -90,7 +90,18 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
             config['measurement_settings']['psu_safe_init'],
             config['available_instruments']['bias_psu_en'],
             config['measurement_settings']['instr_buffer_time'],
-            config['measurement_settings']['skip_psu_init']))
+            config['measurement_settings']['skip_psu_init']),
+        instruments.ProtectionDrainResistances(
+            config['protection_pcb_config']['lna_1_d_r'],
+            config['protection_pcb_config']['lna_2_d_r'],
+            config['protection_pcb_config']['crbe_d_r'],
+            config['protection_pcb_config']['rtbe_d_r']))
+
+    lnas.StageBiasSet.lna_1_d_r = bias_psu_settings.lna_1_d_r
+    lnas.StageBiasSet.lna_2_d_r = bias_psu_settings.lna_2_d_r
+    lnas.StageBiasSet.crbe_d_r = bias_psu_settings.crbe_d_r
+    lnas.StageBiasSet.rtbe_d_r = bias_psu_settings.rtbe_d_r
+        
     # endregion
 
     # region Switch Settings.
@@ -353,7 +364,7 @@ class LNAIDs:
 
 
 # region Sweep Settings.
-@dataclass
+@dataclass()
 class MeasSequence:
     """Stage and LNA sequences to decide overall measurement sequence.
 
@@ -444,7 +455,7 @@ class LNAInfo:
     lna_cryo_layout: LNACryoLayout
 
 
-@dataclass
+@dataclass()
 class LNAsUTIDs:
     """Object containing the LNA IDs of the LNAs under test.
 
@@ -896,17 +907,19 @@ class FileStructure:
         while len(s_str) < 12:
             s_str += ' '
 
+        lna_folder = f'\\LNA {meas_settings.lna_id_str}'
+
         session_folder = f'\\{s_str}{l_str}{a_str}'
-        session_folder_dir = str(directory) + session_folder
+        session_folder_dir = str(directory) + lna_folder + session_folder
         os.makedirs(session_folder_dir, exist_ok=True)
 
         results_csv_title = f'\\{s_str}{l_str}{b_str}.csv'
         results_png_title = f'\\{s_str}{l_str}{b_str}.png'
 
         results_csv_path = pathlib.Path(
-            str(directory) + session_folder + results_csv_title)
+            str(directory) + lna_folder + session_folder + results_csv_title)
         results_png_path = pathlib.Path(
-            str(directory) + session_folder + results_png_title)
+            str(directory) + lna_folder + session_folder + results_png_title)
         if csv_or_png == 'csv':
             return results_csv_path
         if csv_or_png == 'png':

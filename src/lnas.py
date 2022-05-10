@@ -78,6 +78,15 @@ class StageBiasSet(IndivBias, StageSettings):
     """
     __doc__ += f'\n    {IndivBias.__doc__}\n'
     __doc__ += f'    {StageSettings.__doc__}'
+    
+    # region Initialise drain resistance class variables.
+    # These get set in config_handling.settings_config()
+    # Initially get set in the config yaml.
+    lna_1_d_r = None
+    lna_2_d_r = None
+    crbe_d_r = None
+    rtbe_d_r = None
+    # endregion
 
     def __init__(self, stage_settings: StageSettings, bias: IndivBias,
                  correct_d_v: bool = True) -> None:
@@ -95,13 +104,13 @@ class StageBiasSet(IndivBias, StageSettings):
 
         # region Set drain resistance depending on passed position.
         if self.lna_position == 'LNA1':
-            self.d_resistance = 12.6  # Ohms
+            self.d_resistance = self.lna_1_d_r  # Ohms
         elif self.lna_position == 'LNA2':
-            self.d_resistance = 2.6  # Ohms
+            self.d_resistance = self.lna_2_d_r  # Ohms
         elif self.lna_position == 'CRBE':
-            self.d_resistance = 12.5  # Ohms
+            self.d_resistance = self.crbe_d_r  # Ohms
         elif self.lna_position == 'RTBE':
-            self.d_resistance = 12.5  # Ohms
+            self.d_resistance = self.rtbe_d_r  # Ohms
         else:
             raise Exception('lna_position invalid.')
         # endregion
@@ -422,10 +431,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
             # region Stage 1.
             column_data = []
-            if self.stage_1.g_v is None:
+            if self.stage_1.g_v is None or self.stage_1.g_v == 'NA':
                 self.stage_1.g_v = 'NA'
-                column_data.append(f'{self.stage_1.g_v}')
-            elif self.stage_1.g_v == 'NA':
                 column_data.append(f'{self.stage_1.g_v}')
             else:
                 column_data.append(f'{self.stage_1.g_v:+.3f}')
@@ -439,18 +446,23 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             if self.stage_2 is None:
                 column_data.extend(('NA', 'NA', 'NA'))
             elif self.stage_2.g_v == 'NA':
-                column_data.append(f'{self.stage_2.g_v}')
+                column_data.extend(('NA',
+                                    f'{self.stage_2.target_d_v_at_lna:+.3f}',
+                                    f'{self.stage_2.d_i:+.3f}'))
             else:
                 column_data.extend((f'{self.stage_2.g_v:+.3f}',
                                     f'{self.stage_2.target_d_v_at_lna:+.3f}',
                                     f'{self.stage_2.d_i:+.3f}'))
+            
             # endregion
 
             # region Stage 3.
             if self.stage_3 is None:
                 column_data.extend(('NA', 'NA', 'NA'))
             elif self.stage_3.g_v == 'NA':
-                column_data.append(f'{self.stage_3.g_v}')
+                column_data.extend(('NA',
+                                    f'{self.stage_3.target_d_v_at_lna:+.3f}',
+                                    f'{self.stage_3.d_i:+.3f}'))
             else:
                 column_data.extend((f'{self.stage_3.g_v:+.3f}',
                                     f'{self.stage_3.target_d_v_at_lna:+.3f}',
@@ -488,7 +500,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                     f'CArd{self.stage_1.card_chnl.card}:'
                     f'CHannel{self.stage_1.card_chnl.chnl}?',
                     0.5, psx_rm, 'psx', True) * 1000))
-            if is_calibration:
+            if is_calibration or self.lna_position in ['CRBE', 'RTBE']:
                 self.lna_meas_column_data = meas_col_data
                 return
             # endregion

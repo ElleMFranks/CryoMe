@@ -12,7 +12,7 @@ in outputs.py and returned.
 
 # region Import modules.
 from __future__ import annotations
-from time import sleep
+from time import sleep, perf_counter
 from typing import Union, Optional
 import logging
 import random
@@ -61,7 +61,7 @@ def _meas_loop(
     powers, load_temps, lna_temps, pre_loop_lna_temps = ([] for _ in range(4))
     pre_loop_extra_1_temps, pre_loop_extra_2_temps = ([] for _ in range(2))
     post_loop_lna_temps, post_loop_extra_1_temps = ([] for _ in range(2))
-    post_loop_extra_2_temps = []
+    post_loop_extra_2_temps, times = ([] for _ in range(2))
     buffer_time = settings.instr_settings.buffer_time
     # endregion
 
@@ -88,7 +88,7 @@ def _meas_loop(
     # endregion
 
     # region Sweep requested frequencies measuring power and load temp.
-    log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.', )
+    log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.')
     pbar = tqdm.tqdm(
         total=len(inter_freqs_array), ncols=110,
         desc="Loop Prog", leave=True, position=0,
@@ -99,6 +99,7 @@ def _meas_loop(
     while i < len(inter_freqs_array):
         try:
             # region Set signal generator to intermediate frequency.
+            loop_start = perf_counter()
             if sig_gen_rm is not None \
                     and sig_gen_settings.vna_or_sig_gen == 'vna':
                 sig_gen_rm.write(f':SENSE:FREQ:CW {inter_freqs_array[i]} GHz')
@@ -116,11 +117,13 @@ def _meas_loop(
                     f'KRDG? {tc_settings.load_lsch}', buffer_time, tc_rm,
                     'lakeshore', True)
                 if temp_target - 1 > load_temp > temp_target + 1:
-                    log.warning('Fallen out of temp range during measurement.')
+                    log.warning(
+                        'Fallen out of temp range during measurement.')
                     pre_loop_temps = heater_ctrl.set_loop_temps(
                         tc_rm, temp_target, settings.instr_settings)
             else:
-                load_temp = temp_target + (round(random.uniform(-0.1, 0.1), 2))
+                load_temp = temp_target + (
+                    round(random.uniform(-0.1, 0.1), 2))
 
             # region Send command for sig an to take a measurement sweep.
             if spec_an_rm is not None:
@@ -149,6 +152,8 @@ def _meas_loop(
             pre_loop_extra_2_temps.append(pre_loop_extra_2_temp)
             # endregion
 
+            loop_end = perf_counter()
+            times.append(loop_end-loop_start)
             i += 1
             pbar.update()
         except Exception as _e:
@@ -187,7 +192,8 @@ def _meas_loop(
         hot_or_cold, powers, load_temps, lna_temps,
         outputs.PrePostTemps(pre_loop_lna_temps, post_loop_lna_temps,
                              pre_loop_extra_1_temps, post_loop_extra_1_temps,
-                             pre_loop_extra_2_temps, post_loop_extra_2_temps))
+                             pre_loop_extra_2_temps, post_loop_extra_2_temps),
+        times)
     # endregion
 
 
@@ -274,7 +280,7 @@ def measurement(
         # endregion
 
         log.info('Deciding whether to start hot or cold...')
-        log.info(f'Initial temperature = {init_temp}K')
+        log.info(f'Initial load temperature = {init_temp}K')
 
         # region Carry out measurement closest to initial temperature.
         # Heat up or cool down and do next one

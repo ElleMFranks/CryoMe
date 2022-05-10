@@ -3,8 +3,8 @@
 
 Two types of results are within this module. LoopInstanceResult is the
 result of a single measurement loop. Results contain a set of two
-LoopInstanceResult instances, one for a cold measurement and another for
-a hot measurement.
+LoopInstanceResult instances, one for a cold measurement and another 
+for a hot measurement.
 """
 
 # region Import modules.
@@ -13,8 +13,6 @@ from dataclasses import dataclass
 from typing import Optional, Union
 import datetime
 import math
-import os
-import pathlib
 import statistics as stats
 
 import numpy as np
@@ -25,6 +23,24 @@ import util
 
 
 # region Base level classes.
+@dataclass()
+class ConfigUT:
+    """Object to store the LNA and Stage under test.
+    
+    Constructor arguments:
+        temp (int): Temperature under test, cold is 0, hot is 1.
+        lna (int): LNA under test, 1/2.
+        stage (int): Stage under test, 1/2/3.
+        d_v (float): Drain voltage under test.
+        d_i (float): Drain current under test.
+    """
+    temp: int
+    lna: int
+    stage: int
+    d_v: float
+    d_i: float
+
+
 @dataclass()
 class PrePostTemps:
     """Set of pre and post measurement loop temperature sensor readings.
@@ -61,12 +77,14 @@ class LoopInstanceResult:
         lna_temps (list): The average of the pre and post LNA temps.
         pre_post_temps (PrePostTemps): Temp sensor channel readings
             before and after measurement loop.
+        times (list): Time for each measurement in the loop (s).
     """
     hot_or_cold: str
     powers: list
     load_temps: list
     lna_temps: list
     pre_post_temps: PrePostTemps
+    times: list[float]
 
 
 @dataclass()
@@ -104,8 +122,8 @@ class GainPostProc:
         gain_range_full (float): Full bandwidth gain range (dB)
         avg_gain_bws (list[Optional[float]]): Sub bandwidth average
             gain (dBm).
-        gain_std_dev_bws (list[Optional[float]]): Sub bandwidth standard
-            deviations.
+        gain_std_dev_bws (list[Optional[float]]): Sub bandwidth 
+            standard deviations.
         gain_range_bws (list[Optional[float]]): Sub bandwidth ranges.
     """
     avgs: list[Optional[float]]
@@ -352,10 +370,12 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
     for i, _ in enumerate(freq_array):
 
         # region Corrected Temperatures
-        cor_hot_temps.append(_temp_correction(loop_pair.hot.load_temps[i],
-                                              loop_pair.hot.lna_temps[i], i))
-        cor_cold_temps.append(_temp_correction(loop_pair.cold.load_temps[i],
-                                               loop_pair.cold.lna_temps[i], i))
+        cor_hot_temps.append(
+            _temp_correction(loop_pair.hot.load_temps[i],
+                             loop_pair.hot.lna_temps[i], i))
+        cor_cold_temps.append(
+            _temp_correction(loop_pair.cold.load_temps[i],
+                             loop_pair.cold.lna_temps[i], i))
         # endregion
 
         # region Y Factor
@@ -543,19 +563,36 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
 
         # region Set time and date of creation as attributes.
         self.present = datetime.datetime.now()
-        self.date_str = (str(self.present.year)
-                         + str(self.present.month)
+        self.date_str = (str(self.present.year) + ' '
+                         + str(self.present.month)+ ' '
                          + str(self.present.day))
         self.time_str = (str(self.present.hour) + ' '
                          + str(self.present.minute))
         # endregion
+
+    @property
+    def config_ut(self) -> ConfigUT:
+        """The configuration of the measurement (temp/lna/stage/dv/di).
+        """
+        return self._config_ut
+
+    @config_ut.setter
+    def config_ut(self, value: ConfigUT) -> None:
+        if isinstance(value, ConfigUT):
+            if value.lna in [1, 2] and value.stage in [1, 2, 3]:
+                self._config_ut = value
+            else:
+                raise Exception('Invalid config passed.')
+        else:
+            raise Exception('Invalid config passed.')
 
     @staticmethod
     def std_settings_column_titles() -> list[str]:
         """Returns the standard settings column titles."""
         settings_col_titles = [
             'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date', 'Time', 'Comment', ' ', 'Center Frequency (GHz)',
+            'Date YMD', 'Time', 'Comment', ' ', 'LNAs/Chain', 'LNA UT',
+            'Stages/LNA', 'Stage UT', ' ', 'Center Frequency (GHz)',
             'Marker Frequency (GHz)', 'Resolution Bandwidth (MHz)',
             'Video Bandwidth (Hz)', 'Frequency Span (MHz)',
             'Power Bandwidth (MHz)', 'Attenuation (dB)', ' ',
@@ -574,7 +611,9 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'CRBE GV Set (V)', 'CRBE DV Set (V)', 'CRBE DI Set (mA)',
             'RTBE GV Set (V)', 'RTBE DV Set (V)', 'RTBE DI Set (mA)', ' ',
             'CRBE GV Meas (V)', 'CRBE DV Meas (V)', 'CRBE DI Meas (mA)',
-            'RTBE GV Meas (V)', 'RTBE DV Meas (V)', 'RTBE DI Meas (mA)']
+            'RTBE GV Meas (V)', 'RTBE DV Meas (V)', 'RTBE DI Meas (mA)', ' ',
+            'LNA 1 DR (Ohms)', 'LNA 2 DR (Ohms)', 
+            'CRBE DR (Ohms)', 'RTBE DR (Ohms)']
         return settings_col_titles
 
     @staticmethod
@@ -693,7 +732,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Pre Cold Measurement 2nd Extra Temp (K)',
             'Post Cold Measurement 2nd Extra Temp (K)',
             'Pre Hot Measurement 2nd Extra Temp (K)',
-            'Post Hot Measurement 2nd Extra Temp (K)']
+            'Post Hot Measurement 2nd Extra Temp (K)',
+            'Cold Loop Times (s)', 'Hot Loop Times (s)']
         return results_col_titles
 
     def std_output_data(self) -> np.ndarray:
@@ -716,7 +756,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.cold.pre_post_temps.pre_loop_extra_2_temps,
             self.cold.pre_post_temps.post_loop_extra_2_temps,
             self.hot.pre_post_temps.pre_loop_extra_2_temps,
-            self.hot.pre_post_temps.post_loop_extra_2_temps))
+            self.hot.pre_post_temps.post_loop_extra_2_temps,
+            self.cold.times, self.hot.times))
 
     @staticmethod
     def cal_settings_column_titles() -> list[str]:
@@ -754,7 +795,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Pre Cold Measurement 2nd Extra Temp (K)',
             'Post Cold Measurement 2nd Extra Temp (K)',
             'Pre Hot Measurement 2nd Extra Temp (K)',
-            'Post Hot Measurement 2nd Extra Temp (K)']
+            'Post Hot Measurement 2nd Extra Temp (K)',
+            'Cold Loop Times (s)', 'Hot Loop Times (s)']
         return cal_results_col_titles
 
     def cal_output_data(self) -> np.ndarray:
@@ -776,6 +818,6 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.cold.pre_post_temps.pre_loop_extra_2_temps,
             self.cold.pre_post_temps.post_loop_extra_2_temps,
             self.hot.pre_post_temps.pre_loop_extra_2_temps,
-            self.hot.pre_post_temps.post_loop_extra_2_temps))
-
+            self.hot.pre_post_temps.post_loop_extra_2_temps,
+            self.cold.times, self.hot.times))
 # endregion

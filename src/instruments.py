@@ -226,6 +226,14 @@ class PSULimits:
 # endregion
 
 
+@dataclass()
+class ProtectionDrainResistances:
+    """The drain resistances on the protection PCBs."""
+    lna_1_d_r: float
+    lna_2_d_r: Optional[float] = None
+    crbe_d_r: Optional[float] = None
+    rtbe_d_r: Optional[float] = None
+
 # region Overall Instrumentation Classes.
 class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
                              SpecAnBWSettings):
@@ -517,7 +525,8 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         # endregion
 
 
-class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
+class BiasPSUSettings(GVSearchSettings, PSULimits, 
+                      PSUMetaSettings, ProtectionDrainResistances):
     """The PSX bias power supply settings.
 
     Attributes:
@@ -537,7 +546,8 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
 
     def __init__(
             self, g_v_search_settings: GVSearchSettings, psu_limits: PSULimits,
-            psu_meta_settings: PSUMetaSettings) -> None:
+            psu_meta_settings: PSUMetaSettings, 
+            protection_drain_resistances: ProtectionDrainResistances) -> None:
         """Constructor for the BiasPSUSettings class.
 
         Args:
@@ -560,6 +570,8 @@ class BiasPSUSettings(GVSearchSettings, PSULimits, PSUMetaSettings):
             self, *util.get_dataclass_args(g_v_search_settings))
         PSULimits.__init__(
             self, *util.get_dataclass_args(psu_limits))
+        ProtectionDrainResistances.__init__(
+            self, *util.get_dataclass_args(protection_drain_resistances))
         # endregion
 
         # region Calculate additional attributes from args.

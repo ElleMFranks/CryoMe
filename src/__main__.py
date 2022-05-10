@@ -1,21 +1,41 @@
 # -*- coding: utf-8 -*-
-"""CryoMe Automated Y Factor Noise Temperature Measurement Package.
+"""
+  _____ _______     ______  __  __ ______ 
+ / ____|  __ \ \   / / __ \|  \/  |  ____|
+| |    | |__) \ \_/ / |  | | \  / | |__   
+| |    |  _  / \   /| |  | | |\/| |  __|  
+| |____| | \ \  | | | |__| | |  | | |____ 
+ \_____|_|  \_\ |_|  \____/|_|  |_|______|
+                                          
+CryoMe Automated Y Factor Noise Temperature Measurement Package.
 
-This is the top level module of the package. For more information on the
-package as a whole, see the doc folder in the code directory. Settings
-are in settings.yml, edit there to change operation of program.
+Version 1.0
+
+For more information on the package as a whole, see the doc folder in
+the code directory. Settings are in config.yml, edit there to control
+operation of this program.
 
 Use of __future__ import to avoid problems with type hinting and
-circular importing mean that this code will only work with Python 3.7 or
-higher.
+circular importing mean that this code will only work with Python 3.7
+or higher.
+
+Priority:Speed - High to low:Fast to slow (1 to 3)
 
 ToDo:
-    Priority:
-
-    Additional
+    * ?:2 Algorithm to do all stage sweep.
+    * 1:3 Finish metaproc.py.
+    * 3:1 Biasing current limit to gate voltage speed optimisation.
+    * 3:2 Re-lint code.
+    * 3:1 Break up plotting in output_saving.py as in replot.py.
+    * 3:1.5 Exception subclassing.
+    * 1:1 Merge changes on lab computer (by 10/05/2022).
+    * 2:2 Overall timing outputs in results log (save columns first).
+    * 3:2 Analysis anomaly handling.
+    * 1:1 Comment in config file.
 
 Questions:
     * 
+
 """
 
 # region Import modules
@@ -34,6 +54,11 @@ import session
 
 def main():
     """Main for CryoMe."""
+
+    # region Print starting menu.
+    print(__doc__)
+    input('Press enter to start a measurement...')
+    # endregion
 
     # region Fix system path to make it consistent wherever linked from.
     os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))

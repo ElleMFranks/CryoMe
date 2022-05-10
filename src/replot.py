@@ -14,7 +14,6 @@ import multiprocessing
 import os
 import pathlib
 import re
-import sys
 
 from matplotlib import offsetbox, ticker
 import matplotlib.pyplot as plt
@@ -134,8 +133,7 @@ def config_plot(meta_data: Union[StdMetaData, CalMetaData],
     return fig, axis, plot_vars
     # endregion
 
-def get_bias_box(imported_lna_data: list[dict],
-                 std_meta_data: StdMetaData) -> offsetbox:
+def get_bias_box(imported_lna_data: list[dict]) -> offsetbox:
     """Returns an offsetbox with lna biasing data."""
     # region Create bias data text box to go on plot.
     tabulate.PRESERVE_WHITESPACE = True
@@ -249,7 +247,7 @@ def make_std_plot(
 
     axis.legend(plots, 
                 labels, 
-                loc='lower left', 
+                loc='lower left',
                 numpoints=1, 
                 fontsize=plot_vars.label_font_size,
                 ncol=4)
@@ -262,7 +260,7 @@ def make_std_plot(
                     labelsize=plot_vars.label_font_size)
 
     ax2.set_ylim(0, meta_data.user_inputs.new_gain_y_limit)
-    axis.add_artist(get_bias_box(imported_lna_data, meta_data))
+    axis.add_artist(get_bias_box(imported_lna_data))
     # endregion
 
     return axis

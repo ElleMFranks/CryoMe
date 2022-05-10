@@ -11,7 +11,6 @@ Calibration>Chain folder.
 from __future__ import annotations
 from time import sleep
 from typing import Optional
-import csv
 import logging
 import os
 import pathlib
@@ -111,7 +110,8 @@ def _save_plot(
     axis.set_ylabel(
         'Noise Temperature / Kelvin', color=font_color, fontsize=lab_font)
     axis.set_xlim(
-        results.freq_array[0], results.freq_array[len(results.freq_array) - 1])
+        results.freq_array[0], 
+        results.freq_array[len(results.freq_array) - 1])
     axis.set_ylim(0, +160)
     axis.xaxis.set_minor_locator(ticker.AutoMinorLocator(10))
     axis.yaxis.set_minor_locator(ticker.AutoMinorLocator(10))
@@ -218,6 +218,9 @@ def save_standard_results(
     rtbe_lna = meas_settings.direct_lnas.be_lna_settings.rtbe_chain_a_lna
     # endregion
 
+    crbe_lna.lna_measured_column_data()
+    rtbe_lna.lna_measured_column_data()
+
     # region Update settings log.
     log.info('Updating settings log...')
     # region Set up data to input to settings log.
@@ -226,6 +229,10 @@ def save_standard_results(
             meas_settings.project_title, meas_settings.lna_id_str,
             str(meas_settings.session_id), str(bias_id),
             results.date_str, results.time_str, meas_settings.comment, None,
+            meas_settings.lna_cryo_layout.lnas_per_chain, 
+            results.config_ut.lna, 
+            meas_settings.lna_cryo_layout.stages_per_lna, 
+            results.config_ut.stage, None,
             *instr_settings.sig_an_settings.spec_an_col_data(), None,
             *lna_1_bias.lna_set_column_data(), None,
             *lna_2_bias.lna_set_column_data(), None,
@@ -234,12 +241,20 @@ def save_standard_results(
             *crbe_lna.lna_set_column_data(),
             *rtbe_lna.lna_set_column_data(), None,
             *crbe_lna.lna_meas_column_data,
-            *rtbe_lna.lna_meas_column_data]
+            *rtbe_lna.lna_meas_column_data, None,
+            instr_settings.bias_psu_settings.lna_1_d_r,
+            instr_settings.bias_psu_settings.lna_2_d_r,
+            instr_settings.bias_psu_settings.crbe_d_r,
+            instr_settings.bias_psu_settings.rtbe_d_r)
     else:
         set_col_data = [
             meas_settings.project_title, meas_settings.lna_id_str,
             str(meas_settings.session_id), str(bias_id),
             results.date_str, results.time_str, meas_settings.comment, None,
+            meas_settings.lna_cryo_layout.lnas_per_chain,
+            results.config_ut.lna,
+            meas_settings.lna_cryo_layout.stages_per_lna, 
+            results.config_ut.stage, None,
             *instr_settings.sig_an_settings.spec_an_col_data(), None,
             *lna_1_bias.lna_set_column_data(), None,
             'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', None,
@@ -248,7 +263,11 @@ def save_standard_results(
             *crbe_lna.lna_set_column_data(),
             *rtbe_lna.lna_set_column_data(), None,
             *crbe_lna.lna_meas_column_data,
-            *rtbe_lna.lna_meas_column_data]
+            *rtbe_lna.lna_meas_column_data, None,
+            instr_settings.bias_psu_settings.lna_1_d_r,
+            instr_settings.bias_psu_settings.lna_2_d_r,
+            instr_settings.bias_psu_settings.crbe_d_r,
+            instr_settings.bias_psu_settings.rtbe_d_r]
     # endregion
 
     # region Add row to settings log.

@@ -19,6 +19,7 @@ import instruments
 import lnas
 import meas_algorithms
 import config_handling
+import util
 # endregion
 
 
@@ -330,6 +331,7 @@ def start_session(settings: config_handling.Settings) -> None:
         config_handling.FileStructure.write_to_file(settings.file_struc.settings_path, '', 'a', 'row')
     else:
         config_handling.FileStructure.write_to_file(settings.file_struc.cal_settings_path, '', 'a', 'row')
+    
     # region Turn PSX off safely.
     if bias_psu_settings.bias_psu_en:
         log.info('Turning off PSU...')
@@ -339,6 +341,16 @@ def start_session(settings: config_handling.Settings) -> None:
                                   bias_psu_settings.d_i_lim),
             bias_psu_settings.g_v_lower_lim)
         log.info('PSU turned off.')
+    # endregion
+
+    # region Turn off heaters.
+    if settings.instr_settings.temp_ctrl_settings.temp_ctrl_en:
+        util.safe_write(
+            f'OUTMODE 0,0,{instr_settings.temp_ctrl_settings.lna_lsch},0,0,0',
+            0.5, res_managers.tc_rm)
+        util.safe_write(
+            f'OUTMODE 1,0,{instr_settings.temp_ctrl_settings.load_lsch},0,0,0', 
+            0.5, res_managers.tc_rm)
     # endregion
 
     # region Close resource managers.

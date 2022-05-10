@@ -69,53 +69,55 @@ def all_cold_to_all_hot(
     lna_2_array = []
     prev_lna_ut = 0
     direct_set_index = 0
-    states = list(product(
+    positions = list(product(
         hot_cold, sweep_settings.lna_sequence, sweep_settings.stage_sequence,
         sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
     # endregion
 
     # region Loop through states measuring at each.
     print('')
-    for i, state in enumerate(tqdm.tqdm(
-        states, ncols=110, leave=False, desc="Sweep Prog",
+    states = []
+    for i, position in enumerate(tqdm.tqdm(
+        positions, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
         # region Unpack state object and set additional variable.
-        temp_ut = state[0]
-        lna_ut = state[1]
-        stage_ut = state[2]
-        d_v_ut = state[3]
-        d_i_ut = state[4]
+        state = outputs.ConfigUT(
+            position[0], position[1], position[2], position[3], position[4])
+        if position[0] == 0:
+            states.append(state)
         # endregion
 
         # region Log measurement state.
-        if temp_ut == 0:
-            log.info(f'Measurement: {i + 1} - HotOrCold: Cold - LNA: {lna_ut} '
-                     f'- DV: {d_v_ut:.2f} V - DI: {d_i_ut:.2f} mA.')
+        if state.temp == 0:
+            log.info(
+                f'Measurement: {i + 1} - HotOrCold: Cold - LNA: {state.lna} '     
+                f'- DV: {state.d_v:.2f} V - DI: {state.d_i:.2f} mA.')
         else:
-            log.info(f'Measurement: {i + 1} - HotOrCold: Hot - LNA:{lna_ut} '
-                     f'- DV:{d_v_ut:.2f} V - DI:{d_i_ut:.2f} mA.')
+            log.info(
+                f'Measurement: {i + 1} - HotOrCold: Hot - LNA:{state.lna} '
+                f'- DV:{state.d_v:.2f} V - DI:{state.d_i:.2f} mA.')
         # endregion
 
         # region Configure LNA biasing settings to send to bias control.
 
         # region LNA 1.
-        if lna_ut == 1:
+        if state.lna == 1:
             lna_1_bias.sweep_setup(
-                stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+                state.stage, state.d_v, state.d_i, d_v_nom, d_i_nom)
 
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                 lna_2_bias.nominalise(d_v_nom, d_i_nom)
         # endregion
 
         # region LNA 2.
-        elif lna_ut == 2 and \
+        elif state.lna == 2 and \
                 meas_settings.lna_cryo_layout.lnas_per_chain == 2:
             lna_1_bias.nominalise(d_v_nom, d_i_nom)
 
             lna_2_bias.sweep_setup(
-                stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+                state.stage, state.d_v, state.d_i, d_v_nom, d_i_nom)
         # endregion
         # endregion
 
@@ -123,8 +125,8 @@ def all_cold_to_all_hot(
         # Adaptive search function here searches gate voltages for a
         # value which gives a requested drain current at a given drain
         # voltage.
-        if res_managers.psu_rm is not None and temp_ut == 0 and (
-                lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+        if res_managers.psu_rm is not None and state.temp == 0 and (
+                state.lna == 1 or i == 0 or state.lna != prev_lna):
             bias_ctrl.adaptive_bias_set(
                 res_managers.psu_rm, lna_1_bias,
                 settings.instr_settings.bias_psu_settings,
@@ -136,8 +138,8 @@ def all_cold_to_all_hot(
         # store the gate voltage in the lna object. To speed up 
         # measurement, we directly set the gate voltage instead of 
         # searching for it.
-        if res_managers.psu_rm is not None and temp_ut != 0 and (
-                lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+        if res_managers.psu_rm is not None and state.temp != 0 and (
+                state.lna == 1 or i == 0 or state.lna != prev_lna):
             bias_ctrl.direct_set_lna(
                 res_managers.psu_rm, lna_1_array[direct_set_index],
                 settings.instr_settings.bias_psu_settings,
@@ -145,21 +147,21 @@ def all_cold_to_all_hot(
 
         lna_1_bias.lna_measured_column_data(res_managers.psu_rm)
 
-        if temp_ut == 0:
+        if state.temp == 0:
             lna_1_array.append(copy.deepcopy(lna_1_bias))
         # endregion
 
         # region Set and store LNA 2 PSU settings.
         if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
-            if res_managers.psu_rm is not None and temp_ut == 0 and (
-                    lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+            if res_managers.psu_rm is not None and state.temp == 0 and (
+                    state.lna == 2 or i == 0 or state.lna != prev_lna):
                 bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_2_bias,
                     settings.instr_settings.bias_psu_settings,
                     settings.instr_settings.buffer_time,
                     settings.file_struc)
-            if res_managers.psu_rm is not None and temp_ut != 0 and (
-                    lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+            if res_managers.psu_rm is not None and state.temp != 0 and (
+                    state.lna == 2 or i == 0 or state.lna != prev_lna):
                 bias_ctrl.direct_set_lna(
                     res_managers.psu_rm, lna_2_array[direct_set_index],
                     settings.instr_settings.bias_psu_settings,
@@ -170,23 +172,23 @@ def all_cold_to_all_hot(
             lna_2_array.append(copy.deepcopy(lna_2_bias))
 
         else:
-            if temp_ut == 0:
+            if state.temp == 0:
                 lna_2_array.append(copy.deepcopy(lna_2_bias))
         # endregion
 
         # region Trigger measurement
-        if temp_ut == 0:
+        if state.temp == 0:
             cold_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, temp_ut))
+                settings, res_managers, trimmed_input_data, state.temp))
 
         else:
             hot_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, temp_ut))
+                settings, res_managers, trimmed_input_data, state.temp))
             direct_set_index += 1
 
         print('\n')
 
-        prev_lna_ut = lna_ut
+        prev_lna = state.lna
         # endregion
     print('')
     # endregion
@@ -203,6 +205,7 @@ def all_cold_to_all_hot(
                          meas_settings.analysis_bws,
                          trimmed_input_data.trimmed_loss,
                          trimmed_input_data.trimmed_cal_data))
+        result.config_ut = states[i]
 
         output_saving.save_standard_results(
             settings, result, i + 1, lna_1_array[i], lna_2_array[i])
@@ -244,51 +247,50 @@ def alternating_temps(
     d_v_nom = settings.sweep_settings.d_v_nominal
     d_i_nom = settings.sweep_settings.d_i_nominal
     prev_lna_ut = None
-    states = list(product(
+    positions = list(product(
             sweep_settings.lna_sequence, sweep_settings.stage_sequence,
             sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
+    states = []
     # endregion
-
+    
     # region Iterate measuring and saving lna/stage/bias value states.
     print('')
-    for i, state in enumerate(tqdm.tqdm(
-        states, ncols=110, leave=False, desc="Sweep Prog",
+    for i, position in enumerate(tqdm.tqdm(
+        positions, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
-        if i >= sweep_settings.alt_temp_sweep_skips:
-            # region Get iterables from state object.
-            lna_ut = state[0]
-            stage_ut = state[1]
-            d_v_ut = state[2]
-            d_i_ut = state[3]
-            # endregion
+        
 
+        if i >= sweep_settings.alt_temp_sweep_skips:
+            state = outputs.ConfigUT(
+                0, position[0], position[1], position[2], position[3])
+            states.append(state)
             # region Configure LNA Biasing.
             # region LNA 1.
-            if lna_ut == 1:
+            if state.lna == 1:
 
                 lna_1_bias.sweep_setup(
-                    stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+                    state.stage, state.d_v, state.d_i, d_v_nom, d_i_nom)
 
                 if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                     lna_2_bias.nominalise(d_v_nom, d_i_nom)
             # endregion
 
             # region LNA 2.
-            elif lna_ut == 2 and \
+            elif state.lna == 2 and \
                     meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                 lna_1_bias.nominalise(d_v_nom, d_i_nom)
 
                 lna_2_bias.sweep_setup(
-                    stage_ut, d_v_ut, d_i_ut, d_v_nom, d_i_nom)
+                    state.stage, state.d_v, state.d_i, d_v_nom, d_i_nom)
             # endregion
             # endregion
 
             # region Set and enable power supply.
             # region LNA 1.
             if res_managers.psu_rm is not None and (
-                    lna_ut == 1 or i == 0 or lna_ut != prev_lna_ut):
+                    state.lna == 1 or i == 0 or state.lna != prev_lna_ut):
                 bias_ctrl.adaptive_bias_set(
                     res_managers.psu_rm, lna_1_bias,
                     settings.instr_settings.bias_psu_settings,
@@ -301,7 +303,7 @@ def alternating_temps(
             # region LNA 2.
             if meas_settings.lna_cryo_layout.lnas_per_chain == 2:
                 if res_managers.psu_rm is not None and (
-                        lna_ut == 2 or i == 0 or lna_ut != prev_lna_ut):
+                        state.lna == 2 or i == 0 or state.lna != prev_lna_ut):
                     bias_ctrl.adaptive_bias_set(
                         res_managers.psu_rm, lna_2_bias,
                         settings.instr_settings.bias_psu_settings,
@@ -316,6 +318,8 @@ def alternating_temps(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
+            standard_results.config_ut = state
+
             # region Analyse and save results.
             output_saving.save_standard_results(
                 settings, standard_results, i + 1, lna_1_bias, lna_2_bias)
@@ -326,7 +330,7 @@ def alternating_temps(
             # endregion
 
         log.info('All results saved.')
-        prev_lna_ut = lna_ut
+        prev_lna_ut = state.lna
         # endregion
 
 
@@ -405,6 +409,8 @@ def manual_entry_measurement(
 
     standard_results = measurement.measurement(
         settings, res_managers, trimmed_input_data)
+
+    standard_results.config_ut = outputs.ConfigUT(0, 0, 0, 0, 0)
 
     output_saving.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)
