@@ -1,6 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\src",
+    "\\src\\metaproc"
   ],
+  "SelectedNode": "\\src\\metaproc\\__main__.py",
   "PreviewInSolutionExplorer": false
 }

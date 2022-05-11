@@ -28,10 +28,8 @@ ToDo:
     * 3:2 Re-lint code.
     * 3:1 Break up plotting in output_saving.py as in replot.py.
     * 3:1.5 Exception subclassing.
-    * 1:1 Merge changes on lab computer (by 10/05/2022).
     * 2:2 Overall timing outputs in results log (save columns first).
     * 3:2 Analysis anomaly handling.
-    * 1:1 Comment in config file.
 
 Questions:
     * 
@@ -52,18 +50,9 @@ import session
 # endregion
 
 
-def main(config_index: int):
+def main(config_file: str):
     """Main for CryoMe."""
-
-    # region Print starting menu.
-    print(__doc__)
-    input('Press enter to start a measurement...')
-    # endregion
-
-    # region Fix system path to make it consistent wherever linked from.
-    os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))
-    # endregion
-
+    
     # region Set up logging.
     # region Set logging format.
     stream_format = logging.Formatter(
@@ -99,10 +88,14 @@ def main(config_index: int):
     # endregion
 
     # region Load in settings yaml file.
-    with open(pathlib.Path(str(os.getcwd()) + f'\\config{config_index}.yml'),
+    with open(pathlib.Path(str(os.getcwd()) + f'\\{config_file}'),
               encoding='utf-8') as _f:
         yaml_config = yaml.safe_load(_f)
     # endregion
+
+    with open(pathlib.Path(str(os.getcwd()) + f'\\src\\advanced_config.yml'),
+              encoding='utf-8') as _f:
+        advanced_yaml_config = yaml.safe_load(_f)
 
     # region Measure each chain as requested.
     for i, cryo_chain in enumerate(
@@ -117,7 +110,8 @@ def main(config_index: int):
         # endregion
 
         # region Set up measurement settings.
-        settings = config_handling.settings_config(yaml_config, cryo_chain)
+        settings = config_handling.settings_config(
+            yaml_config, advanced_yaml_config, cryo_chain)
         # endregion
 
         # region Configure session ID and log file writer.
@@ -151,9 +145,21 @@ def main(config_index: int):
 
 if __name__ == '__main__':
 
-    i=1
-    while i < 5:
-        main(i)
-        i+=1
+    # region Fix system path to make it consistent wherever linked from.
+    os.chdir(os.path.dirname(os.path.dirname(sys.argv[0])))
+    # endregion
 
+    # region Print starting menu.
+    print(__doc__)
+    input('Press enter to start a measurement...')
+    # endregion
     
+    # region Loop through configurations and send to main.
+    ymls = []
+    for file in os.listdir(os.getcwd()):
+        if file.endswith('.yml'):
+            ymls.append(file)
+
+    for yml in ymls:
+        main(yml)
+    # endregion

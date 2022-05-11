@@ -38,8 +38,9 @@ def validate_misc(misc: config_handling.Misc) -> None:
     if not isinstance(misc.dark_mode_plot, bool):
         raise Exception('Dark mode plot must be true or false.')
 
-    if not isinstance(misc.comment_en, bool):
-        raise Exception('Comment_en must be true or false.')
+    if not isinstance(misc.comment, str):
+        raise Exception('Comment must be a string.' +
+                        'ensure quotation marks in config.yml.')
 
     if misc.order != 1:
         util.yes_no('Order', misc.order, '')

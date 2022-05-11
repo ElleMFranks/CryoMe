@@ -245,7 +245,7 @@ def save_standard_results(
             instr_settings.bias_psu_settings.lna_1_d_r,
             instr_settings.bias_psu_settings.lna_2_d_r,
             instr_settings.bias_psu_settings.crbe_d_r,
-            instr_settings.bias_psu_settings.rtbe_d_r)
+            instr_settings.bias_psu_settings.rtbe_d_r]
     else:
         set_col_data = [
             meas_settings.project_title, meas_settings.lna_id_str,

@@ -410,7 +410,7 @@ def manual_entry_measurement(
     standard_results = measurement.measurement(
         settings, res_managers, trimmed_input_data)
 
-    standard_results.config_ut = outputs.ConfigUT(0, 0, 0, 0, 0)
+    standard_results.config_ut = outputs.ConfigUT(1, 1, 1, 1, 1)
 
     output_saving.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)

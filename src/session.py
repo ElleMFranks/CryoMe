@@ -107,19 +107,6 @@ def _input_trim(
     return trimmed_data
     # endregion
 
-
-def _comment_handling(comment_en: bool) -> str:
-    """Handles optional user entry comment."""
-
-    # region Measurement comments handling
-    if comment_en:
-        comment = input("Please input measurement comment: ")
-    else:
-        comment = 'NA'
-    return comment
-    # endregion
-
-
 def _res_manager_setup(instr_settings: instruments.InstrumentSettings
                        ) -> instruments.ResourceManagers:
     """Sets up resource managers for instrumentation."""
@@ -213,10 +200,6 @@ def start_session(settings: config_handling.Settings) -> None:
     instr_settings = settings.instr_settings
     bias_psu_settings = instr_settings.bias_psu_settings
     meas_settings = settings.meas_settings
-    # endregion
-
-    # region Measurement comments handling.
-    meas_settings.comment = _comment_handling(meas_settings.comment_en)
     # endregion
 
     # region Trim input data.

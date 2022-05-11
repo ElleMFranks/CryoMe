@@ -1,25 +1,50 @@
-import multiprocessing
-from time import sleep
-from time import perf_counter
+from dataclasses import dataclass
+import numpy as np
 
-start = perf_counter()
+@dataclass()
+class Bias:
+    gv: float
+    dv: float
+    di: float
 
-def do_something(time_for_sleep, msg):
-    print('Enter')
-    sleep(time_for_sleep)
-    print(f'{msg}')
-    print('Return')
+amy = [Bias(0, 0.6, 4),
+       Bias(0, 0.6, 6),
+       Bias(0, 0.6, 8),
+       Bias(0, 0.6, 10),
+       Bias(0, 0.8, 4),
+       Bias(0, 0.8, 6),
+       Bias(0, 0.8, 8),
+       Bias(0, 0.8, 10),
+       Bias(0, 1, 4),  
+       Bias(0, 1, 6),  
+       Bias(0, 1, 8),  
+       Bias(0, 1, 10)]
 
-p1 = multiprocessing.Process(target=do_something, args=[1, 'pelb'])
-p2 = multiprocessing.Process(target=do_something, args=[2, 'blep'])
+dvs = []
+for bias in amy:
+    dvs.append(bias.dv)
 
-if __name__ == '__main__':
+dvsset = set(dvs)
 
-    p1.start()
-    p2.start()
+dv_array_of_arrays = []
+for dv in dvsset:
+    dv_array = []
+    for bias in amy:
+        if bias.dv == dv:
+            dv_array.append(bias)
+    dv_array_of_arrays.append(dv_array)
 
-    p1.join()
-    p2.join()
+for array in dv_array_of_arrays:
+    print(array)
+    print('')
+            
+    
+for a in amy:
+    print(a)
 
-    finish = perf_counter()
-    print(f'Finished in {round(finish-start, 2)} s')
+print('')
+
+amysort = sorted(amy, key=lambda bias: bias.di)
+
+for a in amysort:
+    print(a)

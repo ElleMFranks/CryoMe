@@ -137,10 +137,9 @@ class BiasAccuracyPlot(CartesianPlot):
     _axis_pos = []
     _fig_grid = None
 
-    def __init__(self, set_bias: data_structs.Biases, 
-                 meas_bias: data_structs.Biases, 
+    def __init__(self, stage_data: data_structs.StageData, 
                  session_settings: data_structs.SessionSettings, 
-                 plot_inst: PlotInstDetails) -> None:
+                 current_chain_config: PlotInstDetails) -> None:
 
         # region Setup figure.
         if BiasAccuracyPlot._axis_count == 0:
@@ -161,24 +160,22 @@ class BiasAccuracyPlot(CartesianPlot):
         # endregion
 
         # region Set up super.
-        if plot_inst.lna_ut == 1:
-            lna_id = session_settings.lna_1_id
-        elif plot_inst.lna_ut == 2:
-            lna_id == session_settings.lna_2_id
-
+        lna_id = data_structs.ChainData.lna_id_from_pos(
+            current_chain_config, session_settings)
+        
         inst_title = super().get_instance_title(
-            plot_inst.lna_ut, session_settings.num_of_lnas, 
-            lna_id, plot_inst.stage_ut, 
+            current_chain_config.lna_ut, session_settings.num_of_lnas, 
+            lna_id, current_chain_config.stage_ut, 
             session_settings.num_of_stages)
 
         self.title = f'Bias Accuracy Plot\n{inst_title})}'
 
         super().__init__(self.ax, self.title)
 
-        xminmax = [min([*meas_bias.dvs, *set_bias.dvs]) - 0.1, 
-                   max([*meas_bias.dvs, *set_bias.dvs]) + 0.1]
-        yminmax = [min([*meas_bias.dis, *set_bias.dis]) - 1, 
-                   max([*meas_bias.dis, *set_bias.dis]) + 1]
+        xminmax = [stage_data.get_minmax_bias('v', 'min') - 0.1, 
+                   stage_data.get_minmax_bias('v', 'max') + 0.1]
+        yminmax = [stage_data.get_minmax_bias('i', 'min') - 1, 
+                   stage_data.get_minmax_bias('i', 'max') + 1]
 
         super().set_axis(XYAxisVars(
             'Drain Voltage (V)', 'Drain Current (mA)',
@@ -187,15 +184,24 @@ class BiasAccuracyPlot(CartesianPlot):
         # endregion
 
         # region Plot points on scatter graph.
-        for di in meas_bias.dis:
-            for dv in meas_bias.dvs:
-                self.axis.scatter(dv, di, color='red', marker='x', 
-                                  linewidths=self.pixel_line_width)
-        for di in set_bias.dis:
-            for dv in set_bias.dvs:
+        for di in stage_data.all_biases.set_biases.dis:
+            for dv in stage_data.all_biases.set_biases.dvs:
                 self.axis.scatter(dv, di, color='blue', marker='o', 
-                                  linewidths=self.pixel_line_width)
-        # region Plot points on scatter graph.
+                                  linewidths=self.pixel_line_width,
+                                  label='Target Bias')
+
+        for di in stage_data.trimmed_biases.cor_meas_biases.dis:
+            for dv in stage_data.trimmed_biases.cor_meas_biases.dvs:
+                self.axis.scatter(dv, di, color='green', marker='+', 
+                                  linewidths=self.pixel_line_width,
+                                  label='Valid Measured Bias')
+        
+        for di in stage_data.bad_biases.cor_meas_biases.dis:
+            for dv in stage_data.bad_biases.cor_meas_biases.dvs:
+                self.axis.scatter(dv, di, color='red', marker='x', 
+                                  linewidths=self.pixel_line_width,
+                                  label='Invalid Measured Bias')
+        # endregion
 
         # region Add legend.
         super().add_legend()
@@ -217,11 +223,9 @@ class NoiseBiasPlot(CartesianPlot):
     _axis_di_pos = []
     _fig_grid = None
     
-    def __init__(self, stage_avg_noises: np.array, 
-                 stage_bias_plot_biases: data_structs.BiasPlotBiases, 
+    def __init__(self, stage_data: data_structs.StageData,
                  session_settings: data_structs.SessionSettings, 
-                 v_or_i: str, plot_inst: PlotInstDetails) -> None:
-
+                 v_or_i: str, current_chain_config: PlotInstDetails) -> None:
 
         # region Setup figure.
         if NoiseBiasPlot._axis_di_count == 0 and \
@@ -250,11 +254,13 @@ class NoiseBiasPlot(CartesianPlot):
             NoiseBiasPlot._axis_di_count += 1
         # endregion
 
-
         # region Get subplot title.
+        lna_id = data_structs.ChainData.lna_id_from_pos(
+            session_settings, current_chain_config.lna_ut)
+
         inst_title = super().get_instance_title(
-            plot_inst.lna_ut, session_settings.num_of_lnas, 
-            session_settings.lna_id, plot_inst.stage_ut, 
+            current_chain_config.lna_ut, session_settings.num_of_lnas, 
+            lna_id, current_chain_config.stage_ut, 
             session_settings.num_of_stages)
 
         if v_or_i == 'v':
@@ -262,33 +268,127 @@ class NoiseBiasPlot(CartesianPlot):
         elif v_or_i == 'i':
             self.title = 'Average Noise Temperature (K) Over Drain Currents\n{inst_title}'
         # endregion
-        
-        # region Set input data into structure.
 
+        # region Organise data.
+        self.split_all_biases = self.breakup_sort_biases(
+            stage_data.all_biases.set_biases, v_or_i)
+        self.split_bad_biases = self.breakup_sort_biases(
+            stage_data.bad_biases.set_biases, v_or_i)
+        self.split_trimmed_biases = self.breakup_sort_biases(
+            stage_data.trimmed_biases.set_biases, v_or_i)
+        # endregion
 
-
-        # region Setup super.
-        super().__init__(self.ax, self.title)
-        
-        for v_or_i == 'v':
-
-
-        noise_avg_min = 
-        noise_avg_max = 
-
-        # region Configure subplot.
+        # region Set axis limits and labels.
+        noise_minmax = AxisMinMax
+        di_minmax = AxisMinMax
+        dv_minmax = AxisMinMax
         if v_or_i == 'v':
             super().set_axis(XYAxisVars(
                 'Drain Voltage (V)', 'Average Noise Temperature (K)',
-                AxisMinMax(), AxisMinMax()))
+                noise_minmax, dv_minmax))
 
         elif v_or_i == 'i':
             super().set_axis(XYAxisVars(
                 'Drain Current (mA)', 'Average Noise Temperature (K)',
-                AxisMinMax(), AxisMinMax()))
+                noise_minmax, di_minmax))
+        # endregion
+
+        # region Plot good and bad bias points using scatter.
+        # endregion
+
+        # region Plot a line using the good points only.
+        # endregion
+
+        # region Plot a dashed thin line using the bad points too.
+        # endregion
+
+        # region Setup super.
+        super().__init__(self.ax, self.title)
+        # region Configure subplot.
+        
         
         super().add_legend()
         # endregion
+
+
+    def organise_data(self, bias_set: data_structs.BiasSet, 
+                      v_or_i: str) -> data_structs.BiasSet:
+        cor_meas_biases = bias_set.cor_meas_biases
+        meas_biases = bias_set.meas_biases
+        set_biases = bias_set.set_biases
+
+        # region Breakup and organise set biases.
+        organised_set_biases = self.breakup_sort_biases(set_biases, v_or_i)
+        # endregion
+
+        # region Using index of org set biases, sort meas/cor_meas.
+        organised_cor_meas_biases = []
+        organised_meas_biases = []
+ 
+        for bias_list in organised_set_biases:
+            sorted_cor_meas_list = []
+            sorted_meas_list = []
+            # loop through sublist
+            for i, in bias_list.bias.index:
+                if i == cor_meas_biases.indexing[i]:
+                    sorted_cor_meas_list.append(
+                        cor_meas_biases.bias_from_index(i))
+
+                if i == meas_biases.indexing[i]:
+                    sorted_meas_list.append(
+                        meas_biases.bias_from_index(i))
+            organised_cor_meas_biases.append(sorted_cor_meas_list)
+            organised_meas_biases.append(sorted_meas_list)
+        # endregion
+
+    def breakup_sort_biases(self, biases: data_structs.Biases, 
+                            v_or_i: str) -> list[list[data_structs.Bias]]:
+        """Returns a sorted list of biases separated by drain v or i.
+        """
+
+        # region Get a full list of the variable to split from biases.
+        sort_var = []
+        if v_or_i == 'v':
+            for bias in biases:
+                sort_var.append(bias.dv)
+        elif v_or_i == 'i':
+            for bias in biases:
+                sort_var.append(bias.di)
+        # endregion
+        
+        # region Create a set of the unique values in the full list.
+        sort_var_set = set(sort_var)
+        # endregion
+
+        #region Separate the biases based on the created set.
+        sort_var_set_arrays = []
+        for var in sort_var_set:
+            var_array = []
+            # region For each bias if sort var in set add bias to list.
+            for bias in biases:
+                if bias.dv == var and v_or_i == 'v':
+                    var_array.append(bias)
+                elif bias.di == var and v_or_i == 'i':
+                    var_array.append(bias)
+            # endregion
+
+            # region Sort result list of bias objects by alternate var.
+            if v_or_i == 'i':
+                sorted_var_array = sorted(
+                    var_array, key=lambda bias: bias.dv)
+            elif v_or_i == 'v':
+                sorted_var_array = sorted(
+                    var_array, key=lambda bias: bias.di)
+            # endregion
+
+            #region Append sorted, split list into output list.
+            sort_var_set_arrays.append(sorted_var_array)
+            # endregion
+        # endregion
+
+        return sort_var_set_arrays
+
+
 
 class GainBiasPlot(CartesianPlot):
     """Gain over drain voltage, and drain current, 2 figures."""
