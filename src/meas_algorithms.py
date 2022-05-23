@@ -371,8 +371,6 @@ def calibration_measurement(settings: config_handling.Settings,
     elif settings.instr_settings.switch_settings.cryo_chain == 3:
         crbe_lna_bias = be_lna_settings.crbe_chain_3_lna
         crbe_stg = be_lna_settings.crbe_chain_3_lna.stage_1
-    else:
-        raise Exception('Cryostat chain not set.')
 
     calibration_result = measurement.measurement(
         settings, res_managers, config_handling.TrimmedInputs(trimmed_loss))

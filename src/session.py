@@ -328,12 +328,7 @@ def start_session(settings: config_handling.Settings) -> None:
 
     # region Turn off heaters.
     if settings.instr_settings.temp_ctrl_settings.temp_ctrl_en:
-        util.safe_write(
-            f'OUTMODE 0,0,{instr_settings.temp_ctrl_settings.lna_lsch},0,0,0',
-            0.5, res_managers.tc_rm)
-        util.safe_write(
-            f'OUTMODE 1,0,{instr_settings.temp_ctrl_settings.load_lsch},0,0,0', 
-            0.5, res_managers.tc_rm)
+        util.safe_write('*RST', 0.5, res_managers.tc_rm)
     # endregion
 
     # region Close resource managers.

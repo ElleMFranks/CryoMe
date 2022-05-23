@@ -22,18 +22,34 @@ def _plot_data(user_settings: data_structs.SessionSettings,
     """Plot the user input data."""
     
     bias_accuracy_plots = []
+    noise_bias_plots = []
+    gain_bias_plots = []
 
     lna_stages = itertools.product(
         np.array(range(chain_data.num_of_lnas)) + 1, 
         np.array(range(chain_data.num_of_stages)) + 1)
 
+    plot_over_sweep = plotting.ResultOverSweep(chain_data, user_settings, 'gain')
+
     for lna, stage in lna_stages:
         bias_accuracy_plots.append(
             plotting.BiasAccuracyPlot(
-                *chain_data.get_bias_acc_data(lna, stage), 
-                user_settings, lna, stage))
-
+                chain_data.get_stage_data(lna, stage), 
+                user_settings, plotting.PlotInstDetails(lna, stage)))
+        noise_bias_plots.append(
+            plotting.ResultBiasPlot(
+                chain_data.get_stage_data(lna, stage),
+                user_settings, plotting.PlotInstDetails(lna, stage), 'noise'))
+        gain_bias_plots.append(
+            plotting.ResultBiasPlot(
+                chain_data.get_stage_data(lna, stage),
+                user_settings, plotting.PlotInstDetails(lna, stage), 'gain'))
+    
+        
     plotting.BiasAccuracyPlot.show_bias_acc_plot()
+    plotting.ResultBiasPlot.show()
+        
+
 
     set_gain_map = plotting.GainMapData(
         chain_data.lna_1_stages.stage_1_data.set_biases)

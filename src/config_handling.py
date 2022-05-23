@@ -62,6 +62,7 @@ def settings_config(config: dict, advanced_config: dict,
     # endregion
 
     # region Temperature Controller Settings
+    stab_time_str = 'temperature_controller_stabilisation_timings'
     temp_ctrl_settings = instruments.TempControllerSettings(
         instruments.TempCtrlChannels(
             config['temperature_controller_settings']['allchn_load_lsch'],
@@ -74,7 +75,12 @@ def settings_config(config: dict, advanced_config: dict,
             config['temperature_controller_settings']['t_cold_target'],
             config['temperature_controller_settings']['t_lna_target']),
         cryo_chain,
-        advanced_config['available_instruments']['temp_ctrl_en'])
+        advanced_config['available_instruments']['temp_ctrl_en'],
+        instruments.TempStabilisationTimes(
+            config[stab_time_str]['first_on_lna'],
+            config[stab_time_str]['second_on_load'],
+            config[stab_time_str]['third_on_lna'],
+            config[stab_time_str]['final_on_load']))
     # endregion
 
     # region Bias Power Supply Settings.
@@ -526,8 +532,6 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        else:
-            raise Exception('Invalid chain.')
         self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
                           f'{self.lna_ut_ids.lna_2_id}'
         self.session_id = None
@@ -582,11 +586,6 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        # endregion
-
-        # region Handle variable error.
-        else:
-            raise Exception('Cryo chain must be 1, 2, or 3.')
         # endregion
 
         if self.lna_ut_ids.lna_2_id is not None:
@@ -967,7 +966,8 @@ class FileStructure:
                     elif row_or_rows == 'row':
                         writer.writerow(data)
                     else:
-                        raise Exception('Incorrect row or rows argument.')
+                        raise error_handling.InternalVariableError(
+                            'Incorrect row or rows argument.')
                 complete = True
             except:
                 input(f'Please close {path} and press enter.')

@@ -323,9 +323,9 @@ def get_user_inputs() -> UserInputs:
     # region Loss inputs.
     while not isinstance(new_loss, bool):
         new_loss = input('Use a new loss file? (y/n): ')
-        if new_loss == 'y':
+        if new_loss.lower() == 'y':
             new_loss = True
-        if new_loss == 'n':
+        if new_loss.lower() == 'n':
             new_loss = False
 
     if new_loss:

@@ -22,13 +22,10 @@ or higher.
 Priority:Speed - High to low:Fast to slow (1 to 3)
 
 ToDo:
-    * ?:2 Algorithm to do all stage sweep.
     * 1:3 Finish metaproc.py.
-    * 3:1 Biasing current limit to gate voltage speed optimisation.
+    * 2:2 Overall timing outputs in results log (save columns first).
     * 3:2 Re-lint code.
     * 3:1 Break up plotting in output_saving.py as in replot.py.
-    * 3:1.5 Exception subclassing.
-    * 2:2 Overall timing outputs in results log (save columns first).
     * 3:2 Analysis anomaly handling.
 
 Questions:
@@ -137,6 +134,12 @@ def main(config_file: str):
         #    log.exception(sys.exc_info()[0])
         #    input(f'Error {_e} logged, press Enter to exit...')
         # endregion
+
+    # region Close logs.
+    log.removeHandler(file_handler)
+    log.removeHandler(logstream)
+    del log, file_handler, logstream
+    # endregion
 
     #input('Press Enter to exit...')
 

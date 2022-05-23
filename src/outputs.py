@@ -18,6 +18,7 @@ import statistics as stats
 import numpy as np
 
 import config_handling
+import error_handling
 import util
 # endregion
 
@@ -582,17 +583,19 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             if value.lna in [1, 2] and value.stage in [1, 2, 3]:
                 self._config_ut = value
             else:
-                raise Exception('Invalid config passed.')
+                raise error_handling.InternalVariableError(
+                    'Invalid config passed.')
         else:
-            raise Exception('Invalid config passed.')
+            raise error_handling.InternalVariableError(
+                'Invalid config passed.')
 
     @staticmethod
     def std_settings_column_titles() -> list[str]:
         """Returns the standard settings column titles."""
         settings_col_titles = [
-            'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date YMD', 'Time', 'Comment', ' ', 'LNAs/Chain', 'LNA UT',
-            'Stages/LNA', 'Stage UT', ' ', 'Center Frequency (GHz)',
+            'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID', 
+            'Chain/CalID', 'Date YMD', 'Time', 'Comment', ' ', 'LNAs/Chain', 
+            'LNA UT', 'Stages/LNA', 'Stage UT', ' ', 'Center Frequency (GHz)',
             'Marker Frequency (GHz)', 'Resolution Bandwidth (MHz)',
             'Video Bandwidth (Hz)', 'Frequency Span (MHz)',
             'Power Bandwidth (MHz)', 'Attenuation (dB)', ' ',

@@ -221,13 +221,15 @@ def save_standard_results(
     crbe_lna.lna_measured_column_data()
     rtbe_lna.lna_measured_column_data()
 
+    chain_cal_id = f'{meas_settings.lna_cryo_layout.cryo_chain} x {meas_settings.in_cal_file_id}'
+
     # region Update settings log.
     log.info('Updating settings log...')
     # region Set up data to input to settings log.
     if lna_2_bias is not None:
         set_col_data = [
             meas_settings.project_title, meas_settings.lna_id_str,
-            str(meas_settings.session_id), str(bias_id),
+            str(meas_settings.session_id), str(bias_id), chain_cal_id,
             results.date_str, results.time_str, meas_settings.comment, None,
             meas_settings.lna_cryo_layout.lnas_per_chain, 
             results.config_ut.lna, 
@@ -249,7 +251,7 @@ def save_standard_results(
     else:
         set_col_data = [
             meas_settings.project_title, meas_settings.lna_id_str,
-            str(meas_settings.session_id), str(bias_id),
+            str(meas_settings.session_id), str(bias_id), chain_cal_id,
             results.date_str, results.time_str, meas_settings.comment, None,
             meas_settings.lna_cryo_layout.lnas_per_chain,
             results.config_ut.lna,
