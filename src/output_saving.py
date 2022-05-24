@@ -9,7 +9,7 @@ Calibration>Chain folder.
 
 # region Import modules.
 from __future__ import annotations
-from time import sleep
+from time import sleep, perf_counter
 from typing import Optional
 import logging
 import os
@@ -337,6 +337,10 @@ def save_standard_results(
     results_header_5 = [*instr_settings.sig_an_settings.header()]
     # endregion
 
+    # region End the timer for the session so it can be saved into results.
+    results.session_timings.overall_time.end_time = perf_counter()
+    # endregion
+
     # region Set up column titles and data for csv output.
     results_col_titles = results.std_output_column_titles()
 
@@ -451,6 +455,10 @@ def save_calibration_results(
     cal_results_header_3 = [settings.instr_settings.sig_an_settings.header()]
 
     cal_results_col_titles = results.cal_output_column_titles()
+    # endregion
+
+    # region End the overall timer so it can be saved to the results log.
+    results.session_timings.overall_time.end_time = perf_counter()
     # endregion
 
     # region Add results to calibration result output csv.

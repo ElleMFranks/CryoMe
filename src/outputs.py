@@ -9,11 +9,13 @@ for a hot measurement.
 
 # region Import modules.
 from __future__ import annotations
+from _typeshed import NoneType
 from dataclasses import dataclass
 from typing import Optional, Union
 import datetime
 import math
 import statistics as stats
+import time
 
 import numpy as np
 
@@ -435,17 +437,27 @@ def process(loop_pair: LoopPair, results_meta_info: ResultsMetaInfo
                                       uncal_loss_cor_noise_temp)
 # endregion
 
-
 # region Top level class post-processing
 def _post_process(freqs, gain: Gain, noise_temperature,
                   bws: AnalysisBandwidths) -> PostProcResults:
     """Carries out post-processing on results set."""
+    untrimmed_freqs = np.array(freqs)
+    untrimmed_non_db_gain = np.array(gain.gain)
+    untrimmed_db_gain = np.array(gain.gain_db)
+    untrimmed_noise_temperature = np.array(noise_temperature)
     freqs = np.array(freqs)
     non_db_gain = np.array(gain.gain)
     db_gain = np.array(gain.gain_db)
     noise_temperature = np.array(noise_temperature)
+
+
+
     f_gain = np.column_stack((freqs, non_db_gain, db_gain))
     f_nt = np.column_stack((freqs, noise_temperature))
+
+    
+
+    
 
     bandwidths = [bws.bw_1_min_max, bws.bw_2_min_max, bws.bw_3_min_max,
                   bws.bw_4_min_max, bws.bw_5_min_max]
@@ -572,6 +584,18 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         # endregion
 
     @property
+    def session_timings(self) -> SessionTimings:
+        return self._session_timings
+
+    @session_timings.setter
+    def session_timings(self, value: SessionTimings) -> None:
+        if isinstance(value, SessionTimings):
+            self._session_timings = value
+        else:
+            raise error_handling.InternalVariableError(
+                'session_timings must be instance of SessionTimings class.')
+
+    @property
     def config_ut(self) -> ConfigUT:
         """The configuration of the measurement (temp/lna/stage/dv/di).
         """
@@ -670,7 +694,12 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
             'Noise Temp Avg (K)', 'Noise Temp Std Dev', 'Noise Temp Min (K)',
-            'Noise Temp Max (K)', 'Noise Temp Range (K)']
+            'Noise Temp Max (K)', 'Noise Temp Range (K)', ' ',
+            'Overall Time (s)', 'Start to BE Biasing (s)', 'BE Biasing (s)',
+            'BE to Measurement LNA Biasing (s)', 
+            'Measurement LNA Biasing (s)',
+            'Thermal Setting (s)', 'First Measurement Loop (s)', 
+            'Second Measurement Loop (s)']
         return res_ana_log_col_titles
 
     def results_ana_log_data(
@@ -827,3 +856,74 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             self.hot.pre_post_temps.post_loop_extra_2_temps,
             self.cold.times, self.hot.times))
 # endregion
+
+
+@dataclass()
+class TimePair:
+    @property
+    def start_time(self) -> float:
+        return self._start_time
+
+    @start_time.setter
+    def start_time(self, value: float) -> None:
+        self._start_time = value
+
+    @property
+    def end_time(self) -> float
+        return self._end_time
+
+    @end_time.setter(self, value: float) -> None:
+        self.time = value - self.start_time
+        self._end_time = value
+
+    @property
+    def time(self) -> float
+        return self._time
+
+    @time.setter
+    def time(self, value: float) -> None:
+        self._time = value
+
+
+class SessionTimings:
+    """Records the timings of a session."""
+
+    def __init__(self, measure_method: str) -> None:
+        """Constructor for the SessionTimings class."""
+        self.overall_time = TimePair()
+        self.overall_time.start_time = time.perf_counter()
+
+        self.start_to_be_bias = TimePair()
+        self.start_to_be_bias.start_time = self.overall_time.start_time
+        
+        self.be_biasing = TimePair()
+
+        self.be_to_meas_lna_biasing = TimePair()
+        
+        self.meas_lna_biasing = TimePair()
+        
+        self.thermal = TimePair()
+        
+        self.first_meas_loop = TimePair()
+
+        self.second_meas_loop = TimePair()
+
+    def add_to_bias_time(self, value: float) -> None:
+        self.meas_lna_biasing.time = self.meas_lna_biasing.time + value
+
+    def add_to_thermal_time(self, value: float) -> None:
+        self.thermal.time = self.thermal.time + value
+
+    @property
+    def second_thermal(self) -> float:
+        return self._second_thermal
+
+    @second_thermal.setter
+    def second_thermal(self, value:float) -> None:
+        self._second_thermal = value
+
+    def as_tuple(self):
+        return self.overall_time.time, self.start_to_be_bias.time, \
+            self.be_biasing.time, self.be_to_meas_lna_biasing.time, \
+            self.meas_lna_biasing.time, self.thermal.time, \
+            self.first_meas_loop.time, self.second_meas_loop.time

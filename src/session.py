@@ -7,6 +7,7 @@ the requested algorithm is called.
 
 # region Import modules
 from __future__ import annotations
+from time import perf_counter
 import logging
 
 import numpy as np
@@ -20,11 +21,15 @@ import lnas
 import meas_algorithms
 import config_handling
 import util
+import outputs
 # endregion
 
 
-def _trigger_algorithm(settings, lna_biases, res_managers,
-                       trimmed_input_data) -> None:
+def _trigger_algorithm(settings: config_handling.Settings, 
+                       lna_biases: list[lnas.LNABiasSet], 
+                       res_managers: instruments.ResourceManagers,
+                       trimmed_input_data: list, 
+                       timings: outputs.SessionTimings) -> None:
     """Triggers the requested measurement algorithm."""
 
     # region Unpack objects and set up logging.
@@ -36,14 +41,14 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
     if meas_settings.measure_method == 'AT':
         log.info('Triggered alternating temperature measurement.')
         meas_algorithms.alternating_temps(
-            settings, lna_biases, res_managers, trimmed_input_data)
+            settings, lna_biases, res_managers, trimmed_input_data, timings)
     # endregion
 
     # region All Cold Then All Hot.
     elif meas_settings.measure_method == 'ACTAH':
         log.info('Triggered all cold then all hot measurement.')
         meas_algorithms.all_cold_to_all_hot(
-            settings, lna_biases, res_managers, trimmed_input_data)
+            settings, lna_biases, res_managers, trimmed_input_data, timings)
     # endregion
 
     # region Manual Entry Measurement.
@@ -52,6 +57,8 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         # region Set and measure manual LNA biases.
         # region Set up LNA1.
         lna_1_man = meas_settings.direct_lnas.manual_lna_settings.lna_1_man
+        timings.be_to_meas_lna_biasing.end_time = perf_counter()
+        timings.meas_lna_biasing.start_time = perf_counter()
         if settings.instr_settings.bias_psu_settings.bias_psu_en:
             bias_ctrl.adaptive_bias_set(res_managers.psu_rm, lna_1_man,
                                settings.instr_settings.bias_psu_settings,
@@ -74,9 +81,10 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
         # endregion
 
         lna_man_biases = [lna_1_man, lna_2_man]
+        timings.meas_lna_biasing.end_time = perf_counter()
 
         meas_algorithms.manual_entry_measurement(
-            settings, lna_man_biases, res_managers, trimmed_input_data)
+            settings, lna_man_biases, res_managers, trimmed_input_data, timings)
         # endregion
     # endregion
 
@@ -84,7 +92,7 @@ def _trigger_algorithm(settings, lna_biases, res_managers,
     elif meas_settings.measure_method == 'Calibration':
         log.info('Triggered calibration measurement.')
         meas_algorithms.calibration_measurement(
-            settings, res_managers, trimmed_input_data.trimmed_loss)
+            settings, res_managers, trimmed_input_data.trimmed_loss, timings)
     # endregion
 
 
@@ -196,6 +204,7 @@ def start_session(settings: config_handling.Settings) -> None:
     """
 
     # region Unpack classes and set up logging.
+    timings = outputs.SessionTimings()
     log = logging.getLogger(__name__)
     instr_settings = settings.instr_settings
     bias_psu_settings = instr_settings.bias_psu_settings
@@ -263,7 +272,10 @@ def start_session(settings: config_handling.Settings) -> None:
     log.info('Instrumentation initialised.')
     # endregion
 
+    
     # region Set back end (cryostat and room-temperature) LNAs.
+    timings.start_to_be_bias.end_time = perf_counter()
+    timings.be_biasing.start_time = perf_counter()
     if bias_psu_settings.skip_psu_init:
         check_skip_be_setup = False
         while not check_skip_be_setup:
@@ -276,6 +288,8 @@ def start_session(settings: config_handling.Settings) -> None:
                 check_skip_be_setup = True
     else:
         chain_select.back_end_lna_setup(settings, res_managers.psu_rm)
+    timings.be_biasing.end_time = perf_counter()
+    timings.be_to_meas_lna_biasing.start_time = perf_counter()
     # endregion
 
     # region Set up nominal LNA bias points.
@@ -297,15 +311,16 @@ def start_session(settings: config_handling.Settings) -> None:
     # region Trigger measurement with power supply enabled.
     if bias_psu_settings.bias_psu_en:
         _trigger_algorithm(settings, lna_biases,
-                           res_managers, trimmed_input_data)
+                           res_managers, trimmed_input_data, timings)
     # endregion
 
     # region If PSU not enabled, trigger measurement without it.
     elif not meas_settings.is_calibration:
         _trigger_algorithm(settings, lna_biases,
-                           res_managers, trimmed_input_data)
+                           res_managers, trimmed_input_data, timings)
     else:
-        _trigger_algorithm(settings, None, res_managers, trimmed_input_data)
+        _trigger_algorithm(settings, None, res_managers, 
+                           trimmed_input_data, timings)
     # endregion
     # endregion
 
