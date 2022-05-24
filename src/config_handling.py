@@ -536,8 +536,12 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
-                          f'{self.lna_ut_ids.lna_2_id}'
+        
+        if self.lna_ut_ids.lna_2_id is not None:
+            self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
+                              f'{self.lna_ut_ids.lna_2_id}'
+        else:
+            self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}'
         self.session_id = None
         # endregion
 

@@ -82,6 +82,7 @@ def _trigger_algorithm(settings: config_handling.Settings,
 
         lna_man_biases = [lna_1_man, lna_2_man]
         timings.meas_lna_biasing.end_time = perf_counter()
+        timings.thermal.start_time = perf_counter()
 
         meas_algorithms.manual_entry_measurement(
             settings, lna_man_biases, res_managers, trimmed_input_data, timings)

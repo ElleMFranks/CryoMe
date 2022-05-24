@@ -19,7 +19,7 @@ from __future__ import annotations
 from itertools import product
 import copy
 import logging
-from timings import perf_counter
+from time import perf_counter
 
 import tqdm
 
@@ -202,13 +202,12 @@ def all_cold_to_all_hot(
         # region Trigger measurement
         if state.temp == 0:
             cold_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, timings_copy 
+                settings, res_managers, trimmed_input_data, timings_copy,
                 state.temp))
-
         
         if state.temp == 1:  
             hot_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, timings_copy
+                settings, res_managers, trimmed_input_data, timings_copy,
                 state.temp))
             direct_set_index += 1
 
@@ -280,6 +279,7 @@ def alternating_temps(
             sweep_settings.lna_sequence, sweep_settings.stage_sequence,
             sweep_settings.d_v_sweep, sweep_settings.d_i_sweep))
     states = []
+    timings.be_to_meas_lna_biasing.end_time = perf_counter()
     # endregion
     
     # region Iterate measuring and saving lna/stage/bias value states.
@@ -355,6 +355,10 @@ def alternating_temps(
                 settings, standard_results, i + 1, lna_1_bias, lna_2_bias)
             # endregion
 
+            # region Reset overall timer.
+            timings.reset_overall_time()
+            # endregion
+
             # region Update status and continue sweep.
             log.info('Measurement finished, incrementing bias sweep')
             # endregion
@@ -416,7 +420,8 @@ def manual_entry_measurement(
         settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
         res_managers: instruments.ResourceManagers,
-        trimmed_input_data: config_handling.TrimmedInputs) -> None:
+        trimmed_input_data: config_handling.TrimmedInputs,
+        timings: outputs.SessionTimings) -> None:
     """Single measurement point with user input bias conditions.
 
     User inputs bias array for a noise temperature measurement, this
@@ -436,7 +441,7 @@ def manual_entry_measurement(
     lna_2_bias = lna_biases[1]
 
     standard_results = measurement.measurement(
-        settings, res_managers, trimmed_input_data)
+        settings, res_managers, trimmed_input_data, timings)
 
     standard_results.config_ut = outputs.ConfigUT(1, 1, 1, 1, 1)
 

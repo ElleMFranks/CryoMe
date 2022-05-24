@@ -279,6 +279,9 @@ def save_standard_results(
     # endregion
 
     # region Update results log.
+    # region End the timer for the session so it can be saved into results.
+    results.session_timings.overall_time.end_time = perf_counter()
+    # endregion
     res_log_data = results.results_ana_log_data(meas_settings, bias_id)
     file_struc.write_to_file(
         file_struc.res_log_path, res_log_data, 'a', 'row')
@@ -337,9 +340,7 @@ def save_standard_results(
     results_header_5 = [*instr_settings.sig_an_settings.header()]
     # endregion
 
-    # region End the timer for the session so it can be saved into results.
-    results.session_timings.overall_time.end_time = perf_counter()
-    # endregion
+    
 
     # region Set up column titles and data for csv output.
     results_col_titles = results.std_output_column_titles()

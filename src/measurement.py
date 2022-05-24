@@ -94,10 +94,12 @@ def _meas_loop(
     # region Sweep requested frequencies measuring power and load temp.
     log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.')
     
-    if isinstance(timings.second_thermal, float):
-        timings.add_to_thermal_time(perf_counter() - timings.second_thermal)
+    if isinstance(timings.second_thermal.start_time, float):
+        timings.add_to_thermal_time(perf_counter() - timings.second_thermal.start_time)
+        timings.second_meas_loop.start_time = perf_counter()
     else:
         timings.thermal.end_time = perf_counter()
+        timings.first_meas_loop.start_time = perf_counter()
 
     pbar = tqdm.tqdm(
         total=len(inter_freqs_array), ncols=110,
@@ -106,10 +108,11 @@ def _meas_loop(
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')
 
     i = 0
+    loop_start = perf_counter()
     while i < len(inter_freqs_array):
         try:
             # region Set signal generator to intermediate frequency.
-            loop_start = perf_counter()
+            
 
             if sig_gen_rm is not None \
                     and sig_gen_settings.vna_or_sig_gen == 'vna':
@@ -165,12 +168,6 @@ def _meas_loop(
             # endregion
 
             loop_end = perf_counter()
-            if timings.first_meas_loop != outputs.TimePair():
-                timings.first_meas_loop.start_time = loop_start
-                timings.first_meas_loop.end_time = loop_end
-            else:
-                timings.second_meas_loop.start_time = loop_start
-                timings.second_meas_loop.end_time = loop_end
 
             times.append(loop_end-loop_start)
             i += 1
@@ -181,6 +178,13 @@ def _meas_loop(
     # endregion
     pbar.close()
     log.info('Frequency sweep completed.')
+
+    if isinstance(timings.first_meas_loop.time, float):
+        timings.second_meas_loop.start_time = loop_start
+        timings.second_meas_loop.end_time = loop_end
+    else:
+        timings.first_meas_loop.start_time = loop_start
+        timings.first_meas_loop.end_time = loop_end
 
     # region Put spec an in continuous measurement mode.
     if spec_an_rm is not None:
@@ -239,7 +243,7 @@ def _closest_temp_then_other(
     
     #Changed by Will to fix Cold then Hot measurements
     cold = _meas_loop(settings, 'Cold', res_managers, timings)
-    timings.second_thermal = perf_counter()
+    timings.second_thermal.start_time = perf_counter()
     hot = _meas_loop(settings, 'Hot', res_managers, timings)
     
 

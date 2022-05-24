@@ -9,7 +9,6 @@ for a hot measurement.
 
 # region Import modules.
 from __future__ import annotations
-from _typeshed import NoneType
 from dataclasses import dataclass
 from typing import Optional, Union
 import datetime
@@ -649,7 +648,7 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
         res_ana_log_header = [
             '', '', '', '',
             '', '', '', '',
-            '', '', '', '', '', '', '',
+            '', '', '', '', '', '', '', '',
             'FBW', 'FBW', 'FBW', 'FBW', 'FBW',
             'FBW', 'FBW', 'FBW', 'FBW', 'FBW', '',
             'BW1', 'BW1', 'BW1', 'BW1', 'BW1',
@@ -860,35 +859,41 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
 
 @dataclass()
 class TimePair:
+    start_time: Optional[float] = None
+    end_time: Optional[float] = None
+    time: Optional[float] = None
+
     @property
-    def start_time(self) -> float:
+    def start_time(self) -> Optional[float]:
         return self._start_time
 
     @start_time.setter
-    def start_time(self, value: float) -> None:
+    def start_time(self, value: Optional[float]) -> None:
         self._start_time = value
 
     @property
-    def end_time(self) -> float
+    def end_time(self) -> Optional[float]:
         return self._end_time
 
-    @end_time.setter(self, value: float) -> None:
-        self.time = value - self.start_time
+    @end_time.setter
+    def end_time(self, value: Optional[float]) -> None:
+        if isinstance(value, float):
+            self.time = value - self.start_time
         self._end_time = value
 
     @property
-    def time(self) -> float
+    def time(self) -> Optional[float]:
         return self._time
 
     @time.setter
-    def time(self, value: float) -> None:
+    def time(self, value: Optional[float]) -> None:
         self._time = value
 
 
 class SessionTimings:
     """Records the timings of a session."""
 
-    def __init__(self, measure_method: str) -> None:
+    def __init__(self) -> None:
         """Constructor for the SessionTimings class."""
         self.overall_time = TimePair()
         self.overall_time.start_time = time.perf_counter()
@@ -903,6 +908,7 @@ class SessionTimings:
         self.meas_lna_biasing = TimePair()
         
         self.thermal = TimePair()
+        self.second_thermal = TimePair()
         
         self.first_meas_loop = TimePair()
 
@@ -913,6 +919,13 @@ class SessionTimings:
 
     def add_to_thermal_time(self, value: float) -> None:
         self.thermal.time = self.thermal.time + value
+
+    def reset_overall_time(self) -> None:
+        start_to_meas_lna_biasing = (
+            self.start_to_be_bias.time + self.be_biasing.time + 
+            self.be_to_meas_lna_biasing.time)
+        self.overall_time.start_time = (
+            time.perf_counter() - start_to_meas_lna_biasing)
 
     @property
     def second_thermal(self) -> float:

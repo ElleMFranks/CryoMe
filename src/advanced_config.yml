@@ -19,11 +19,11 @@ advanced_back_end_lna_settings:
   correct_be_d_v: False  # Whether to correct dv for wire voltage drop
   
 available_instruments:
-  bias_psu_en: True
-  sig_an_en: True
-  sig_gen_en: True
-  switch_en: True
-  temp_ctrl_en: True
+  bias_psu_en: False
+  sig_an_en: False
+  sig_gen_en: False
+  switch_en: False
+  temp_ctrl_en: False
   
 protection_pcb_config:
   lna_1_d_r: 12.6  # Ohms
