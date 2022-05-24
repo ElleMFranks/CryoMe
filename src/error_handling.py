@@ -240,7 +240,11 @@ def check_freq_sweep_settings(
 def validate_temp_ctrl_channels(temp_ctrl_channels: instruments.TempCtrlChannels) -> None:
     """Check temperature controller channel settings."""
 
-    temp_ctrl_channels = [
+    if not isinstance(temp_ctrl_channels.extra_sensors_en, bool):
+        raise YAMLError('extra_sensors_en', 
+                        'extra_sensors_en must be True or False.')
+
+    temp_ctrl_channels_list = [
         temp_ctrl_channels.load_channels.chain_1,
         temp_ctrl_channels.load_channels.chain_2,
         temp_ctrl_channels.load_channels.chain_3,
@@ -248,13 +252,11 @@ def validate_temp_ctrl_channels(temp_ctrl_channels: instruments.TempCtrlChannels
         temp_ctrl_channels.lna_channels.chain_2,
         temp_ctrl_channels.lna_channels.chain_3]
         
-    for channel in temp_ctrl_channels:
+    for channel in temp_ctrl_channels_list:
         if int(channel) not in range(1, 11):
             raise YAMLError('temp_ctrl_channels', 'Check lakeshore channels.')
 
-    if not isinstance(temp_ctrl_channels.extra_sensors_en, bool):
-        raise YAMLError('extra_sensors_en', 
-                        'extra_sensors_en must be True or False.')
+    
 
 def validate_temp_stabilisation_times(
     temp_stabilisation_times: instruments.TempStabilisationTimes) -> None:

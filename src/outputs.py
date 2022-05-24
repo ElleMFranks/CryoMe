@@ -644,8 +644,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
     def results_ana_log_column_titles() -> list[str]:
         """Returns the column titles for the results analysis log."""
         res_ana_log_col_titles = [
-            'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID',
-            'Date', 'Time', 'Comment', ' ',
+            'Project Title', 'LNA ID/s (axb)', 'Session ID', 'BiasID', 
+            'Chain/CalID', 'Date', 'Time', 'Comment', ' ', 
             'FBW', 'BW 1', 'BW 2', 'BW 3', 'BW 4', 'BW 5', ' ',
             'Gain Avg (dB)', 'Gain Std Dev', 'Gain Min (dB)',
             'Gain Max (dB)', 'Gain Range (dB)',
@@ -693,9 +693,11 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             else:
                 bws_trm.append('NA')
 
+        chain_cal_id = f'{meas_settings.lna_cryo_layout.cryo_chain} x {meas_settings.in_cal_file_id}'
+
         col_data = [
             meas_settings.project_title, meas_settings.lna_id_str,
-            str(meas_settings.session_id), str(bias_id),
+            str(meas_settings.session_id), str(bias_id), chain_cal_id,
             self.date_str, self.time_str, meas_settings.comment, None,
             fwb, bws_trm[0], bws_trm[1], bws_trm[2], bws_trm[3], bws_trm[4],
             None, *self.gain_post_proc.as_tuple(0),
@@ -709,7 +711,8 @@ class Results(LoopPair, StandardAnalysedResults, CalibrationAnalysedResults,
             *self.gain_post_proc.as_tuple(4),
             *self.noise_temp_post_proc.as_tuple(4), None,
             *self.gain_post_proc.as_tuple(5),
-            *self.noise_temp_post_proc.as_tuple(5), None]
+            *self.noise_temp_post_proc.as_tuple(5), None,
+            *self.session_timings.as_tuple()]
         return col_data
 
     @staticmethod

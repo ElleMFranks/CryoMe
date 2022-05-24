@@ -8,7 +8,7 @@ advanced_measurement_settings:
   skip_psu_init: False     # skip back end setup
   
 advanced_bias_psu_settings:
-  d_i_lim: 10            # ma
+  d_i_lim: 12            # ma
   g_v_low_lim: -0.25     # v
   g_v_up_lim: +0.4       # v
   v_step_lim: 0.3        # v
@@ -19,11 +19,11 @@ advanced_back_end_lna_settings:
   correct_be_d_v: False  # Whether to correct dv for wire voltage drop
   
 available_instruments:
-  bias_psu_en: False
-  sig_an_en: False
-  sig_gen_en: False
-  switch_en: False
-  temp_ctrl_en: False
+  bias_psu_en: True
+  sig_an_en: True
+  sig_gen_en: True
+  switch_en: True
+  temp_ctrl_en: True
   
 protection_pcb_config:
   lna_1_d_r: 12.6  # Ohms

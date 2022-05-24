@@ -517,8 +517,7 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         TempTargets.__init__(
             self, *util.get_dataclass_args(temp_targets))
 
-        TempStabilisationTimes.__init__(
-            self, *util.get_dataclass_args(temp_stabilisation_times))
+        self.stabilisation_times = temp_stabilisation_times
 
         self.cryo_chain = cryo_chain
         self.temp_ctrl_en = temp_ctrl_en
