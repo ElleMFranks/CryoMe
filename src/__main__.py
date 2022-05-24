@@ -12,8 +12,9 @@ CryoMe Automated Y Factor Noise Temperature Measurement Package.
 Version 1.0
 
 For more information on the package as a whole, see the doc folder in
-the code directory. Settings are in config.yml, edit there to control
-operation of this program.
+the code directory. General settings are in config.yml, edit there to 
+control operation of this program. Advanced settings stored in src 
+folder, care should be taken when editting these.
 
 Use of __future__ import to avoid problems with type hinting and
 circular importing mean that this code will only work with Python 3.7
@@ -23,9 +24,7 @@ Priority:Speed - High to low:Fast to slow (1 to 3)
 
 ToDo:
     * 1:3 Finish metaproc.py.
-    * 2:2 Overall timing outputs in results log (save columns first).
-    * 3:2 Re-lint code.
-    * 3:1 Break up plotting in output_saving.py as in replot.py.
+    * 3:3 Re-lint code.
     * 3:2 Analysis anomaly handling.
 
 Questions:

@@ -65,10 +65,14 @@ def settings_config(config: dict, advanced_config: dict,
     stab_time_str = 'temperature_controller_stabilisation_timings'
     temp_ctrl_settings = instruments.TempControllerSettings(
         instruments.TempCtrlChannels(
-            config['temperature_controller_settings']['allchn_load_lsch'],
-            config['temperature_controller_settings']['chn1_lna_lsch'],
-            config['temperature_controller_settings']['chn2_lna_lsch'],
-            config['temperature_controller_settings']['chn3_lna_lsch'],
+            instruments.ChannelSet(
+                config['temperature_controller_settings']['chn1_load_lsch'],
+                config['temperature_controller_settings']['chn2_load_lsch'],
+                config['temperature_controller_settings']['chn3_load_lsch']),
+            instruments.ChannelSet(
+                config['temperature_controller_settings']['chn1_lna_lsch'],
+                config['temperature_controller_settings']['chn2_lna_lsch'],
+                config['temperature_controller_settings']['chn3_lna_lsch']),
             config['temperature_controller_settings']['extra_sensors_en']),
         instruments.TempTargets(
             config['temperature_controller_settings']['t_hot_target'],

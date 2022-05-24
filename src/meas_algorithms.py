@@ -19,6 +19,7 @@ from __future__ import annotations
 from itertools import product
 import copy
 import logging
+from timings import perf_counter
 
 import tqdm
 
@@ -36,7 +37,8 @@ def all_cold_to_all_hot(
         settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
         res_managers: instruments.ResourceManagers,
-        trimmed_input_data: config_handling.TrimmedInputs) -> None:
+        trimmed_input_data: config_handling.TrimmedInputs,
+        timings: outputs.SessionTimings) -> None:
     """Parallel sweep where cold measurements are taken, then hot.
 
     This  method loops through each drain current for each drain
@@ -77,10 +79,17 @@ def all_cold_to_all_hot(
     # region Loop through states measuring at each.
     print('')
     states = []
+    bias_timings = []
+    meas_bias_start = []
+    meas_bias_end = []
+    timings_array = []
+    j = 0
+
     for i, position in enumerate(tqdm.tqdm(
         positions, ncols=110, leave=False, desc="Sweep Prog",
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
+        
 
         # region Unpack state object and set additional variable.
         state = outputs.ConfigUT(
@@ -94,10 +103,15 @@ def all_cold_to_all_hot(
             log.info(
                 f'Measurement: {i + 1} - HotOrCold: Cold - LNA: {state.lna} '     
                 f'- DV: {state.d_v:.2f} V - DI: {state.d_i:.2f} mA.')
+            timings_copy = copy.deepcopy(timings)
+            timings_copy.meas_lna_biasing.start_time = perf_counter()
         else:
             log.info(
                 f'Measurement: {i + 1} - HotOrCold: Hot - LNA:{state.lna} '
                 f'- DV:{state.d_v:.2f} V - DI:{state.d_i:.2f} mA.')
+            timings_copy = timings_array[j]
+            bias_start_time = perf_counter()
+            j += 1
         # endregion
 
         # region Configure LNA biasing settings to send to bias control.
@@ -125,6 +139,7 @@ def all_cold_to_all_hot(
         # Adaptive search function here searches gate voltages for a
         # value which gives a requested drain current at a given drain
         # voltage.
+        
         if res_managers.psu_rm is not None and state.temp == 0 and (
                 state.lna == 1 or i == 0 or state.lna != prev_lna):
             bias_ctrl.adaptive_bias_set(
@@ -174,17 +189,30 @@ def all_cold_to_all_hot(
         else:
             if state.temp == 0:
                 lna_2_array.append(copy.deepcopy(lna_2_bias))
+
+        if state.temp == 0:
+            timings_copy.meas_lna_biasing.end_time = perf_counter()
+            timings_copy.thermal.start_time = perf_counter()
+        else:
+            timings_copy.add_to_bias_time(perf_counter() - bias_start_time)
+            timings.second_thermal = perf_counter()
         # endregion
+
 
         # region Trigger measurement
         if state.temp == 0:
             cold_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, state.temp))
+                settings, res_managers, trimmed_input_data, timings_copy 
+                state.temp))
 
-        else:
+        
+        if state.temp == 1:  
             hot_array.append(measurement.measurement(
-                settings, res_managers, trimmed_input_data, state.temp))
+                settings, res_managers, trimmed_input_data, timings_copy
+                state.temp))
             direct_set_index += 1
+
+        timings_array.append(timings_copy)
 
         print('\n')
 
@@ -195,6 +223,7 @@ def all_cold_to_all_hot(
 
     # region Analyse and save each set of hot and cold results.
     log.info('Starting results saving.')
+    
     freq_array = settings.instr_settings.sig_gen_settings.freq_array
     for i, _ in enumerate(hot_array):
         result = outputs.Results(
@@ -206,18 +235,18 @@ def all_cold_to_all_hot(
                          trimmed_input_data.trimmed_loss,
                          trimmed_input_data.trimmed_cal_data))
         result.config_ut = states[i]
-
+        result.session_timings = timings_array[i]
         output_saving.save_standard_results(
             settings, result, i + 1, lna_1_array[i], lna_2_array[i])
     log.info('All results saved.')
     # endregion
 
-
 def alternating_temps(
         settings: config_handling.Settings,
         lna_biases: list[lnas.LNABiasSet],
         res_managers: instruments.ResourceManagers,
-        trimmed_input_data: config_handling.TrimmedInputs) -> None:
+        trimmed_input_data: config_handling.TrimmedInputs,
+        timings: outputs.SessionTimings) -> None:
     """Series sweep where temp is alternated between measurements.
 
     For each LNA, for each stage, for each drain voltage, for each
@@ -260,16 +289,15 @@ def alternating_temps(
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}\n')):
 
-        
-
         if i >= sweep_settings.alt_temp_sweep_skips:
+            timings_copy = copy.deepcopy(timings)
+            timings_copy.meas_lna_biasing.start_time = perf_counter()
             state = outputs.ConfigUT(
                 0, position[0], position[1], position[2], position[3])
             states.append(state)
             # region Configure LNA Biasing.
             # region LNA 1.
             if state.lna == 1:
-
                 lna_1_bias.sweep_setup(
                     state.stage, state.d_v, state.d_i, d_v_nom, d_i_nom)
 
@@ -311,11 +339,13 @@ def alternating_temps(
                         settings.file_struc)
                 lna_2_bias.lna_measured_column_data(res_managers.psu_rm)
             # endregion
+            timings_copy.meas_lna_biasing.end_time = perf_counter()
+            timings_copy.thermal.start_time = perf_counter()
             # endregion
 
             # region Trigger measurement.
             standard_results = measurement.measurement(
-                settings, res_managers, trimmed_input_data)
+                settings, res_managers, trimmed_input_data, timings_copy)
             # endregion
 
             standard_results.config_ut = state

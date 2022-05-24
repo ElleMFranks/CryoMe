@@ -16,6 +16,7 @@ from time import sleep, perf_counter
 from typing import Union, Optional
 import logging
 import random
+from matplotlib.pyplot import xscale
 
 import numpy as np
 import tqdm
@@ -30,7 +31,8 @@ import util
 
 def _meas_loop(
         settings: config_handling.Settings, hot_or_cold: str,
-        res_managers: instruments.ResourceManagers
+        res_managers: instruments.ResourceManagers, 
+        timings: outputs.SessionTimings
         ) -> outputs.LoopInstanceResult:
     """The measurement algorithm for each hot or cold measurement.
 
@@ -91,6 +93,12 @@ def _meas_loop(
 
     # region Sweep requested frequencies measuring power and load temp.
     log.info(f'Temperature stable at {pre_loop_temps[0]} K, starting sweep.')
+    
+    if isinstance(timings.second_thermal, float):
+        timings.add_to_thermal_time(perf_counter() - timings.second_thermal)
+    else:
+        timings.thermal.end_time = perf_counter()
+
     pbar = tqdm.tqdm(
         total=len(inter_freqs_array), ncols=110,
         desc="Loop Prog", leave=True, position=0,
@@ -102,6 +110,7 @@ def _meas_loop(
         try:
             # region Set signal generator to intermediate frequency.
             loop_start = perf_counter()
+
             if sig_gen_rm is not None \
                     and sig_gen_settings.vna_or_sig_gen == 'vna':
                 sig_gen_rm.write(f':SENSE:FREQ:CW {inter_freqs_array[i]} GHz')
@@ -156,6 +165,13 @@ def _meas_loop(
             # endregion
 
             loop_end = perf_counter()
+            if timings.first_meas_loop != outputs.TimePair():
+                timings.first_meas_loop.start_time = loop_start
+                timings.first_meas_loop.end_time = loop_end
+            else:
+                timings.second_meas_loop.start_time = loop_start
+                timings.second_meas_loop.end_time = loop_end
+
             times.append(loop_end-loop_start)
             i += 1
             pbar.update()
@@ -202,7 +218,7 @@ def _meas_loop(
 
 def _closest_temp_then_other(
         init_temp: float, res_managers: instruments.ResourceManagers,
-        settings: config_handling.Settings
+        settings: config_handling.Settings, timings: outputs.SessionTimings
         ) -> list[outputs.LoopInstanceResult]:
     """Triggers measurement loops, first closest temp, then other."""
 
@@ -222,9 +238,11 @@ def _closest_temp_then_other(
 #            closer_to_hot = not closer_to_hot
     
     #Changed by Will to fix Cold then Hot measurements
-    cold = _meas_loop(settings, 'Cold', res_managers)
-    hot = _meas_loop(settings, 'Hot', res_managers)
+    cold = _meas_loop(settings, 'Cold', res_managers, timings)
+    timings.second_thermal = perf_counter()
+    hot = _meas_loop(settings, 'Hot', res_managers, timings)
     
+
     return [hot, cold]
     # endregion
 
@@ -233,7 +251,8 @@ def measurement(
         settings: config_handling.Settings,
         res_managers: instruments.ResourceManagers,
         trimmed_input_data: config_handling.TrimmedInputs,
-        hot_cold_count: Optional[int] = None
+        timings: outputs.SessionTimings,
+        hot_cold_count: Optional[int] = None,
         ) -> Union[outputs.Results, outputs.LoopInstanceResult]:
     """Conducts a full measurement using the chosen algorithm.
 
@@ -291,7 +310,8 @@ def measurement(
 
         # region Carry out measurement closest to initial temperature.
         # Heat up or cool down and do next one
-        loop_res = _closest_temp_then_other(init_temp, res_managers, settings)
+        loop_res = _closest_temp_then_other(
+            init_temp, res_managers, settings, timings)
         # endregion
 
         # region Save and return results.
@@ -303,6 +323,7 @@ def measurement(
                 meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss,
                 trimmed_input_data.trimmed_cal_data))
+        standard_results.session_timings = timings
 
         return standard_results
         # endregion
@@ -312,13 +333,13 @@ def measurement(
     if meas_settings.measure_method == 'ACTAH':
         # region If all cold then all hot measurement, start cold.
         if hot_cold_count == 0:
-            cold = _meas_loop(settings, 'Cold', res_managers)
+            cold = _meas_loop(settings, 'Cold', res_managers, timings)
             return cold
         # endregion
 
         # region Once cold measurements done, start on hot measurements.
         if hot_cold_count == 1:
-            hot = _meas_loop(settings, 'Hot', res_managers)
+            hot = _meas_loop(settings, 'Hot', res_managers, timings)
             return hot
         # endregion
 
@@ -344,7 +365,8 @@ def measurement(
 
         # region Carry out measurement closest to initial temperature.
         # Heat up or cool down and do next one
-        loop_res = _closest_temp_then_other(init_temp, res_managers, settings)
+        loop_res = _closest_temp_then_other(
+            init_temp, res_managers, settings, timings)
         # endregion
 
         # region Save and return results.
@@ -355,6 +377,7 @@ def measurement(
                 meas_settings.order, meas_settings.is_calibration,
                 meas_settings.analysis_bws,
                 trimmed_input_data.trimmed_loss))
+        calibration_results.session_timings = timings
 
         return calibration_results
         # endregion
