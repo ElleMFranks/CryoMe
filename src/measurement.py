@@ -20,6 +20,7 @@ import random
 import numpy as np
 import tqdm
 
+import error_handling
 import heater_ctrl
 import instruments
 import outputs
@@ -323,7 +324,8 @@ def measurement(
         # endregion
 
         # region Handle variable error.
-        raise Exception('')
+        raise error_handling.InternalVariableError(
+            'Invalid hot_cold_count passed, must be 0 or 1.')
         # endregion
         # endregion
     # endregion
@@ -358,4 +360,3 @@ def measurement(
         return calibration_results
         # endregion
     # endregion
-    raise Exception('')

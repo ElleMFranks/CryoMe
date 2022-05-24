@@ -18,25 +18,42 @@ import data_structs
 
 def _plot_data(user_settings: data_structs.SessionSettings, 
                file_struc: data_structs.MetaprocFileStructure,
-               input_data: data_structs.FullData) -> None:
+               chain_data: data_structs.ChainData) -> None:
     """Plot the user input data."""
     
     bias_accuracy_plots = []
+    noise_bias_plots = []
+    gain_bias_plots = []
 
     lna_stages = itertools.product(
-        np.array(range(input_data.num_of_lnas)) + 1, 
-        np.array(range(input_data.num_of_stages)) + 1)
+        np.array(range(chain_data.num_of_lnas)) + 1, 
+        np.array(range(chain_data.num_of_stages)) + 1)
+
+    plot_over_sweep = plotting.ResultOverSweep(chain_data, user_settings, 'gain')
 
     for lna, stage in lna_stages:
         bias_accuracy_plots.append(
-            plotting.BiasAccuracyPlot(*input_data.get_bias_acc_data(lna, stage), 
-                             user_settings, lna, stage))
-
-    plotting.BiasAccuracyPlot.show_bias_acc_plot()
-
-    set_gain_map = plotting.GainMapData(input_data.lna_1_stages.stage_1_data.set_biases)
+            plotting.BiasAccuracyPlot(
+                chain_data.get_stage_data(lna, stage), 
+                user_settings, plotting.PlotInstDetails(lna, stage)))
+        noise_bias_plots.append(
+            plotting.ResultBiasPlot(
+                chain_data.get_stage_data(lna, stage),
+                user_settings, plotting.PlotInstDetails(lna, stage), 'noise'))
+        gain_bias_plots.append(
+            plotting.ResultBiasPlot(
+                chain_data.get_stage_data(lna, stage),
+                user_settings, plotting.PlotInstDetails(lna, stage), 'gain'))
     
+        
+    plotting.BiasAccuracyPlot.show_bias_acc_plot()
+    plotting.ResultBiasPlot.show()
+        
 
+
+    set_gain_map = plotting.GainMapData(
+        chain_data.lna_1_stages.stage_1_data.set_biases)
+    
     # region Plot heat maps.
     gain_heat_map = plotting.GainMapData()
     noise_temp_heat_map = plotting.NoiseMapData()
@@ -44,7 +61,7 @@ def _plot_data(user_settings: data_structs.SessionSettings,
     
 def _get_data(file_struc: data_structs.MetaprocFileStructure, 
               session_settings: data_structs.SessionSettings
-              ) -> data_structs.FullData:
+              ) -> data_structs.ChainData:
     """Get the input data from the input files."""
 
     # region Load input data into arrays.
@@ -74,9 +91,18 @@ def _get_data(file_struc: data_structs.MetaprocFileStructure,
     input_set_log_data = np.array(input_set_log_data)
     # endregion
 
-    return data_structs.FullData(
+    input_data = data_structs.ChainData(
         session_settings.session_id,
         data_structs.InputLogData(input_set_log_data, input_res_log_data))
+
+    input_data.lna_1_id = session_settings.lna_1_id
+    if input_data.num_of_lnas == 2:
+        input_data.lna_2_id = session_settings.lna_2_id
+
+    session_settings.num_of_lnas = input_data.num_of_lnas
+    session_settings.num_of_stages = input_data.num_of_stages
+
+    return input_data
 
 def _get_user_inputs() -> tuple[data_structs.SessionSettings, 
                                 data_structs.MetaprocFileStructure]:
@@ -121,24 +147,6 @@ def _get_user_inputs() -> tuple[data_structs.SessionSettings,
             session_directory = None
             continue
 
-    #while not isinstance(results_path, pathlib.Path):
-    #    try: 
-    #        results_file = input(
-    #            'Copy and paste the title of the results log here: ')
-    #        results_path = pathlib.Path(
-    #            f'{project_directory}\\{results_file}.csv')
-    #    except:
-    #        continue
-
-    #while not isinstance(settings_path, pathlib.Path):
-    #    try:
-    #        settings_file = pathlib.Path(input(
-    #            'Copy and paste the title of the settings log here: '))
-    #        settings_path = pathlib.Path(
-    #            f'{project_directory}\\{settings_file}.csv')
-    #    except:
-    #        continue
-
     file_struc = data_structs.MetaprocFileStructure(
         settings_path, results_path)
     # endregion
@@ -152,17 +160,11 @@ def main():
     # endregion
 
     # region Load in data.
-    input_data = _get_data(file_struc, session_settings)
-    input_data.lna_1_id = session_settings.lna_1_id
-    if input_data.num_of_lnas == 2:
-        input_data.lna_2_id = session_settings.lna_2_id
-    session_settings.num_of_lnas = input_data.num_of_lnas
-    session_settings.num_of_stages = input_data.num_of_stages
-
+    chain_data = _get_data(file_struc, session_settings)
     # endregion
 
     # region Plot and save input data.
-    _plot_data(session_settings, file_struc, input_data) 
+    _plot_data(session_settings, file_struc, chain_data) 
     # endregion
 
 if __name__ == '__main__':

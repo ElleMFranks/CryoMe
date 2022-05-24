@@ -107,29 +107,33 @@ class SpecAnAmplSettings:
     ref_lvl: float
 # endregion
 
-
 # region Temperature Controller Settings.
+@dataclass()
+class ChannelSet:
+    """Channel for each of the three chains in the cryostat.
+    
+    Constructor Attributes:
+        chain_1 (str): The channel for the first chain.
+        chain_2 (str): The channel for the second chain.
+        chain_3 (str): The channel for the third chain.
+    """
+    chain_1: str
+    chain_2: str
+    chain_3: str
+
+
 @dataclass()
 class TempCtrlChannels:
     """Temperature controller sensor channels.
 
     Constructor Attributes:
-        load_lsch (str): A string containing the lakeshore channel of
-            the temperature sensor on the load inside the cryostat.
-        chn1_lna_lsch (str): A string containing the lakeshore channel
-            of the temperature sensor on the first cryostat chain LNA
-            under test.
-        chn2_lna_lsch (str): A string containing the lakeshore channel
-            of the temperature sensor on the second cryostat chain LNA
-            under test.
-        chn3_lna_lsch (str): A string containing the lakeshore channel
-            of the temperature sensor on the third cryostat chain LNA
-            under test.
+        load_channels (ChannelSet): Channels for the load on each chain.
+        lna_channels (ChannelSet): Channels for the lna on each chain.
+        extra_sensors_en (bool): Whether to measure additional sensors
+            before and after a measurement loop.
     """
-    load_lsch: str
-    chn1_lna_lsch: str
-    chn2_lna_lsch: str
-    chn3_lna_lsch: str
+    load_channels: ChannelSet
+    lna_channels: ChannelSet
     extra_sensors_en: bool
 
 
@@ -146,6 +150,26 @@ class TempTargets:
     cold_target: float
     lna_target: float
 # endregion
+
+
+@dataclass()
+class TempStabilisationTimes:
+    """Stabilisation times for pre measurement loop temp setting.
+    
+    Constructor Attributes:
+        first_on_lna (float): Time in seconds for initial lna 
+            temperature stabilisation.
+        second_on_load (float): Time in seconds for first load 
+            temperature stabilisation.
+        third_on_lna (float): Time in seconds for re stabilising the 
+            lna temperature.
+        final_on_load (float): Time in seconds for the final load 
+            temperature stabilisation. 
+    """
+    first_on_lna: float
+    second_on_load: float
+    third_on_lna: float
+    final_on_load: float
 
 
 # region Signal Generator Settings.
@@ -274,7 +298,8 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         error_handling.check_sa_ampl_settings(sa_ampl_settings)
 
         if not isinstance(sig_an_en, bool):
-            raise Exception('sig_an_en must be True or False.')
+            raise error_handling.AdvancedYAMLError(
+                'sig_an_en', 'Must be True or False.')
         # endregion
 
         # region Setup subclasses/initialise attributes.
@@ -319,7 +344,8 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         error_status = util.safe_query(
             'SYSTem:ERRor?', buffer_time, sarm, 'spec an')
         if error_status != '+0,"No error"':
-            raise Exception(f'Spec An Error Code {error_status}')
+            raise error_handling.InstrumentError(
+                'signal analyser', f'{error_status}')
         util.safe_query('*OPC?', buffer_time, sarm, 'spec an')
         log.info('Spectrum analyser initialised successfully.')
         # endregion
@@ -383,10 +409,12 @@ class SignalGeneratorSettings(FreqSweepSettings):
         error_handling.check_freq_sweep_settings(freq_sweep_settings)
 
         if vna_or_sig_gen not in ['vna', 'sig gen']:
-            raise Exception('vna_or_sig_gen must be "vna" or "sig gen"')
+            raise error_handling.YAMLError(
+                'vna_or_sig_gen', 'Must be "vna" or "sig gen"')
 
         if not isinstance(sig_gen_en, bool):
-            raise Exception('sig_gen_en must be True or False.')
+            raise error_handling.YAMLError(
+                'sig_gen_en', 'Must be True or False.')
         # endregion
 
         # region Initialise subclass and set args as attributes.
@@ -422,7 +450,7 @@ class SignalGeneratorSettings(FreqSweepSettings):
         error_status = util.safe_query(
             'SYST:ERR?', buffer_time, sig_gen_rm, 'sig gen')
         if error_status != '+0,"No error"':
-            raise Exception(f'VNA Error Code {error_status}')
+            raise error_handling.InstrumentError('VNA', f'{error_status}')
         log.info("VNA initialised successfully.")
         # endregion
 
@@ -446,16 +474,20 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         temp_ctrl_en (bool): Setting for debugging, if temp controller
             not connected then temp_ctrl queries give synthetic results
             and write commands are skipped.
+        load_lsch (int): The load UT lakeshore channel.
         lna_lsch (int): The lna UT lakeshore channel.
-        extra_1_lsch (int): The first extra lakeshore channel.
-        extra_2_lsch (int): The second extra lakeshore channel.
+        extra_1_lsch (list(int)): The first extra chain lakeshore 
+            channels.
+        extra_2_lsch (list(int)): The second extra chain lakeshore 
+            channels.
     """
     __doc__ += f'\n    TempCtrlChannels: {TempCtrlChannels.__doc__}\n'
     __doc__ += f'    TempTargets: {TempTargets.__doc__}'
 
     def __init__(self, temp_ctrl_channels: TempCtrlChannels,
                  temp_targets: TempTargets, cryo_chain: int,
-                 temp_ctrl_en: bool) -> None:
+                 temp_ctrl_en: bool, 
+                 temp_stabilisation_times: TempStabilisationTimes) -> None:
         """Constructor for the TempControllerSettings class.
 
         Args:
@@ -465,14 +497,17 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
             temp_ctrl_en: Setting for debugging, if temp controller not
                 connected then temp_ctrl queries give synthetic results
                 and write commands are skipped.
+            
         """
         # region Minor error handling.
         error_handling.validate_temp_ctrl_channels(temp_ctrl_channels)
         error_handling.check_temp_targets(temp_targets)
-        if cryo_chain not in [1, 2, 3]:
-            raise Exception('Must select chain 1, 2, or 3.')
+        error_handling.validate_temp_stabilisation_times(
+            temp_stabilisation_times)
         if not isinstance(temp_ctrl_en, bool):
-            raise Exception('temp_ctrl_en must be True or False.')
+            raise error_handling.AdvancedYAMLError(
+                'temp_ctrl_en',
+                'Must be True or False.')
         # endregion
 
         # region Set args as attributes.
@@ -482,25 +517,35 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
         TempTargets.__init__(
             self, *util.get_dataclass_args(temp_targets))
 
+        TempStabilisationTimes.__init__(
+            self, *util.get_dataclass_args(temp_stabilisation_times))
+
         self.cryo_chain = cryo_chain
         self.temp_ctrl_en = temp_ctrl_en
         # endregion
 
         # region Set additional attributes from args.
         if self.cryo_chain == 1:
-            self.extra_1_lsch = self.chn2_lna_lsch
-            self.extra_2_lsch = self.chn3_lna_lsch
-            self.lna_lsch = self.chn1_lna_lsch
+            self.extra_1_lsch = [self.lna_channels.chain_2, 
+                                 self.load_channels.chain_2]
+            self.extra_2_lsch = [self.lna_channels.chain_3, 
+                                 self.load_channels.chain_3]
+            self.lna_lsch = self.lna_channels.chain_1
+            self.load_lsch = self.load_channels.chain_1
         elif self.cryo_chain == 2:
-            self.extra_1_lsch = self.chn1_lna_lsch
-            self.extra_2_lsch = self.chn3_lna_lsch
-            self.lna_lsch = self.chn2_lna_lsch
+            self.extra_1_lsch = [self.lna_channels.chain_1, 
+                                 self.load_channels.chain_1]
+            self.extra_2_lsch = [self.lna_channels.chain_3, 
+                                 self.load_channels.chain_3]
+            self.lna_lsch = self.lna_channels.chain_2
+            self.load_lsch = self.load_channels.chain_2
         elif self.cryo_chain == 3:
-            self.extra_1_lsch = self.chn1_lna_lsch
-            self.extra_2_lsch = self.chn2_lna_lsch
-            self.lna_lsch = self.chn3_lna_lsch
-        else:
-            raise Exception('')
+            self.extra_1_lsch = [self.lna_channels.chain_1, 
+                                 self.load_channels.chain_1]
+            self.extra_2_lsch = [self.lna_channels.chain_2, 
+                                 self.load_channels.chain_2]
+            self.lna_lsch = self.lna_channels.chain_3
+            self.load_lsch = self.load_channels.chain_3
         # endregion
 
     def lakeshore_init(
@@ -515,12 +560,20 @@ class TempControllerSettings(TempCtrlChannels, TempTargets):
 
         # region initialise sample and warmup heater.
         if self.cryo_chain == 1:
-            heater_ctrl.heater_setup(ls_rm, self.chn1_lna_lsch, 'sample')
+            heater_ctrl.heater_setup(
+                ls_rm, self.lna_channels.chain_1, 'sample')
+            heater_ctrl.heater_setup(
+                ls_rm, self.load_channels.chain_1, 'warmup')
         elif self.cryo_chain == 2:
-            heater_ctrl.heater_setup(ls_rm, self.chn2_lna_lsch, 'sample')
+            heater_ctrl.heater_setup(
+                ls_rm, self.lna_channels.chain_2, 'sample')
+            heater_ctrl.heater_setup(
+                ls_rm, self.load_channels.chain_2, 'warmup')
         elif self.cryo_chain == 3:
-            heater_ctrl.heater_setup(ls_rm, self.chn3_lna_lsch, 'sample')
-        heater_ctrl.heater_setup(ls_rm, self.load_lsch, 'warmup')
+            heater_ctrl.heater_setup(
+                ls_rm, self.lna_channels.chain_3, 'sample')
+            heater_ctrl.heater_setup(
+                ls_rm, self.load_channels.chain_3, 'warmup')
         log.info("Lakeshore initialised.")
         # endregion
 

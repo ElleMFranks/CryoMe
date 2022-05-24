@@ -29,7 +29,8 @@ import util
 # endregion
 
 
-def settings_config(config: dict, cryo_chain: int) -> Settings:
+def settings_config(config: dict, advanced_config: dict, 
+                    cryo_chain: int) -> Settings:
     """Put user settings into class instances."""
     # region Instrumentation Settings.
     # region Signal Analyser Settings
@@ -45,7 +46,7 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         instruments.SpecAnAmplSettings(
             config['signal_analyser_settings']['atten'],
             config['signal_analyser_settings']['ref_level']),
-        config['available_instruments']['sig_an_en'])
+        advanced_config['available_instruments']['sig_an_en'])
     # endregion
 
     # region Signal Generator Settings.
@@ -54,12 +55,14 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
             config['signal_generator_settings']['min_freq'],
             config['signal_generator_settings']['max_freq'],
             config['signal_generator_settings']['freq_step_size'],
-            config['measurement_settings']['inter_freq_factor']),
+            advanced_config[
+                'advanced_measurement_settings']['inter_freq_factor']),
         config['signal_generator_settings']['vna_or_sig_gen'],
-        config['available_instruments']['sig_gen_en'])
+        advanced_config['available_instruments']['sig_gen_en'])
     # endregion
 
     # region Temperature Controller Settings
+    stab_time_str = 'temperature_controller_stabilisation_timings'
     temp_ctrl_settings = instruments.TempControllerSettings(
         instruments.TempCtrlChannels(
             config['temperature_controller_settings']['allchn_load_lsch'],
@@ -72,30 +75,37 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
             config['temperature_controller_settings']['t_cold_target'],
             config['temperature_controller_settings']['t_lna_target']),
         cryo_chain,
-        config['available_instruments']['temp_ctrl_en'])
+        advanced_config['available_instruments']['temp_ctrl_en'],
+        instruments.TempStabilisationTimes(
+            config[stab_time_str]['first_on_lna'],
+            config[stab_time_str]['second_on_load'],
+            config[stab_time_str]['third_on_lna'],
+            config[stab_time_str]['final_on_load']))
     # endregion
 
     # region Bias Power Supply Settings.
     bias_psu_settings = instruments.BiasPSUSettings(
         instruments.GVSearchSettings(
-            config['bias_psu_settings']['g_v_low_lim'],
-            config['bias_psu_settings']['g_v_up_lim'],
+            advanced_config['advanced_bias_psu_settings']['g_v_low_lim'],
+            advanced_config['advanced_bias_psu_settings']['g_v_up_lim'],
             config['bias_psu_settings']['num_g_v_brd_steps'],
             config['bias_psu_settings']['num_g_v_mid_steps'],
             config['bias_psu_settings']['num_g_v_nrw_steps']),
         instruments.PSULimits(
-            config['bias_psu_settings']['v_step_lim'],
-            config['bias_psu_settings']['d_i_lim']),
+            advanced_config['advanced_bias_psu_settings']['v_step_lim'],
+            advanced_config['advanced_bias_psu_settings']['d_i_lim']),
         instruments.PSUMetaSettings(
-            config['measurement_settings']['psu_safe_init'],
-            config['available_instruments']['bias_psu_en'],
-            config['measurement_settings']['instr_buffer_time'],
-            config['measurement_settings']['skip_psu_init']),
+            advanced_config['advanced_measurement_settings']['psu_safe_init'],
+            advanced_config['available_instruments']['bias_psu_en'],
+            advanced_config[
+                'advanced_measurement_settings']['instr_buffer_time'],
+            advanced_config[
+                'advanced_measurement_settings']['skip_psu_init']),
         instruments.ProtectionDrainResistances(
-            config['protection_pcb_config']['lna_1_d_r'],
-            config['protection_pcb_config']['lna_2_d_r'],
-            config['protection_pcb_config']['crbe_d_r'],
-            config['protection_pcb_config']['rtbe_d_r']))
+            advanced_config['protection_pcb_config']['lna_1_d_r'],
+            advanced_config['protection_pcb_config']['lna_2_d_r'],
+            advanced_config['protection_pcb_config']['crbe_d_r'],
+            advanced_config['protection_pcb_config']['rtbe_d_r']))
 
     lnas.StageBiasSet.lna_1_d_r = bias_psu_settings.lna_1_d_r
     lnas.StageBiasSet.lna_2_d_r = bias_psu_settings.lna_2_d_r
@@ -107,7 +117,7 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
     # region Switch Settings.
     switch_settings = instruments.SwitchSettings(
         cryo_chain,
-        config['available_instruments']['switch_en'])
+        advanced_config['available_instruments']['switch_en'])
     # endregion
     # endregion
 
@@ -141,7 +151,7 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         manual_lna_settings = lnas.ManualLNASettings(
             config['manual_entry_lna_settings'],
             lna_cryo_layout,
-            config['bias_psu_settings']['d_i_lim'],
+            advanced_config['advanced_bias_psu_settings']['d_i_lim'],
             config['manual_entry_lna_settings']['correct_man_d_v'])
     else:
         manual_lna_settings = None
@@ -159,12 +169,12 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
     # region Back End LNA Settings.
     be_lna_settings = lnas.BackEndLNASettings(
         config['back_end_lna_settings'],
-        config['back_end_lna_settings']['use_g_v_or_d_i'],
-        config['back_end_lna_settings']['correct_be_d_v'],
+        advanced_config['advanced_back_end_lna_settings']['use_g_v_or_d_i'],
+        advanced_config['advanced_back_end_lna_settings']['correct_be_d_v'],
         cryo_chain,
         config['back_end_lna_settings']['cryo_backend_en'],
         config['back_end_lna_settings']['rt_backend_en'],
-        config['back_end_lna_settings']['be_d_i_limit'])
+        advanced_config['advanced_back_end_lna_settings']['be_d_i_limit'])
     # endregion
     # endregion
 
@@ -182,9 +192,9 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
                 config['measurement_settings']['is_calibration'],
                 config['measurement_settings']['in_cal_file_id']),
             Misc(
-                config['measurement_settings']['comment_en'],
-                config['measurement_settings']['dark_mode_plot'],
-                config['measurement_settings']['order'])),
+                config['measurement_comment']['comment'],
+                advanced_config['advanced_measurement_settings']['dark_mode_plot'],
+                advanced_config['advanced_measurement_settings']['order'])),
         SweepSettings(
             MeasSequence(
                 config['bias_sweep_settings']['stage_sequence'],
@@ -201,7 +211,7 @@ def settings_config(config: dict, cryo_chain: int) -> Settings:
         instruments.InstrumentSettings(
             sig_an_settings, sig_gen_settings, temp_ctrl_settings,
             bias_psu_settings, switch_settings,
-            config['measurement_settings']['instr_buffer_time']),
+            advanced_config['advanced_measurement_settings']['instr_buffer_time']),
         FileStructure(
             config['measurement_settings']['project_title'],
             config['measurement_settings']['in_cal_file_id'],
@@ -240,14 +250,14 @@ class Misc:
     """Contains miscellaneous variables for the measurement session.
 
     Constructor Attributes:
-        comment_en (bool): If true the user is prompted for a comment.
+        comment (str): User comment for the measurement.
         dark_mode_plot (bool): If true, output plots are saved with
             dark mode palette.
         order (int): Should always be 1 unless you explicitly know what
             you're doing. This variable is used in the results' data
             processing methods.
     """
-    comment_en: bool = False
+    comment: str = ''
     dark_mode_plot: bool = True
     order: int = 1
 
@@ -522,12 +532,9 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        else:
-            raise Exception('Invalid chain.')
         self.lna_id_str = f'{self.lna_ut_ids.lna_1_id}x' \
                           f'{self.lna_ut_ids.lna_2_id}'
         self.session_id = None
-        self.comment = None
         # endregion
 
     @property
@@ -547,15 +554,6 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
     @lna_id_str.setter
     def lna_id_str(self, value: str) -> None:
         self._lna_id_str = value
-
-    @property
-    def comment(self) -> str:
-        """User input comment for the measurement session."""
-        return self._comment
-
-    @comment.setter
-    def comment(self, value: str) -> None:
-        self._comment = value
 
     @property
     def session_id(self) -> int:
@@ -588,11 +586,6 @@ class MeasurementSettings(SessionInfo, LNAInfo, CalInfo, Misc):
             self.lna_ut_ids = LNAsUTIDs(
                 self.lna_ids.chain_3_lna_1_id,
                 self.lna_ids.chain_3_lna_2_id)
-        # endregion
-
-        # region Handle variable error.
-        else:
-            raise Exception('Cryo chain must be 1, 2, or 3.')
         # endregion
 
         if self.lna_ut_ids.lna_2_id is not None:
@@ -973,7 +966,8 @@ class FileStructure:
                     elif row_or_rows == 'row':
                         writer.writerow(data)
                     else:
-                        raise Exception('Incorrect row or rows argument.')
+                        raise error_handling.InternalVariableError(
+                            'Incorrect row or rows argument.')
                 complete = True
             except:
                 input(f'Please close {path} and press enter.')

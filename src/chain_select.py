@@ -16,6 +16,7 @@ from pyvisa import Resource
 import nidaqmx
 
 import bias_ctrl
+import error_handling
 import instruments
 import config_handling
 # endregion
@@ -57,7 +58,7 @@ def cryo_chain_switch(
     elif chain == 3:
         switch_position = 14
     else:
-        raise Exception('Invalid switch position.')
+        raise error_handling.InternalVariableError('Invalid switch position.')
     # endregion
 
     # region Set channel.
@@ -74,9 +75,10 @@ def cryo_chain_switch(
     elif switch_read_position == 16:
         log.info('Cryostat chain 3 activated.')
     elif switch_read_position == 0:
-        raise Exception('Switch not powered.')
+        raise error_handling.InstrumentError('Switch', 'Switch not powered.')
     else:
-        raise Exception('Invalid position read from switch.')
+        raise error_handling.InstrumentError(
+            'Switch', 'Invalid position read from switch.')
     # endregion
 
     # region Close switch ports.
@@ -118,7 +120,8 @@ def back_end_lna_setup(
         elif chain == 3:
             crbe_lna = be_biases.crbe_chain_3_lna
         else:
-            raise Exception('Invalid chain requested.')
+            raise error_handling.InternalVariableError(
+                'Invalid chain requested.')
     # endregion
 
     # region Send requests to bias ctrl to set room-temp/cryo BELNAs.

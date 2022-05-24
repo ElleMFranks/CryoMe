@@ -1,25 +1,81 @@
-import multiprocessing
-from time import sleep
-from time import perf_counter
+from dataclasses import dataclass
+import numpy as np
 
-start = perf_counter()
+# region Exception types.
+class ConfigError(Exception):
+    pass
 
-def do_something(time_for_sleep, msg):
-    print('Enter')
-    sleep(time_for_sleep)
-    print(f'{msg}')
-    print('Return')
+class ParameterError(ConfigError):
 
-p1 = multiprocessing.Process(target=do_something, args=[1, 'pelb'])
-p2 = multiprocessing.Process(target=do_something, args=[2, 'blep'])
+    def __init__(self, parameter: str) -> None:
+        error_msg = f'{parameter} is incorrect'
+        ConfigError.__init__(self, error_msg)
 
-if __name__ == '__main__':
+# endregion
 
-    p1.start()
-    p2.start()
+print('The FitnessGram PACER Test is a multistage aerobic capacity test that'
+      ' progressively gets more difficult as it continues. The test is used'
+      ' to measure a students aerobic capacity as part of the FitnessGram'
+      ' assessment. Students run back and forth as many times as they can, '
+      'each lap signaled by a beep sound.')
 
-    p1.join()
-    p2.join()
+raise ConfigError('abcd')
 
-    finish = perf_counter()
-    print(f'Finished in {round(finish-start, 2)} s')
+raise ParameterError('xis')
+
+
+@dataclass()
+class Bias:
+    gv: float
+    dv: float
+    di: float
+
+amy = [Bias(0, 0.6, 4),
+       Bias(0, 0.6, 6),
+       Bias(0, 0.6, 8),
+       Bias(0, 0.6, 10),
+       Bias(0, 0.8, 4),
+       Bias(0, 0.8, 6),
+       Bias(0, 0.8, 8),
+       Bias(0, 0.8, 10),
+       Bias(0, 1, 4),  
+       Bias(0, 1, 6),  
+       Bias(0, 1, 8),  
+       Bias(0, 1, 10)]
+
+
+xxi = []
+
+[xxi.append(bias.dv) for bias in amy if bias.di == 8]
+
+print(xxi)
+
+
+dvs = []
+for bias in amy:
+    dvs.append(bias.dv)
+
+dvsset = set(dvs)
+
+dv_array_of_arrays = []
+for dv in dvsset:
+    dv_array = []
+    for bias in amy:
+        if bias.dv == dv:
+            dv_array.append(bias)
+    dv_array_of_arrays.append(dv_array)
+
+for array in dv_array_of_arrays:
+    print(array)
+    print('')
+            
+    
+for a in amy:
+    print(a)
+
+print('')
+
+amysort = sorted(amy, key=lambda bias: bias.di)
+
+for a in amysort:
+    print(a)

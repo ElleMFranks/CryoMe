@@ -1,8 +1,15 @@
 {
   "ExpandedNodes": [
     "",
+<<<<<<< HEAD
     "\\src"
   ],
   "SelectedNode": "\\src\\__main__.py",
+=======
+    "\\src",
+    "\\src\\metaproc"
+  ],
+  "SelectedNode": "\\src\\heater_ctrl.py",
+>>>>>>> 023c4ac241a8bf8dd43dbac860c1ed0d072ff81e
   "PreviewInSolutionExplorer": false
 }

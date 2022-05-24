@@ -44,6 +44,14 @@ class Bias:
     gv: float
     dv: float
     di: float
+    
+    @property
+    def index(self) -> int:
+        return self._index
+
+    @index.setter
+    def index(self, value: int) -> None:
+        self._index = value
 
 
 class Biases:
@@ -57,7 +65,7 @@ class Biases:
         return np.array(self.gvs[index], self.dvs[index], self.dis[index])
 
     @classmethod
-    def from_bias_set(cls, bias_set: np.array[Bias]):
+    def from_bias_set(cls, bias_set: list):
         gvs = []
         dvs = []
         dis = []
@@ -72,6 +80,23 @@ class Biases:
         for i, _ in enumerate(self.dvs):
             bias_set.append(Bias(self.gvs[i], self.dvs[i], self.dis[i]))
         return np.array(bias_set)
+
+    def bias_from_index(self, index: int) -> Bias:
+        return Bias(self.gvs[index], self.dvs[index], self.dis[index])
+
+    @property
+    def indexing(self) -> list[int]:
+        """The index of each bias entry."""
+        return self._indexing
+
+    @indexing.setter
+    def indexing(self, value: list[int]) -> None:
+        if value is not None:
+            for i, bias in enumerate(self.bias_set):
+                bias.index = value[i]
+            self._indexing = value
+        else:
+            self._indexing = None
 # endregion
 
 
@@ -80,9 +105,20 @@ class Biases:
 class BiasSet:
     set_biases: Biases
     cor_meas_biases: Biases
-    meas_biases: np.array[Biases] = np.array([])
-    bad_set_biases: np.array[Biases] = np.array([])
-    bad_cor_meas_biases: np.array[Biases] = np.array([])
+    meas_biases: Biases
+    indexing: Optional[list[int]] = None
+
+    @property
+    def indexing(self) -> list[int]:
+        return self._indexing
+
+    @indexing.setter
+    def indexing(self, value: Optional[list[int]]) -> None:
+        if isinstance(value, list):
+            self.set_biases.indexing = value
+            self.meas_biases.indexing = value
+            self.cor_meas_biases.indexing = value
+        self._indexing = value
 
 
 @dataclass
@@ -110,7 +146,32 @@ class InputLogData:
     results: np.array
 
 
-class StageResults:
+@dataclass()
+class MinMaxAvg:
+    minis: list
+    maxis: list
+    avgs: list
+
+@dataclass()
+class ResultVariables:
+    """Container for results variables."""
+    gain: MinMaxAvg
+    noise_temp: MinMaxAvg
+    
+    @property
+    def indexing(self) -> list[int]:
+        return self._indexing
+
+    @indexing.setter
+    def indexing(self, value: list[int]) -> None:
+        self._indexing = value
+
+
+
+
+
+class StageData:
+    """Data for a single LNA stage."""
 
     # region Internal class.
     @dataclass()
@@ -128,21 +189,34 @@ class StageResults:
     def __init__(self, stage_number: int, log_data: InputLogData, 
                  drain_resistance: float) -> None:
 
-        stage_settings = log_data.settings[
-            log_data.settings[:,11] == stage_number]
-        stage_results = log_data.results[
-            log_data.results[:,11] == stage_number]
+        stage_settings = []
+        stage_results = []
+        for i, row in enumerate(log_data.settings):
+            if row[11] == stage_number:
+                stage_settings.append(row)
+                stage_results.append(log_data.results[i, :])
 
-        self.avg_gains = stage_results[:,15]
-        self.avg_noises = stage_results[:,20]
+        stage_settings = np.array(stage_settings)
+        stage_results = np.array(stage_results)
+
+        min_gains = stage_results[:,17]
+        max_gains = stage_results[:,18]
+        avg_gains = stage_results[:,15]
+        min_noises = stage_results[:,22]
+        max_noises = stage_results[:,23]
+        avg_noises = stage_results[:,20]
+        gains = MinMaxAvg(min_gains, max_gains, avg_gains)
+        noises = MinMaxAvg(min_noises, max_noises, avg_noises)
+        self.results = ResultVariables(gains, noises)
+        self.results.indexing = list(range(len(avg_gains)))
 
         # region Extract data bias data from settings log.
         if stage_number == 1:
-            cols = self.BiasColumns(21, 22, 23, 41, 42, 43)
+            cols = self.BiasColumns(22, 23, 24, 42, 43, 44)
         elif stage_number == 2:
-            cols = self.BiasColumns(24, 25, 26, 44, 45, 46)
+            cols = self.BiasColumns(25, 26, 27, 45, 46, 47)
         elif stage_number == 3:
-            cols = self.BiasColumns(27, 28, 29, 47, 48, 49)
+            cols = self.BiasColumns(28, 29, 30, 48, 49, 50)
         else:
             raise Exception('Invalid stage number given.')
 
@@ -168,64 +242,140 @@ class StageResults:
         
         bad_set_biases = []
         bad_cor_meas_biases = []
+        bad_meas_biases = []
+        trimmed_set_biases = []
+        trimmed_cor_meas_biases = []
+        trimmed_meas_biases = []
+        full_index = []
+        good_index = []
+        bad_index = []
 
         for i, _ in enumerate(set_biases.dvs):
-
+            full_index.append(i)
+            meas_gv = meas_biases.gvs[i]
+            meas_di = meas_biases.dis[i]
+            meas_dv = meas_biases.dvs[i]
             cor_meas_gv = cor_meas_biases.gvs[i]
             cor_meas_di = cor_meas_biases.dis[i]
             cor_meas_dv = cor_meas_biases.dvs[i]
             set_di = set_biases.dis[i]
             set_dv = set_biases.dvs[i]
             set_gv = set_biases.gvs[i]
+            
 
-            good_dv = bool(set_dv * 0.95 > cor_meas_dv > set_dv * 1.05)
-            good_di = bool(set_di * 0.95 > cor_meas_di > set_di * 1.05)
+            good_dv = bool(set_dv * 0.95 < cor_meas_dv < set_dv * 1.05)
+            good_di = bool(set_di * 0.95 < cor_meas_di < set_di * 1.05)
 
-            if not good_dv or not good_di:
+            if good_dv and good_di:
+                good_index.append(i)
+                trimmed_meas_biases.append(
+                    Bias(meas_gv, meas_dv, meas_di))
+                trimmed_set_biases.append(
+                    Bias(set_gv, set_dv, set_di))
+                trimmed_cor_meas_biases.append(
+                    Bias(cor_meas_gv, cor_meas_dv, cor_meas_di))
+            else:
+                bad_index.append(i)
+                bad_meas_biases.append(
+                    Bias(meas_gv, meas_dv, meas_di))
                 bad_set_biases.append(
                     Bias(set_gv, set_dv, set_di))
                 bad_cor_meas_biases.append(
                     Bias(cor_meas_gv, cor_meas_dv, cor_meas_di))
+            
+        trimmed_meas_biases = Biases.from_bias_set(trimmed_meas_biases)
+        trimmed_set_biases = Biases.from_bias_set(trimmed_set_biases)
+        trimmed_cor_meas_biases = Biases.from_bias_set(trimmed_cor_meas_biases)
+        bad_meas_biases = Biases.from_bias_set(bad_meas_biases) 
+        bad_set_biases = Biases.from_bias_set(bad_set_biases)
+        bad_cor_meas_biases = Biases.from_bias_set(bad_cor_meas_biases)
 
-        self.biases = BiasSet(set_biases, cor_meas_biases, meas_biases, 
-                              bad_set_biases, bad_cor_meas_biases)
+        self.all_biases = BiasSet(
+            set_biases, cor_meas_biases, meas_biases)
+        self.all_biases.indexing = full_index
 
-        # loop through each set bias, if not in bad biases, add to trimmed biases
-        trimmed_biases = []
-        for i, _ in enumerate(set_biases.dvs):
-            in_bad_biases = False
-            for j, _ in enumerate(bad_set_biases.dvs):
-                if set_biases.to_array(i) == bad_set_biases.to_array(j):
-                    in_bad_biases = True
+        self.bad_biases = BiasSet(
+            bad_set_biases, bad_cor_meas_biases, bad_meas_biases)
+        self.bad_biases.indexing = bad_index
 
-            if not in_bad_biases:
-                trimmed_biases.append(set_biases.to_array(i))
+        self.trimmed_biases = BiasSet(
+            trimmed_set_biases, trimmed_cor_meas_biases, trimmed_meas_biases)
+        self.trimmed_biases.indexing = good_index
 
-        self.trimmed_biases = trimmed_biases
-        # endregion
+    def biases_from_indexes(
+            self, input_indexes: list[int],
+            good_or_bad: str) -> Biases:
+        """Return biases based on given set of indexes."""
 
+        if good_or_bad.lower() == 'good':
+            biases_set = self.trimmed_biases
+            req_indexes = self.trimmed_biases.indexing
+        elif good_or_bad.lower() == 'bad':
+            biases_set = self.bad_biases
+            req_indexes = self.bad_biases.indexing
+        else:
+            raise Exception('')
+
+        set_biases = []
+        meas_biases = []
+        cor_meas_biases = []
+        new_indexes = []
+        for index in input_indexes:
+            for i in req_indexes:
+                if i == index:
+                    new_indexes.append(i)
+                    set_biases.append(
+                        self.all_biases.set_biases.bias_set[index])
+                    meas_biases.append(
+                        self.all_biases.meas_biases.bias_set[index])
+                    cor_meas_biases.append(
+                        self.all_biases.cor_meas_biases.bias_set[index])
+        return BiasSet(Biases.from_bias_set(set_biases),
+                       Biases.from_bias_set(cor_meas_biases),
+                       Biases.from_bias_set(meas_biases),
+                       new_indexes)
+
+
+    def get_minmax_bias(self, v_or_i: str, min_or_max: str) -> float:
+        """Return the minimum and maximum of all the biases."""
+         
+        all_dvs = []
+        all_dis = []
+        for i, _ in enumerate(self.all_biases.set_biases.dvs):
+            all_dvs.append(self.all_biases.set_biases.dvs[i])
+            all_dvs.append(self.all_biases.cor_meas_biases.dvs[i])
+            all_dis.append(self.all_biases.set_biases.dis[i])
+            all_dis.append(self.all_biases.cor_meas_biases.dis[i])
+
+
+        if v_or_i == 'v' and min_or_max == 'min':
+            return np.amin(np.array(all_dvs))
+        elif v_or_i == 'v' and min_or_max == 'max':
+            return np.amax(np.array(all_dvs))
+        elif v_or_i == 'i' and min_or_max == 'min':
+            return np.amin(np.array(all_dis))
+        elif v_or_i == 'i' and min_or_max == 'max':
+            return np.amax(np.array(all_dis))
 
 @dataclass()
 class LNAData:
-    """Container for stage results."""
-    stage_1_data: StageResults
-    stage_2_data: Optional[StageResults] = None
-    stage_3_data: Optional[StageResults] = None
+    """Data for an LNA made up of up to three stages."""
+    stages_data: list[StageData]
 
 
-class FullData:
+class ChainData:
     """Input data for each input file.
     
     Attributes:
         num_of_lnas (int): Number of LNAs in session.
         num_of_stages (int): Number of stages per LNA in session.
-        lna_1_stages (StageResults): Results of each stage in LNA 1.
-        lna_2_stages (StageResults): Results of each stage in LNA 2.
+        lna_1_stages (StageData): Results of each stage in LNA 1.
+        lna_2_stages (StageData): Results of each stage in LNA 2.
     """
 
     def __init__(
             self, req_session_id: int, full_logs: InputLogData) -> None:
-        """Constructor for the FullData class.
+        """Constructor for the ChainData class.
         
         Args:
             req_session_id: The ID of the session to analyse.
@@ -245,11 +395,11 @@ class FullData:
         # endregion
 
         # region Pull lna/stage layout info.
-        self.num_of_lnas = int(round(session_settings[0,8], 0))
-        first_lna = int(round(session_settings[0,9], 0))
-        lna_1_drain_resistance = session_settings[0, 75]
-        lna_2_drain_resistance = session_settings[0, 76]
-        self.num_of_stages = int(round(session_settings[0,10], 0))
+        self.num_of_lnas = int(round(session_settings[0,9], 0))
+        first_lna = int(round(session_settings[0,10], 0))
+        lna_1_drain_resistance = session_settings[0, 76]
+        lna_2_drain_resistance = session_settings[0, 77]
+        self.num_of_stages = int(round(session_settings[0,11], 0))
         # endregion
 
         # region Get settings/results rows for each LNA in session.
@@ -287,83 +437,37 @@ class FullData:
         # endregion
 
         # region Get stage results from LNA data.
-        lna_1_set_biases = []
-        lna_1_meas_biases = []
-        lna_1_cor_meas_biases = []
-        lna_1_bad_set_biases = []
-        lna_1_bad_cor_meas_biases = []
-        lna_2_set_biases = []
-        lna_2_meas_biases = []
-        lna_2_cor_meas_biases = []
-        lna_2_bad_set_biases = []
-        lna_2_bad_cor_meas_biases = []
+
 
         drain_resistances = [lna_1_drain_resistance, lna_2_drain_resistance]
 
-        lna_results = []
+        lna_1_results = []
+        lna_2_results = []
         for i, lna_log in enumerate(lna_logs):
 
             stages_results = []
 
             for stage in range(int(self.num_of_stages)):
 
-                stage_result = StageResults(stage+1, lna_log, 
+                stage_result = StageData(stage+1, lna_log, 
                                             drain_resistances[i])
                 stages_results.append(stage_result)
 
                 if i == 0:
-                    lna_1_set_biases.append(
-                        stage_result.set_biases)
-                    lna_1_meas_biases.append(
-                        stage_result.meas_biases)
-                    lna_1_cor_meas_biases.append(
-                        stage_result.cor_meas_biases)
-                    lna_1_bad_set_biases.append(
-                        stage_result.bad_set_biases)
-                    lna_1_bad_cor_meas_biases.append(
-                        stage_result.bad_cor_meas_biases)
-
+                    lna_1_results.append(stage_result)
                 if i == 1:
-                    lna_2_set_biases.append(
-                        stage_result.set_biases)
-                    lna_2_meas_biases.append(
-                        stage_result.meas_biases)
-                    lna_2_cor_meas_biases.append(
-                        stage_result.cor_meas_biases)
-                    lna_2_bad_set_biases.append(
-                        stage_result.bad_set_biases)
-                    lna_2_bad_cor_meas_biases.append(
-                        stage_result.bad_cor_meas_biases)
-
-            lna_results.append(stages_results)
-
-        self.lna_1_biases = LNABiases(lna_1_set_biases, 
-                                      lna_1_meas_biases, 
-                                      lna_1_cor_meas_biases,
-                                      lna_1_bad_set_biases,
-                                      lna_1_bad_cor_meas_biases)
-        if self.num_of_lnas == 2:
-            self.lna_2_biases = LNABiases(lna_2_set_biases, 
-                                          lna_2_meas_biases, 
-                                          lna_2_cor_meas_biases,
-                                          lna_2_bad_set_biases,
-                                          lna_2_bad_cor_meas_biases)
+                    lna_2_results.append(stage_result)
         # endregion
 
         # region Store stage results into structures.
-        self.lna_1_stages = LNAData(*lna_results[0])
+        self.lna_1_stages = LNAData(lna_1_results)
         if self.num_of_lnas == 2:
-            self.lna_2_stages = LNAData(*lna_results[1])
+            self.lna_2_stages = LNAData(lna_2_results)
         # endregion
 
-    def _get_stage_data(self, lna_data: LNAData, stage: int) -> StageResults:
+    def _get_stage_data(self, lna_data: LNAData, stage: int) -> StageData:
         """Return the stage data of a requested LNA."""
-        if stage == 1:
-            return lna_data.stage_1_data
-        if stage == 2:
-            return lna_data.stage_2_data
-        if stage ==3:
-            return lna_data.stage_3_data
+        return lna_data.stages_data[stage-1]
 
     def _get_lna_data(self, lna: int) -> LNAData:
         """Return the LNA data of a requested LNA."""
@@ -372,10 +476,20 @@ class FullData:
         elif lna == 2:
             return self.lna_2_stages
 
-    def get_bias_acc_data(self, lna: int, stage: int) -> tuple[int, int]:
+    def get_stage_data(self, lna: int, stage: int) -> tuple[BiasSet]:
         """Return the bias accuracy plot data for an lna and stage."""
         stage_data = self._get_stage_data(self._get_lna_data(lna), stage)
-        return stage_data.set_biases, stage_data.cor_meas_biases
+        return stage_data
+
+    @staticmethod
+    def lna_id_from_pos(session_settings: SessionSettings,
+                        lna_ut: int) -> int:
+        """Returns LNA ID from position in chain."""
+        if lna_ut == 1:
+            lna_id = session_settings.lna_1_id
+        elif lna_ut == 2:
+            lna_id = session_settings.lna_2_id
+        return lna_id
 
     @property
     def lna_1_id(self) -> int:

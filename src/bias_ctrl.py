@@ -19,6 +19,7 @@ from pyvisa import Resource
 import numpy as np
 
 import config_handling
+import error_handling
 import instruments
 import lnas
 import util
@@ -156,7 +157,7 @@ def _get_psu_v(
 
     # region Catch invalid state.
     else:
-        raise Exception(
+        raise error_handling.InternalVariableError(
             'Invalid argument for set_or_meas, either "set" or "meas".')
     # endregion
 
@@ -274,7 +275,7 @@ def _gate_or_drain(g_or_d: str) -> str:
         return 'gate'
     if g_or_d == 'd':
         return 'drain'
-    raise Exception('Invalid g_or_d argument.')
+    raise error_handling.InternalVariableError('Invalid g_or_d argument.')
 
 
 def _safe_set_v(
@@ -342,7 +343,7 @@ def _safe_set_v(
         # Relevant on gate only as drain will have loss on cables so a
         # difference should be expected.
         if set_meas_diff > 0.015 and g_or_d == 'g':
-            raise Exception(
+            raise error_handling.BiasingError(
                 'Large difference between measured and set gate voltage.')
         # endregion
 
@@ -405,7 +406,7 @@ def _safe_set_v(
             d_i_status_still_over_limit = bool(d_i_status > d_i_lim)
             if d_i_status_still_over_limit:
                 global_bias_en(psu_rm, buffer_time, 0)
-                raise Exception(
+                raise error_handling.BiasingError(
                     'Drain current still too high even when backed off')
             return 'over limit'  # Notify problem by returning this.
             # endregion
@@ -636,8 +637,6 @@ def _safe_set_stage(
             _d_i = outer_d_i_meas[outer_index - 1]
         elif not pres_closer_than_prev:
             _d_i = outer_d_i_meas[outer_index]
-        else:
-            raise Exception('')
         # endregion
         return _d_i
     # endregion

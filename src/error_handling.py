@@ -8,6 +8,7 @@ easy, and they are all called in the classes modules.
 
 # region Import modules.
 from __future__ import annotations
+from re import L
 
 from pathvalidate import validate_filename
 
@@ -17,29 +18,62 @@ import config_handling
 # endregion
 
 
+# region Exception types.
+class InstrumentError(Exception):
+    def __init__(self, instrument: str, error_msg: str):
+        error_msg = f'Instrument error from {instrument}. ' \
+            f'Message: {error_msg}'
+        Exception.__init__(self, error_msg)
+
+class BiasingError(InstrumentError):
+    def __init__(self, problem):
+        InstrumentError.__init__(self, 'LNA/Power Supply', problem)
+
+class InternalVariableError(Exception):
+    pass
+
+class ConfigError(Exception):
+    pass
+
+class YAMLError(ConfigError):
+    def __init__(self, parameter: str, problem: str = None) -> None:
+        error_msg = f'Incorrect {parameter}. {problem}'
+        ConfigError.__init__(self, error_msg)
+
+class AdvancedYAMLError(ConfigError):
+    def __init__(self, parameter: str, problem: str = None) -> None:
+        error_msg = f'Incorrect {parameter} in advanced_config.yml. {problem}'
+        ConfigError.__init__(self, error_msg)
+# endregion
+
+
 # region Measurement settings.
 def validate_lna_sequence(lna_sequence: list, lnas_per_chain: int) -> None:
     """Ensures you can't put a non existent LNA in LNA Sequence."""
     if lnas_per_chain == 1 and 2 in lna_sequence:
-        raise Exception('If 2 is in lna_sequence, lnas_per_chain must = 2.')
+        raise YAMLError(
+            'lnas_per_chain or lna_sequence',                
+            'If 2 is in lna_sequence, lnas_per_chain must = 2.')
 
 
 def validate_lna_info(lna_info: config_handling.LNAInfo) -> None:
     """LNA info error handling."""
     if lna_info.lna_cryo_layout.cryo_chain not in [1, 2, 3]:
-        raise Exception('Chain must be 1, 2, or 3.')
+        raise YAMLError('cryo_chain', 'Chain must be 1, 2, or 3.')
 
     if 1 > lna_info.lna_cryo_layout.stages_per_lna > 3:
-        raise Exception('Maximum 3 stages per chain.')
+        raise YAMLError('stages_per_lna', 'Maximum 3 stages per chain.')
 
 
 def validate_misc(misc: config_handling.Misc) -> None:
     """Misc error handling"""
     if not isinstance(misc.dark_mode_plot, bool):
-        raise Exception('Dark mode plot must be true or false.')
+        raise AdvancedYAMLError('dark_mode_plot', 
+                                'Dark mode plot must be true or false.')
 
-    if not isinstance(misc.comment_en, bool):
-        raise Exception('Comment_en must be true or false.')
+    if not isinstance(misc.comment, str):
+        raise YAMLError('comment', 
+                        'Comment must be a string, check quotation marks.')
 
     if misc.order != 1:
         util.yes_no('Order', misc.order, '')
@@ -48,16 +82,22 @@ def validate_misc(misc: config_handling.Misc) -> None:
 def validate_cal_info(cal_info: config_handling.CalInfo,
                       session_info: config_handling.SessionInfo) -> None:
     """Cal info error handling."""
-    if cal_info.is_calibration \
-            and session_info.measure_method != 'Calibration':
-        raise Exception('is_calibration and measure_method cal error.')
+    is_calibration = cal_info.is_calibration
+    measure_method = session_info.measure_method
 
-    if session_info.measure_method == 'Calibration' \
-            and not cal_info.is_calibration:
-        raise Exception('is_calibration and measure_method cal error.')
+    incongruency_one = bool(
+        is_calibration and measure_method != 'Calibration')
+    incongruency_two = bool(
+        not is_calibration and measure_method == 'Calibration')
+
+    if incongruency_one or incongruency_two:
+        raise YAMLError(
+            'is_calibration or measure_method', 
+            'is_calibration and measure_method currently incompatible.')
 
     if 1 > cal_info.in_cal_file_id:
-        raise Exception('Input cal file ID must be 1 or greater.')
+        raise YAMLError('in_cal_file_id', 
+                        'Input cal file ID must be 1 or greater.')
 
 
 def validate_session_info(session_info: config_handling.SessionInfo) -> None:
@@ -65,7 +105,7 @@ def validate_session_info(session_info: config_handling.SessionInfo) -> None:
     validate_filename(session_info.project_title)
     if session_info.measure_method not in ['ACTAH', 'AT',
                                            'MEM', 'Calibration']:
-        raise Exception('Invalid measurement method.')
+        raise YAMLError('measure_method', 'Invalid measurement method.')
 # endregion
 
 
@@ -75,12 +115,12 @@ def validate_meas_sequence(meas_sequence: config_handling.MeasSequence) -> None:
     if (any(meas_sequence.stage_sequence) not in [1, 2, 3]) \
             or (0 >= len(meas_sequence.stage_sequence) > 3):
         if meas_sequence.stage_sequence:
-            raise Exception('Invalid stage sequence.')
+            raise YAMLError('stage_sequence', 'Invalid stage sequence.')
 
     if (any(meas_sequence.lna_sequence) not in [1, 2]) \
             or (0 > len(meas_sequence.lna_sequence) > 2):
         if meas_sequence.lna_sequence:
-            raise Exception('Invalid LNA sequence.')
+            raise YAMLError('lna_sequence', 'Invalid LNA sequence.')
 
 
 def check_nominals(nominal_bias: config_handling.NominalBias) -> None:
@@ -118,14 +158,17 @@ def validate_sweep_setup_vars(sweep_setup_vars: config_handling.SweepSetupVars) 
         util.yes_no('Maximum Drain Current', sweep_setup_vars.d_i_max, 'mA')
 
     if sweep_setup_vars.d_i_min > sweep_setup_vars.d_i_max:
-        raise Exception('Minimum current greater than maximum.')
+        raise YAMLError('d_i_min and d_i_max', 
+                        'Minimum current greater than maximum.')
 
     if sweep_setup_vars.d_v_min > sweep_setup_vars.d_v_max:
-        raise Exception('Minimum voltage greater than maximum.')
+        raise YAMLError('d_v_min and d_v_max',
+                        'Minimum voltage greater than maximum.')
 
     if sweep_setup_vars.alt_temp_sweep_skips < 0 or not isinstance(
             sweep_setup_vars.alt_temp_sweep_skips, int):
-        raise Exception('Incorrectly specified alt_temp_sweep_skips.')
+        raise YAMLError('alt_temp_sweep_skips', 
+                        'Incorrectly specified alt_temp_sweep_skips.')
 # endregion
 
 
@@ -134,7 +177,7 @@ def validate_sweep_setup_vars(sweep_setup_vars: config_handling.SweepSetupVars) 
 def validate_sa_freq_settings(sa_freq_settings: instruments.SpecAnFreqSettings) -> None:
     """Check signal analyser frequency settings."""
     if 0 > sa_freq_settings.center_freq > 10:
-        raise Exception('Invalid center frequency.')
+        raise YAMLError('center_freq', 'Invalid center frequency.')
 
     if 0.01 > sa_freq_settings.center_freq > 1:
         util.yes_no('Center Frequency', sa_freq_settings.center_freq, 'GHz')
@@ -196,26 +239,48 @@ def check_freq_sweep_settings(
 # region Temperature controller settings.
 def validate_temp_ctrl_channels(temp_ctrl_channels: instruments.TempCtrlChannels) -> None:
     """Check temperature controller channel settings."""
-    if int(temp_ctrl_channels.chn1_lna_lsch) not in range(1, 11):
-        raise Exception('Check lakeshore channels.')
 
-    if int(temp_ctrl_channels.chn2_lna_lsch) not in range(1, 11):
-        raise Exception('Check lakeshore channels.')
-
-    if int(temp_ctrl_channels.chn3_lna_lsch) not in range(1, 11):
-        raise Exception('Check lakeshore channels.')
-
-    if int(temp_ctrl_channels.load_lsch) not in range(1, 11):
-        raise Exception('Check lakeshore channels.')
+    temp_ctrl_channels = [
+        temp_ctrl_channels.load_channels.chain_1,
+        temp_ctrl_channels.load_channels.chain_2,
+        temp_ctrl_channels.load_channels.chain_3,
+        temp_ctrl_channels.lna_channels.chain_1,
+        temp_ctrl_channels.lna_channels.chain_2,
+        temp_ctrl_channels.lna_channels.chain_3]
+        
+    for channel in temp_ctrl_channels:
+        if int(channel) not in range(1, 11):
+            raise YAMLError('temp_ctrl_channels', 'Check lakeshore channels.')
 
     if not isinstance(temp_ctrl_channels.extra_sensors_en, bool):
-        raise Exception('extra_sensors_en must be True or False.')
+        raise YAMLError('extra_sensors_en', 
+                        'extra_sensors_en must be True or False.')
+
+def validate_temp_stabilisation_times(
+    temp_stabilisation_times: instruments.TempStabilisationTimes) -> None:
+    """Ensure temperature stabilisation times are valid."""
+    first_on_lna = temp_stabilisation_times.first_on_lna
+    second_on_load = temp_stabilisation_times.second_on_load
+    third_on_lna = temp_stabilisation_times.third_on_lna
+    final_on_load = temp_stabilisation_times.final_on_load
+    args = [first_on_lna, second_on_load, third_on_lna, final_on_load]
+
+    for time in args:
+        if not isinstance(time, float) and not isinstance(time, int):
+            raise YAMLError('temp_stabilisation_times',
+                            'Check temperature stabilisation times.')
+        if time < 0:
+            raise YAMLError('temp_stabilisation_times', 
+                            'Check temperature stabilisation times.')
+        if time > 100:
+            util.yes_no('Stabilisation Time', time, 's')
 
 
 def check_temp_targets(temp_targets: instruments.TempTargets) -> None:
     """Check temperature controller target temperatures."""
     if temp_targets.cold_target > temp_targets.hot_target:
-        raise Exception('Hot temperature must be greater than cold.')
+        raise YAMLError('cold_target or hot_target', 
+                        'Hot temperature must be greater than cold.')
 
     if 30 > temp_targets.hot_target > 80:
         util.yes_no('Hot Target', temp_targets.hot_target, 'K')
@@ -236,7 +301,8 @@ def check_g_v_search_settings(
     num_of_g_v_nrw_steps = g_v_search_settings.num_of_g_v_nrw_steps
 
     if g_v_lower_lim > g_v_upper_lim:
-        raise Exception('Check Gate Voltage Limits')
+        raise AdvancedYAMLError('g_v_low_lim or g_v_up_lim', 
+                                'Check gate voltage limits')
 
     if g_v_upper_lim - g_v_lower_lim < 0.1:
         input('Gate voltage limits very close, check before continuing.')
@@ -272,9 +338,9 @@ def check_psu_limits(psu_limits: instruments.PSULimits) -> None:
 def validate_psu_meta_settings(psu_meta_settings: instruments.PSUMetaSettings) -> None:
     """Check power supply meta settings."""
     if not isinstance(psu_meta_settings.bias_psu_en, bool):
-        raise Exception('bias_psu_en must be True or False.')
+        raise AdvancedYAMLError('bias_psu_en', 'Must be True or False.')
 
     if not isinstance(psu_meta_settings.psu_safe_init, bool):
-        raise Exception('psu_safe_init must be True or False.')
+        raise AdvancedYAMLError('psu_safe_init', 'Must be True or False.')
 # endregion
 # endregion

@@ -29,7 +29,6 @@ import measurement
 import outputs
 import output_saving
 import config_handling
-import util
 # endregion
 
 
@@ -319,9 +318,6 @@ def alternating_temps(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
-            #Addeed by Will for turinging heaters off at the end of a measurement
-            util.safe_write(f'*RST', 0.5, res_managers.tc_rm)
-
             standard_results.config_ut = state
 
             # region Analyse and save results.
@@ -375,8 +371,6 @@ def calibration_measurement(settings: config_handling.Settings,
     elif settings.instr_settings.switch_settings.cryo_chain == 3:
         crbe_lna_bias = be_lna_settings.crbe_chain_3_lna
         crbe_stg = be_lna_settings.crbe_chain_3_lna.stage_1
-    else:
-        raise Exception('Cryostat chain not set.')
 
     calibration_result = measurement.measurement(
         settings, res_managers, config_handling.TrimmedInputs(trimmed_loss))
@@ -415,7 +409,6 @@ def manual_entry_measurement(
         settings, res_managers, trimmed_input_data)
 
     standard_results.config_ut = outputs.ConfigUT(1, 1, 1, 1, 1)
-    #standard_results.config_ut = outputs.ConfigUT(0, 0, 0, 0, 0)
 
     output_saving.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)

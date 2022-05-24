@@ -29,6 +29,7 @@ from pyvisa import Resource
 
 import bias_ctrl
 import config_handling
+import error_handling
 import util
 # endregion
 
@@ -112,7 +113,8 @@ class StageBiasSet(IndivBias, StageSettings):
         elif self.lna_position == 'RTBE':
             self.d_resistance = self.rtbe_d_r  # Ohms
         else:
-            raise Exception('lna_position invalid.')
+            raise error_handling.InternalVariableError(
+                'lna_position invalid.')
         # endregion
 
         # region Set args to attributes.
@@ -187,7 +189,8 @@ class StageBiasSet(IndivBias, StageSettings):
     @card_chnl.setter
     def card_chnl(self, value: Optional[bias_ctrl.CardChnl]) -> None:
         if not (isinstance(value, bias_ctrl.CardChnl) or value is None):
-            raise Exception('Must be type CardChnl.')
+            raise error_handling.InternalVariableError(
+                'card_chnl Must be type CardChnl.')
         self._card_chnl = value
 
     def header(self) -> list(str):
@@ -291,7 +294,8 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
         # region Handle possible variable entry error.
         if self.lnas_per_chain != 2 and self.lna_position == 'LNA2':
-            raise Exception(
+            raise error_handling.YAMLError(
+                'lnas_per_chain and lna_position',
                 'LNA2 cannot exist unless there are 2 LNAs per chain.')
         # endregion
 
@@ -328,8 +332,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
                 self.stage_2.d_i_lim = single_stage_d_i_lim
             if self.stage_3 is not None:
                 self.stage_3.d_i_lim = single_stage_d_i_lim
-        else:
-            raise Exception('')
         # endregion
 
         # region Set invalid stages to None.
@@ -385,8 +387,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             if self.stage_3 is not None:
                 self.stage_3.d_i = d_i_ut
                 self.stage_3.target_d_v_at_lna = lna_d_v_ut
-        if stage_ut not in [1, 2, 3]:
-            raise Exception('')
 
     def nominalise(self, d_v_nom, d_i_nom):
         """Sets drain current and voltage to nominals."""
@@ -470,10 +470,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             # endregion
 
             return column_data
-
-        # region Handle variable entry error.
-        raise Exception('')
-        # endregion
         # endregion
 
     def lna_measured_column_data(
@@ -635,10 +631,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
 
             return d_v_str_data
 
-        # region Catch variable entry error.
-        raise Exception('')
-        # endregion
-
         # endregion
 
     def lna_g_v_strs(self) -> list[str]:
@@ -672,10 +664,7 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             # endregion
 
             return g_v_str_data
-
-        # region Handle variable error.
-        raise Exception('')
-        # endregion
+        
         # endregion
 
     def lna_d_i_strs(self) -> list[str]:
@@ -706,10 +695,6 @@ class LNABiasSet(LNACryoLayout, LNAStages):
             # endregion
 
             return d_i_str_data
-
-        # region Handle variable error.
-        raise Exception('')
-        # endregion
         # endregion
 # endregion
 

@@ -1,0 +1,32 @@
+---
+advanced_measurement_settings:
+  dark_mode_plot: True    # True saves plots in dark mode palette.
+  instr_buffer_time: 0.3  # seconds to wait between isntr commands.
+  inter_freq_factor: 8    # multiplier factor from sig gen.
+  order: 1                # leave as 1 unless explicitly known why.
+  psu_safe_init: True
+  skip_psu_init: False     # skip back end setup
+  
+advanced_bias_psu_settings:
+  d_i_lim: 10            # ma
+  g_v_low_lim: -0.25     # v
+  g_v_up_lim: +0.4       # v
+  v_step_lim: 0.3        # v
+  
+advanced_back_end_lna_settings:
+  be_d_i_limit: 20       # ma
+  use_g_v_or_d_i: 'd i'  # Either 'd i' or 'g v'
+  correct_be_d_v: False  # Whether to correct dv for wire voltage drop
+  
+available_instruments:
+  bias_psu_en: False
+  sig_an_en: False
+  sig_gen_en: False
+  switch_en: False
+  temp_ctrl_en: False
+  
+protection_pcb_config:
+  lna_1_d_r: 12.6  # Ohms
+  lna_2_d_r: 2.6  # Ohms
+  crbe_d_r: 12.5  # Ohms
+  rtbe_d_r: 12.5  # Ohms
