@@ -223,7 +223,8 @@ def _closest_temp_then_other(
     #Changed by Will to fix Cold then Hot measurements
     cold = _meas_loop(settings, 'Cold', res_managers)
     hot = _meas_loop(settings, 'Hot', res_managers)
-    
+    #cold = _meas_loop(settings, 'Cold', res_managers)
+   
     return [hot, cold]
     # endregion
 

@@ -29,6 +29,7 @@ import measurement
 import outputs
 import output_saving
 import config_handling
+import util
 # endregion
 
 
@@ -318,6 +319,9 @@ def alternating_temps(
                 settings, res_managers, trimmed_input_data)
             # endregion
 
+            #Addeed by Will for turinging heaters off at the end of a measurement
+            util.safe_write(f'*RST', 0.5, res_managers.tc_rm)
+
             standard_results.config_ut = state
 
             # region Analyse and save results.
@@ -410,7 +414,8 @@ def manual_entry_measurement(
     standard_results = measurement.measurement(
         settings, res_managers, trimmed_input_data)
 
-    standard_results.config_ut = outputs.ConfigUT(0, 0, 0, 0, 0)
+    standard_results.config_ut = outputs.ConfigUT(1, 1, 1, 1, 1)
+    #standard_results.config_ut = outputs.ConfigUT(0, 0, 0, 0, 0)
 
     output_saving.save_standard_results(
         settings, standard_results, bias_id, lna_1_bias, lna_2_bias)

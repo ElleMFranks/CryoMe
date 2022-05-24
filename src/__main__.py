@@ -34,7 +34,12 @@ ToDo:
     * 1:1 Comment in config file.
 
 Questions:
-    * 
+    * When running multiple config file, the text on the progress screen shows 
+    two of every print out on the second set of measurements
+    * Move switch to after safe bias check
+
+    *Added command to turn the heaters on the Lakeshore off after the AT measurements, 
+    Meas_algorithms line 323.  Also added 'included utils' at the top of the file. 
 
 """
 
@@ -57,7 +62,7 @@ def main(config_index: int):
 
     # region Print starting menu.
     print(__doc__)
-    input('Press enter to start a measurement...')
+    #input('Press enter to start a measurement...')
     # endregion
 
     # region Fix system path to make it consistent wherever linked from.
@@ -144,7 +149,7 @@ def main(config_index: int):
         #    input(f'Error {_e} logged, press Enter to exit...')
         # endregion
 
-    #input('Press Enter to exit...')
+    input('Press Enter to exit...')
 
     # endregion
 
@@ -155,5 +160,3 @@ if __name__ == '__main__':
     while i < 5:
         main(i)
         i+=1
-
-    

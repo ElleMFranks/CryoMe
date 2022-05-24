@@ -124,6 +124,7 @@ def get_load_temp_target(
     return temp_target
 
 
+
 def get_loop_temps(
         tc_rm: Resource,
         instr_settings: instruments.InstrumentSettings) -> list[float]:
@@ -282,3 +283,4 @@ def set_loop_temps(tc_rm: Resource, load_temp_target: float,
                     instr_settings.buffer_time, tc_rm)
 
     set_temp(tc_rm, load_temp_target, 'load')
+    

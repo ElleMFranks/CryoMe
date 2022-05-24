@@ -66,6 +66,7 @@ class MapData:
                     self.y_data.min(), self.y_data.max()),
             aspect='auto',
             interpolation='spline36'
+            #interpolation='gaussian'
             )
         
         for spine in im.axes.spines.values():
@@ -99,12 +100,13 @@ class MapData:
             cmap.ScalarMappable(
                 norm=colors.Normalize(
                     vmin=self.plot_data.min(),
+                    #vmin=30,
                     vmax=self.plot_data.max()),
                 cmap=set_cmap),
                 ax=axis)
         
-        #cb.set_label('Gain (dB)', color=plot_vars.font_colour)
-        cb.set_label('Noise Temperature (K)', color=plot_vars.font_colour)
+        cb.set_label('Gain (dB)', color=plot_vars.font_colour)
+        #cb.set_label('Noise Temperature (K)', color=plot_vars.font_colour)
         plt.setp(plt.getp(cb.ax.axes, 'yticklabels'), color=plot_vars.font_colour)
         cb.outline.set_edgecolor(plot_vars.font_colour)
         cb.ax.yaxis.set_tick_params(color=plot_vars.font_colour)
@@ -147,16 +149,16 @@ class NoiseMapData(MapData):
         super().__init__(drain_currents, drain_voltages, avg_noises)
     
 def main():
-    input_session = 92
-    lna_id = 21
+    input_session = 130
+    lna_id = 36
     #input_res_log_path = pathlib.Path('C:\\Users\\m40046ef\\Documents\\Software Development\\CryoMe\\results\\Notable Sessions\\Caruso Results Log.csv')
     #input_set_log_path = pathlib.Path('C:\\Users\\m40046ef\\Documents\\Software Development\\CryoMe\\results\\Notable Sessions\\Caruso Settings Log.csv')
 
-    input_res_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\Caruso\\Caruso Results Log.csv')
-    input_set_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\Caruso\\Caruso Settings Log.csv')
-    
-    #input_res_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\CryoMe Github\\results\\Caruso\\Caruso Results Log.csv')
-    #input_set_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\CryoMe Github\\results\\Caruso\\Caruso Settings Log.csv')
+    #input_res_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\Caruso\\Caruso Results Log.csv')
+    #input_set_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\Caruso\\Caruso Settings Log.csv')
+
+    input_res_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\CryoMe Github\\results\\Caruso\\Caruso Results Log.csv')
+    input_set_log_path = pathlib.Path('C:\\Users\\Lab\\Documents\\CryoMe Github\\results\\Caruso\\Caruso Settings Log.csv')
  
     res_log_data = np.array(pd.read_csv(input_res_log_path, header=2, error_bad_lines=False))
     set_log_data = np.array(pd.read_csv(input_set_log_path, header=1, error_bad_lines=False))
@@ -188,16 +190,16 @@ def main():
     input_res_log_data = np.array(input_res_log_data)
     input_set_log_data = np.array(input_set_log_data)
 
-    #stage_1_end_index = int(len(input_res_log_data)/2)
-    stage_1_end_index = int(len(input_res_log_data))
+    stage_1_end_index = int(len(input_res_log_data)/2)
+    #stage_1_end_index = int(len(input_res_log_data))
     
     #For Ave Gain
-    stage_1_avg_gains = input_res_log_data[:stage_1_end_index,15]
-    stage_2_avg_gains = input_res_log_data[stage_1_end_index:,15]
+    #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,16]
+    #stage_2_avg_gains = input_res_log_data[stage_1_end_index:,16]
     
     #For Ave Noise
-    #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,20]
-    #stage_2_avg_gains = input_res_log_data[stage_1_end_index:,20]
+    stage_1_avg_gains = input_res_log_data[:stage_1_end_index,21]
+    stage_2_avg_gains = input_res_log_data[stage_1_end_index:,21]
     
     #For Ave Cold Power
     #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,2]
@@ -207,23 +209,31 @@ def main():
     #stage_1_avg_gains = input_set_log_data[:stage_1_end_index,37]
     #stage_2_avg_gains = input_set_log_data[stage_1_end_index:,40]
 
-    stage_1_meas_dvs = input_set_log_data[:stage_1_end_index,37]
-    stage_1_meas_dis = input_set_log_data[:stage_1_end_index,38]
-    stage_2_meas_dvs = input_set_log_data[stage_1_end_index:,40]
-    stage_2_meas_dis = input_set_log_data[stage_1_end_index:,41]
+    stage_1_meas_dvs = input_set_log_data[:stage_1_end_index,43]
+    stage_1_meas_dis = input_set_log_data[:stage_1_end_index,44]
+    stage_2_meas_dvs = input_set_log_data[stage_1_end_index:,46]
+    stage_2_meas_dis = input_set_log_data[stage_1_end_index:,47]
 
-    stage_1_set_dvs = input_set_log_data[:stage_1_end_index,17]
-    stage_1_set_dis = input_set_log_data[:stage_1_end_index,18]
-    stage_2_set_dvs = input_set_log_data[stage_1_end_index:,20]
-    stage_2_set_dis = input_set_log_data[stage_1_end_index:,21]        
+    stage_1_set_dvs = input_set_log_data[:stage_1_end_index,23]
+    stage_1_set_dis = input_set_log_data[:stage_1_end_index,24]
+    stage_2_set_dvs = input_set_log_data[stage_1_end_index:,26]
+    stage_2_set_dis = input_set_log_data[stage_1_end_index:,27]  
+
+    #stage_1_set_dvs = input_set_log_data[:stage_1_end_index,25]
+    #stage_1_set_dis = input_set_log_data[:stage_1_end_index,26] 
     
-    #limit = 60
-    #for i in range(len(stage_1_avg_gains)):
-    #    if stage_1_avg_gains[i] > limit:
-    #        stage_1_avg_gains[i] = limit
-    #for i in range(len(stage_2_avg_gains)):
-    #    if stage_2_avg_gains[i] > limit:
-    #        stage_2_avg_gains[i] = limit
+    limit = 60
+    limitlow = 0
+    for i in range(len(stage_1_avg_gains)):
+        if stage_1_avg_gains[i] > limit:
+            stage_1_avg_gains[i] = limit
+        if stage_1_avg_gains[i] < limitlow:
+            stage_1_avg_gains[i] = limitlow
+    for i in range(len(stage_2_avg_gains)):
+        if stage_2_avg_gains[i] > limit:
+            stage_2_avg_gains[i] = limit
+        if stage_2_avg_gains[i] < limitlow:
+            stage_2_avg_gains[i] = limitlow
             
     # stage_1_meas_heatmap = GainMapData(
     #     stage_1_meas_dis, stage_1_meas_dvs, stage_1_avg_gains)
@@ -236,6 +246,10 @@ def main():
     
     stage_2_set_heatmap = GainMapData(
         stage_2_set_dis, stage_2_set_dvs, stage_2_avg_gains, True)
+
+    #For Stage 2 only sweeps
+    #stage_2_set_heatmap = GainMapData(
+    #    stage_2_set_dis, stage_2_set_dvs, stage_1_avg_gains, True)
     
     # stage_1_set_heatmap = GainMapData(
     #      stage_1_set_dvs, stage_1_set_dis, stage_1_avg_gains, True)
@@ -246,22 +260,23 @@ def main():
     stage_1_set_heatmap.plot_color_map_data(plot_vars, lna_id, 1)
     stage_2_set_heatmap.plot_color_map_data(plot_vars, lna_id, 2)
     
+    #print(stage_1_set_heatmap.reshaped_data)
     
-    plt.figure()
-    plt.plot(stage_1_set_dvs)
-    plt.plot(stage_1_meas_dvs)
+    # plt.figure()
+    # plt.plot(stage_1_set_dvs)
+    # plt.plot(stage_1_meas_dvs)
     
-    plt.figure()
-    plt.plot(stage_1_set_dis)
-    plt.plot(stage_1_meas_dis)
+    # plt.figure()
+    # plt.plot(stage_1_set_dis)
+    # plt.plot(stage_1_meas_dis)
     
-    plt.figure()
-    plt.plot(stage_2_set_dvs)
-    plt.plot(stage_2_meas_dvs)
+    # plt.figure()
+    # plt.plot(stage_2_set_dvs)
+    # plt.plot(stage_2_meas_dvs)
     
-    plt.figure()
-    plt.plot(stage_2_set_dis)
-    plt.plot(stage_2_meas_dis)
+    # plt.figure()
+    # plt.plot(stage_2_set_dis)
+    # plt.plot(stage_2_meas_dis)
     
     plt.figure()
     plt.plot(stage_1_avg_gains)
