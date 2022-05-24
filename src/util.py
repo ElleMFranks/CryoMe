@@ -79,6 +79,7 @@ def safe_query(
             # region Handle retries for each instrument.
             i += 1
             if i > 10:
+                logging.log(f'{command}')
                 if instr == 'spec an':
                     # Reset spec an and try again
                     if instr_settings is not None:
