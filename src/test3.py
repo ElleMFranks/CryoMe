@@ -29,12 +29,15 @@ class MapData:
         self.plot_data = plot_data
 
     def plot_color_map_data(self, plot_vars: replot.PlotVars, 
-                            lna_id: int, stage_number: int) -> None:
+                            lna_id: int, stage_number: int, PlotType: str) -> None:
         
         x_label = 'Drain Current / mA'
         y_label = 'Drain Voltage / V'
-        #title = f'LNA {lna_id} Stage {stage_number}\nMap of Average Gain (dB) over Bias Positions\n'
-        title = f'LNA {lna_id} Stage {stage_number}\nMap of Average Noise Temperature (K) over Bias Positions\n'
+        if (PlotType == "Gain"):
+            title = f'LNA {lna_id} Stage {stage_number}\nMap of Average Gain (dB) over Bias Positions\n'
+        if (PlotType == "Noise"):
+            title = f'LNA {lna_id} Stage {stage_number}\nMap of Average Noise Temperature (K) over Bias Positions\n'
+        
         fig, axis = plt.subplots()
 
         fig.set_facecolor(plot_vars.colours.dark)
@@ -104,9 +107,10 @@ class MapData:
                     vmax=self.plot_data.max()),
                 cmap=set_cmap),
                 ax=axis)
-        
-        cb.set_label('Gain (dB)', color=plot_vars.font_colour)
-        #cb.set_label('Noise Temperature (K)', color=plot_vars.font_colour)
+        if (PlotType == "Gain"):
+            cb.set_label('Gain (dB)', color=plot_vars.font_colour)
+        if (PlotType == "Noise"):
+            cb.set_label('Noise Temperature (K)', color=plot_vars.font_colour)
         plt.setp(plt.getp(cb.ax.axes, 'yticklabels'), color=plot_vars.font_colour)
         cb.outline.set_edgecolor(plot_vars.font_colour)
         cb.ax.yaxis.set_tick_params(color=plot_vars.font_colour)
@@ -149,8 +153,8 @@ class NoiseMapData(MapData):
         super().__init__(drain_currents, drain_voltages, avg_noises)
     
 def main():
-    input_session = 130
-    lna_id = 36
+    input_session = 415
+    lna_id = 51
     #input_res_log_path = pathlib.Path('C:\\Users\\m40046ef\\Documents\\Software Development\\CryoMe\\results\\Notable Sessions\\Caruso Results Log.csv')
     #input_set_log_path = pathlib.Path('C:\\Users\\m40046ef\\Documents\\Software Development\\CryoMe\\results\\Notable Sessions\\Caruso Settings Log.csv')
 
@@ -197,9 +201,14 @@ def main():
     #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,16]
     #stage_2_avg_gains = input_res_log_data[stage_1_end_index:,16]
     
+    stage_1_avg_gains = input_res_log_data[:stage_1_end_index,27]
+    stage_2_avg_gains = input_res_log_data[stage_1_end_index:,27]
+    
     #For Ave Noise
-    stage_1_avg_gains = input_res_log_data[:stage_1_end_index,21]
-    stage_2_avg_gains = input_res_log_data[stage_1_end_index:,21]
+    #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,21]
+    #stage_2_avg_gains = input_res_log_data[stage_1_end_index:,21]
+    stage_1_avg_noise = input_res_log_data[:stage_1_end_index,21]
+    stage_2_avg_noise = input_res_log_data[stage_1_end_index:,21]
     
     #For Ave Cold Power
     #stage_1_avg_gains = input_res_log_data[:stage_1_end_index,2]
@@ -208,21 +217,37 @@ def main():
     #For Bias Maps
     #stage_1_avg_gains = input_set_log_data[:stage_1_end_index,37]
     #stage_2_avg_gains = input_set_log_data[stage_1_end_index:,40]
-
+    
+    stage_1_meas_gvs = input_set_log_data[:stage_1_end_index,42]
     stage_1_meas_dvs = input_set_log_data[:stage_1_end_index,43]
     stage_1_meas_dis = input_set_log_data[:stage_1_end_index,44]
+    stage_2_meas_gvs = input_set_log_data[stage_1_end_index:,45]
     stage_2_meas_dvs = input_set_log_data[stage_1_end_index:,46]
     stage_2_meas_dis = input_set_log_data[stage_1_end_index:,47]
-
+    
+    stage_1_set_gvs = input_set_log_data[:stage_1_end_index,22]
     stage_1_set_dvs = input_set_log_data[:stage_1_end_index,23]
     stage_1_set_dis = input_set_log_data[:stage_1_end_index,24]
+    stage_2_set_gvs = input_set_log_data[stage_1_end_index:,25]
     stage_2_set_dvs = input_set_log_data[stage_1_end_index:,26]
-    stage_2_set_dis = input_set_log_data[stage_1_end_index:,27]  
-
-    #stage_1_set_dvs = input_set_log_data[:stage_1_end_index,25]
-    #stage_1_set_dis = input_set_log_data[:stage_1_end_index,26] 
+    stage_2_set_dis = input_set_log_data[stage_1_end_index:,27] 
     
-    limit = 60
+    #stage_1_set_dvs = np.array((0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,1.0,1.0,1.0,1.0))
+    #stage_1_set_dis = np.array((0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,1.0,1.0,1.0,1.0))
+    #stage_2_set_dvs = np.array((4,6,8,10,4,6,8,10,4,6,8,10))
+    #stage_2_set_dis = np.array((4,6,8,10,4,6,8,10,4,6,8,10))
+    
+    #For second stage sweeps
+    #stage_1_set_dvs = input_set_log_data[:stage_1_end_index,26]
+    #stage_1_set_dis = input_set_log_data[:stage_1_end_index,27] 
+    
+    #stage_1_set_dvs = np.array((0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,1.0,1.0,1.0,1.0))
+    #stage_2_set_dvs = np.array((0.6,0.6,0.6,0.6,0.8,0.8,0.8,0.8,1.0,1.0,1.0,1.0))
+    
+    #stage_1_set_dis = np.array((4,6,8,10,4,6,8,10,4,6,8,10))
+    #stage_2_set_dis = np.array((4,6,8,10,4,6,8,10,4,6,8,10))
+    
+    limit = 80
     limitlow = 0
     for i in range(len(stage_1_avg_gains)):
         if stage_1_avg_gains[i] > limit:
@@ -234,7 +259,23 @@ def main():
             stage_2_avg_gains[i] = limit
         if stage_2_avg_gains[i] < limitlow:
             stage_2_avg_gains[i] = limitlow
-            
+    
+    #limit = 80
+    #limitlow = 0
+    for i in range(len(stage_1_avg_noise)):
+        if stage_1_avg_noise[i] > limit:
+            stage_1_avg_noise[i] = limit
+        if stage_1_avg_noise[i] < limitlow:
+            stage_1_avg_noise[i] = limitlow
+    for i in range(len(stage_2_avg_noise)):
+        if stage_2_avg_noise[i] > limit:
+            stage_2_avg_noise[i] = limit
+        if stage_2_avg_noise[i] < limitlow:
+            stage_2_avg_noise[i] = limitlow
+    
+   
+  #  stage_2_avg_noise[3] = 0
+    
     # stage_1_meas_heatmap = GainMapData(
     #     stage_1_meas_dis, stage_1_meas_dvs, stage_1_avg_gains)
 
@@ -247,9 +288,17 @@ def main():
     stage_2_set_heatmap = GainMapData(
         stage_2_set_dis, stage_2_set_dvs, stage_2_avg_gains, True)
 
+#    stage_1_set_heatmap = GainMapData(
+#        stage_1_set_gvs, stage_1_set_dvs, stage_1_avg_gains, True)
+    
+#    stage_2_set_heatmap = GainMapData(
+#        stage_2_set_gvs, stage_2_set_dvs, stage_2_avg_gains, True)
+
+
+
     #For Stage 2 only sweeps
     #stage_2_set_heatmap = GainMapData(
-    #    stage_2_set_dis, stage_2_set_dvs, stage_1_avg_gains, True)
+    #    stage_1_set_dis, stage_1_set_dvs, stage_1_avg_gains, True)
     
     # stage_1_set_heatmap = GainMapData(
     #      stage_1_set_dvs, stage_1_set_dis, stage_1_avg_gains, True)
@@ -257,30 +306,121 @@ def main():
     # stage_2_set_heatmap = GainMapData(
     #     stage_2_set_dvs, stage_2_set_dis, stage_2_avg_gains, True)
     
-    stage_1_set_heatmap.plot_color_map_data(plot_vars, lna_id, 1)
-    stage_2_set_heatmap.plot_color_map_data(plot_vars, lna_id, 2)
+    stage_1_set_heatmap.plot_color_map_data(plot_vars, lna_id, 1, 'Gain')
+    stage_2_set_heatmap.plot_color_map_data(plot_vars, lna_id, 2, 'Gain')
+    
+    stage_1_set_heatmap = GainMapData(
+        stage_1_set_dis, stage_1_set_dvs, stage_1_avg_noise, True)
+    
+    stage_2_set_heatmap = GainMapData(
+        stage_2_set_dis, stage_2_set_dvs, stage_2_avg_noise, True)
+
+#    stage_1_set_heatmap = GainMapData(
+#        stage_1_set_gvs, stage_1_set_dvs, stage_1_avg_noise, True)
+    
+#    stage_2_set_heatmap = GainMapData(
+#        stage_2_set_gvs, stage_2_set_dvs, stage_2_avg_noise, True)    
+
+    #For Stage 2 only sweeps
+    #stage_2_set_heatmap = GainMapData(
+    #    stage_1_set_dis, stage_1_set_dvs, stage_1_avg_noise, True)
+    
+    
+    
+    stage_1_set_heatmap.plot_color_map_data(plot_vars, lna_id, 1, 'Noise')
+    stage_2_set_heatmap.plot_color_map_data(plot_vars, lna_id, 2, 'Noise')
+    
+     
+    NumDIpnts = 4
+    NumDVpnts = 3
+   
+    Stage1DI = []
+    Stage1DV = []
+    
+    Stage1DINoise = []
+    Stage1DIGain = []
+    
+    Stage1DVNoise = []
+    Stage1DVGain = []
+    
+    
+    # for i in range(NumDVpnts):
+    #      Stage1DI.append([stage_1_set_dis[i*(NumDVpnts+1)],stage_1_set_dis[i*(NumDVpnts+1)+1],stage_1_set_dis[i*(NumDVpnts+1)+2],stage_1_set_dis[i*(NumDVpnts+1)+3]])
+    #      Stage1DINoise.append([stage_1_avg_noise[i*(NumDVpnts+1)],stage_1_avg_noise[i*(NumDVpnts+1)+1],stage_1_avg_noise[i*(NumDVpnts+1)+2],stage_1_avg_noise[i*(NumDVpnts+1)+3]])
+    #      Stage1DIGain.append([stage_1_avg_gains[i*(NumDVpnts+1)],stage_1_avg_gains[i*(NumDVpnts+1)+1],stage_1_avg_gains[i*(NumDVpnts+1)+2],stage_1_avg_gains[i*(NumDVpnts+1)+3]])
+    
+    # for i in range(NumDIpnts):
+    #     Stage1DV.append([stage_1_set_dvs[i],stage_1_set_dvs[i+NumDIpnts],stage_1_set_dvs[i+2*NumDIpnts]])
+    #     Stage1DVNoise.append([stage_1_avg_noise[i],stage_1_avg_noise[i+NumDIpnts],stage_1_avg_noise[i+2*NumDIpnts]])
+    #     Stage1DVGain.append([stage_1_avg_gains[i],stage_1_avg_gains[i+NumDIpnts],stage_1_avg_gains[i+2*NumDIpnts]])
+    
+    
+    
+    # plt.figure()
+    # for i in range(NumDVpnts):
+    #     plt.plot(Stage1DI[i],Stage1DINoise[i],label="Vds="+str(Stage1DV[0][i])+"V") 
+    # plt.legend()
+    # plt.ylabel('Ave Noise (K)')
+    # plt.xlabel('Drain Current (mA)')
+    
+    # plt.figure()
+    # for i in range(NumDVpnts):
+    #     plt.plot(Stage1DI[i],Stage1DIGain[i],label="Vds="+str(Stage1DV[0][i])+"V") 
+    # plt.legend()
+    # plt.ylabel('Ave Gain (dB)')
+    # plt.xlabel('Drain Voltage (V)')
+    
+    # plt.figure()
+    # for i in range(NumDIpnts):
+    #     plt.plot(Stage1DV[i],Stage1DVNoise[i],label="Id="+str(Stage1DI[0][i])+"mA") 
+    
+    # plt.legend()
+    # plt.ylabel('Ave Noise (K)')
+    # plt.xlabel('Drain Current (mA)')
+    
+    
+    # plt.figure()
+    # for i in range(NumDIpnts):
+    #     plt.plot(Stage1DV[i],Stage1DVGain[i],label="Id="+str(Stage1DI[0][i])+"mA") 
+    
+    # plt.legend()
+    # plt.ylabel('Ave Gain (dB)')
+    # plt.xlabel('Drain Voltage (V)')
     
     #print(stage_1_set_heatmap.reshaped_data)
+    plt.figure()
+    plt.plot(stage_1_set_gvs)
+    plt.plot(stage_1_meas_gvs)
     
-    # plt.figure()
-    # plt.plot(stage_1_set_dvs)
-    # plt.plot(stage_1_meas_dvs)
+    plt.figure()
+    plt.plot(stage_1_set_dvs)
+    plt.plot(stage_1_meas_dvs)
+       
+    plt.figure()
+    plt.plot(stage_1_set_dis)
+    plt.plot(stage_1_meas_dis)
     
-    # plt.figure()
-    # plt.plot(stage_1_set_dis)
-    # plt.plot(stage_1_meas_dis)
+    plt.figure()
+    plt.plot(stage_2_set_gvs)
+    plt.plot(stage_2_meas_gvs)
     
-    # plt.figure()
-    # plt.plot(stage_2_set_dvs)
-    # plt.plot(stage_2_meas_dvs)
+    plt.figure()
+    plt.plot(stage_2_set_dvs)
+    plt.plot(stage_2_meas_dvs)
     
-    # plt.figure()
-    # plt.plot(stage_2_set_dis)
-    # plt.plot(stage_2_meas_dis)
+    plt.figure()
+    plt.plot(stage_2_set_dis)
+    plt.plot(stage_2_meas_dis)
     
     plt.figure()
     plt.plot(stage_1_avg_gains)
     plt.plot(stage_2_avg_gains)
+    
+    plt.figure()
+    plt.plot(stage_1_avg_noise)
+    plt.plot(stage_2_avg_noise)
+ 
+    
     
 
     print()

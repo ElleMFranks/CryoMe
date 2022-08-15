@@ -910,9 +910,15 @@ class BackEndLNASettings:
         # endregion
 
         # region LNAs.
+        #self.rtbe_chain_a_lna = LNABiasSet(
+        #    'RTBE', LNACryoLayout(cryo_chain, 1, 1, False, False), be_d_i_lim,
+        #    LNAStages(rtbe_chain_a_stage_1))
+        
+        #new code to always set the rt be lna from ch1
         self.rtbe_chain_a_lna = LNABiasSet(
-            'RTBE', LNACryoLayout(cryo_chain, 1, 1, False, False), be_d_i_lim,
+            'RTBE', LNACryoLayout(1, 1, 1, False, False), be_d_i_lim,
             LNAStages(rtbe_chain_a_stage_1))
+
         self.crbe_chain_1_lna = LNABiasSet(
             'CRBE', LNACryoLayout(1, 1, 1, False, False), be_d_i_lim,
             LNAStages(crbe_chain_1_stage_1))

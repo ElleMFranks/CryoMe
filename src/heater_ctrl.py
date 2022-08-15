@@ -223,7 +223,7 @@ def _set_lna_temp(
                     and post_heater_status == '0\r':
                 lna_temp_set = True
             else:
-                log.warning(f'Failed heating loop, trying again.'
+                log.warning(f'Failed LNA heating loop, trying again.'
                             f'Pre-set status: {pre_heater_status}.  '
                             f'Post-set status: {post_heater_status}.  '
                             f'Temperature: {lna_temp}K.  '
@@ -271,7 +271,7 @@ def _set_load_temp(
                     and post_heater_status == '0\r':
                 load_temp_set = True
             else:
-                log.warning(f'Failed heating loop, trying again.'
+                log.warning(f'Failed Load heating loop, trying again.'
                             f'Pre-set status: {pre_heater_status}.  '
                             f'Post-set status: {post_heater_status}.  '
                             f'Temperature: {load_temp}K.  '

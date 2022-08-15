@@ -26,9 +26,31 @@ ToDo:
     * 1:3 Finish metaproc.py.
     * 3:3 Re-lint code.
     * 3:2 Analysis anomaly handling.
+    
 
 Questions:
-    * 
+    * 1:1 Move switch config to after safe bias check (check all LNAs are off
+    before chaging the switch)
+    * 1:1(?) New version of code has broken the saving of the backend LNA meas values
+    to the results log file.
+    *3:? (might not be needed but could be useful) Monitor the bias of the backend LNAs when
+    changing the temperatures
+    *Drain voltage limit?
+    *Error printing out message after heater loop failure
+    *Sometimes there is no blank line between measurements in the settings and results files,
+    possibly either before or after MEM measurements
+    *Add code to check heater status after the frequency sweep is complete,
+    print results to cmd window and log file to aid error finding
+
+    *Add code to put lakeshore back into autosweep mode after measurements are finished
+
+Changes
+    * Added LNA and Load to the error reporting set_*_temp functions, 
+    heater_ctrl line 226 and 274
+    * Changed back_end_lna_setup() in chain_select.py lines 131 to 144 
+    to perminantly bias RT BE LNA from ch1
+    * Changed Class BackEndLNASettings in lnas.py lines 913 to 920 
+    to perminantly bias RT BE LNA from ch1
 
 """
 

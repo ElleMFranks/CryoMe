@@ -62,6 +62,8 @@ import bias_ctrl
 import error_handling
 import heater_ctrl
 import util
+
+import time
 # endregion
 
 
@@ -341,6 +343,14 @@ class SignalAnalyserSettings(SpecAnFreqSettings, SpecAnAmplSettings,
         util.safe_write(f':POW:ATT {self.atten} dB', buffer_time, sarm)
         util.safe_write(':POW:GAIN:BAND LOW', buffer_time, sarm)
         util.safe_write(':POW:GAIN ON', buffer_time, sarm)
+        
+        #Added by Will as test for first measurement problem
+        #util.safe_write('INIT:CONT 0', buffer_time, sarm)
+        #util.safe_write('INIT:IMM', buffer_time, sarm)
+        #util.safe_query('*OPC?', buffer_time, sarm, 'spec an')
+        #util.safe_query(':CALC:MARK1:Y?', buffer_time, sarm, 'spec an')
+        #util.safe_write('INIT:CONT 1', buffer_time, sarm)
+
         error_status = util.safe_query(
             'SYSTem:ERRor?', buffer_time, sarm, 'spec an')
         if error_status != '+0,"No error"':
@@ -460,6 +470,15 @@ class SignalGeneratorSettings(FreqSweepSettings):
             f'PL {self.sig_gen_pwr_lvls[0]} DM', buffer_time, sig_gen_rm)
         util.safe_write(
             f'CW {self.if_freq_array[0]} GZ', buffer_time, sig_gen_rm)
+        
+        #Added by Will to solve the first measurement problem
+        for i in range(len(self.if_freq_array)):
+           # print("SG Init: "+str(i))
+            util.safe_write(
+                f'PL {self.sig_gen_pwr_lvls[i]} DM', buffer_time, sig_gen_rm)
+            util.safe_write(
+                f'CW {self.if_freq_array[i]} GZ', buffer_time, sig_gen_rm)
+            time.sleep(0.2)
 
     def set_sig_gen_pwr_lvls(self, trimmed_pwr_lvls: list) -> None:
         """Set the power levels for the signal generator."""

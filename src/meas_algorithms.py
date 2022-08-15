@@ -370,7 +370,8 @@ def alternating_temps(
 
 def calibration_measurement(settings: config_handling.Settings,
                             res_managers: instruments.ResourceManagers,
-                            trimmed_loss: list[float]) -> None:
+                            trimmed_loss: list[float],
+                            timings: outputs.SessionTimings) -> None:
     """Triggers and saves a calibration measurement.
 
     Calibration measurements are output into the calibration folder into
@@ -407,7 +408,7 @@ def calibration_measurement(settings: config_handling.Settings,
         crbe_stg = be_lna_settings.crbe_chain_3_lna.stage_1
 
     calibration_result = measurement.measurement(
-        settings, res_managers, config_handling.TrimmedInputs(trimmed_loss))
+        settings, res_managers, config_handling.TrimmedInputs(trimmed_loss), timings)
 
     be_biases = [crbe_lna_bias, rtbe_lna_bias]
     be_stages = [crbe_stg, rtbe_stg]

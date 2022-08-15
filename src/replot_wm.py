@@ -94,9 +94,9 @@ def config_plot(meta_data: Union[StdMetaData, CalMetaData],
     # region Configure objects.
     # dark, light, blue, green, orange
     colours = PlotColours(
-        '#181818', '#eeeeee', '#030bfc', '#057510', '#f74600')
-    pixel_line_width = 0.7
-    label_font_size = 12
+        '#181818', '#ffffff', '#030bfc', '#057510', '#f74600')
+    pixel_line_width = 1
+    label_font_size = 14
     x_label = 'Frequency / GHz'
     y_label = 'Noise Temperature / Kelvin'
     fig, axis = plt.subplots()
@@ -187,8 +187,7 @@ def make_cal_plot(
 
 def make_std_plot(
         axis: plt.Axes, meta_data: StdMetaData, plot_vars: PlotVars,
-        trimmed_data: TrimmedInStdData, 
-        imported_lna_data: list[dict]) -> plt.Axes:
+        trimmed_data: TrimmedInStdData) -> plt.Axes:
     """Plots standard plot."""
     # region Plot standard results.
     # region Set title, and plot details text box.
@@ -199,18 +198,15 @@ def make_std_plot(
                    + f' - Session ID: {meta_data.session_id}' \
                    + f' - Bias ID: {meta_data.bias_id}'
 
-    plot_labels = ['Calibrated & Loss Corrected',
-                   'Uncalibrated & Loss Corrected',
-                   'Uncalibrated & Not Loss Corrected',
-                   'Gain']
+    plot_labels = ['Noise','Gain']
 
-    plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
+    #plot_detail_box = offsetbox.AnchoredText(plot_details, loc='upper right')
     # endregion
 
     # region Plot the noise
     ax2 = axis.twinx()
 
-    axis.add_artist(plot_detail_box)
+    #axis.add_artist(plot_detail_box)
 
     axis.set_title(plot_title, 
                    color=plot_vars.font_colour, 
@@ -221,28 +217,16 @@ def make_std_plot(
                                     color=plot_vars.colours.blue,
                                     linewidth=plot_vars.pixel_line_width, 
                                     label=plot_labels[0])
-
-    t_corrected_plot = axis.plot(trimmed_data.freqs, 
-                                 trimmed_data.uncal_loss_cor,
-                                 color=plot_vars.colours.orange, 
-                                 linewidth=plot_vars.pixel_line_width,
-                                 label=plot_labels[1])
-
-    t_uncal_plot = axis.plot(trimmed_data.freqs, 
-                             trimmed_data.uncal_loss_uncor,
-                             color=plot_vars.colours.green, 
-                             linewidth=plot_vars.pixel_line_width,
-                             label=plot_labels[2])
     
     gain_plot = ax2.plot(trimmed_data.freqs, 
                          trimmed_data.gain, 
                          color=plot_vars.colours.dark,
                          linewidth=plot_vars.pixel_line_width, 
-                         label=plot_labels[3])
+                         label=plot_labels[1])
     # endregion
 
     # region Create legend, and set up Gain axis.
-    plots = noise_temp_cor_plot + t_corrected_plot + t_uncal_plot + gain_plot
+    plots = noise_temp_cor_plot + gain_plot
     labels = (plot.get_label() for plot in plots)
 
     axis.legend(plots, 
@@ -260,7 +244,7 @@ def make_std_plot(
                     labelsize=plot_vars.label_font_size)
 
     ax2.set_ylim(0, meta_data.user_inputs.new_gain_y_limit)
-    axis.add_artist(get_bias_box(imported_lna_data))
+    #axis.add_artist(get_bias_box(imported_lna_data))
     # endregion
 
     return axis
@@ -268,8 +252,7 @@ def make_std_plot(
 
 def replot_data(
         trimmed_data: Union[TrimmedInCalData, TrimmedInStdData], 
-        meta_data: Union[StdMetaData, CalMetaData],
-        imported_lna_data: list[dict]) -> None:
+        meta_data: Union[StdMetaData, CalMetaData]) -> None:
     """Re-plots the trimmed data."""
     # region Replot data.
     # region Set plot variables.
@@ -280,13 +263,13 @@ def replot_data(
     # region Handle calibration results.
     if isinstance(meta_data, CalMetaData):
         axis = make_cal_plot(
-            axis, meta_data, plot_vars, trimmed_data, imported_lna_data)
+            axis, meta_data, plot_vars, trimmed_data)
     # endregion
 
     # region Handle standard results.
     elif isinstance(meta_data, StdMetaData):
         axis = make_std_plot(
-            axis, meta_data, plot_vars, trimmed_data, imported_lna_data)
+            axis, meta_data, plot_vars, trimmed_data)
     # endregion
 
     else:
@@ -337,34 +320,40 @@ def get_user_inputs() -> UserInputs:
     results_folder = None
     results_csv_title = None
     
-    while not isinstance(dark_mode_plot, bool):
-        dark_mode_plot = input('New plot in dark mode? (y/n): ')
-        if dark_mode_plot == 'y':
-            dark_mode_plot = True
-        if dark_mode_plot == 'n':
-            dark_mode_plot = False
+    # while not isinstance(dark_mode_plot, bool):
+    #     dark_mode_plot = input('New plot in dark mode? (y/n): ')
+    #     if dark_mode_plot == 'y':
+    #         dark_mode_plot = True
+    #     if dark_mode_plot == 'n':
+    #         dark_mode_plot = False
 
-    while not isinstance(replot_all_in_session_folder, bool):
-        replot_all_in_session_folder = input(
-            'Replot all in session folder? (y/n): ')
-        if replot_all_in_session_folder == 'y':
-            replot_all_in_session_folder = True
-        if replot_all_in_session_folder == 'n':
-            replot_all_in_session_folder = False
+    # while not isinstance(replot_all_in_session_folder, bool):
+    #     replot_all_in_session_folder = input(
+    #         'Replot all in session folder? (y/n): ')
+    #     if replot_all_in_session_folder == 'y':
+    #         replot_all_in_session_folder = True
+    #     if replot_all_in_session_folder == 'n':
+    #         replot_all_in_session_folder = False
 
-    while not isinstance(new_noise_y_limit, int):
-        try:
-            new_noise_y_limit = int(
-                input('Please enter new integer noise y limit: '))
-        except:
-            continue
+    # while not isinstance(new_noise_y_limit, int):
+    #     try:
+    #         new_noise_y_limit = int(
+    #             input('Please enter new integer noise y limit: '))
+    #     except:
+    #         continue
 
-    while not isinstance(new_gain_y_limit, int):
-        try:
-            new_gain_y_limit = int(
-                input('Please enter new integer gain y limit: '))
-        except:
-            continue
+    # while not isinstance(new_gain_y_limit, int):
+    #     try:
+    #         new_gain_y_limit = int(
+    #             input('Please enter new integer gain y limit: '))
+    #     except:
+    #         continue
+  
+    dark_mode_plot = False
+    replot_all_in_session_folder = True
+    new_noise_y_limit = 100
+    new_gain_y_limit = 25
+  
     
     while not isinstance(results_folder, pathlib.Path):
         try:
@@ -420,81 +409,6 @@ def pull_data(meta_data: Union[CalMetaData, StdMetaData]) -> np.ndarray:
             except:
                 continue
 
-def pull_lna_data(meta_data: Union[CalMetaData, StdMetaData]) -> list[dict]:
-    """Pulls LNA data from results csv. Returns as list of dicts."""
-    
-    # region Import data.
-    with open(pathlib.Path(
-        f'{meta_data.user_inputs.input_paths}.csv')) as csv_file:
-        csv_reader = csv.reader(csv_file)
-        rows = list(csv_reader)
-        if isinstance(meta_data, StdMetaData):
-            lna_1_row = rows[1]
-            lna_2_row = rows[2]
-            be_lna_row = rows[3]
-        elif isinstance(meta_data, CalMetaData):
-            be_lna_row = rows[1]
-    # endregion
-
-    # region Standard results bias set.
-    if isinstance(meta_data, StdMetaData):
-        be_row = 3
-
-        lna_1_biases = {
-            's1_gv': lna_1_row[2],
-            's1_dv': lna_1_row[4],
-            's1_di': lna_1_row[6],
-            's2_gv': lna_1_row[9],
-            's2_dv': lna_1_row[11],
-            's2_di': lna_1_row[13],
-            's3_gv': lna_1_row[16],
-            's3_dv': lna_1_row[18],
-            's3_di': lna_1_row[20]}
-        
-        lna_2_biases = {
-            's1_gv': lna_2_row[2],
-            's1_dv': lna_2_row[4],
-            's1_di': lna_2_row[6],
-            's2_gv': lna_2_row[9],
-            's2_dv': lna_2_row[11],
-            's2_di': lna_2_row[13],
-            's3_gv': lna_2_row[16],
-            's3_dv': lna_2_row[18],
-            's3_di': lna_2_row[20]}
-    # endregion
-
-    # region Calibration results bias set.
-    if isinstance(meta_data, CalMetaData):
-        be_row = 1
-
-        lna_1_biases = {
-            's1_gv': 'NA',
-            's1_dv': 'NA',
-            's1_di': 'NA',
-            's2_gv': 'NA',
-            's2_dv': 'NA',
-            's2_di': 'NA',
-            's3_gv': 'NA',
-            's3_dv': 'NA',
-            's3_di': 'NA'}
-        
-        lna_2_biases = lna_1_biases
-    # endregion
-
-    # region Back end results.
-    rtbe_bias = {
-        'gv': be_lna_row[2],
-        'dv': be_lna_row[4],
-        'di': be_lna_row[6]}
-
-    crbe_bias = {
-        'gv': be_lna_row[9],
-        'dv': be_lna_row[11],
-        'di': be_lna_row[13]}
-    # endregion
-    
-
-    return [rtbe_bias, crbe_bias, lna_1_biases, lna_2_biases]
 
 def get_meta_data(user_inputs: UserInputs) -> Union[CalMetaData, StdMetaData]:
     """Returns the meta data for the new plot."""
@@ -547,7 +461,7 @@ def replot(process_number: int, user_inputs: UserInputs) -> None:
     # endregion
 
     # region Import LNA data.
-    imported_lna_data = pull_lna_data(meta_data)
+    #imported_lna_data = pull_lna_data(meta_data)
     # endregion
 
     # region Trim imported data.
@@ -555,7 +469,9 @@ def replot(process_number: int, user_inputs: UserInputs) -> None:
     # endregion
 
     # region Replot and save imported data.
-    replot_data(trimmed_data, meta_data, imported_lna_data)
+    #replot_data(trimmed_data, meta_data, imported_lna_data)
+    replot_data(trimmed_data, meta_data)
+    
     print(f'File {process_number} replotted.')
     # endregion
 

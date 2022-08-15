@@ -22,6 +22,8 @@ import meas_algorithms
 import config_handling
 import util
 import outputs
+
+import heater_ctrl
 # endregion
 
 
@@ -92,6 +94,7 @@ def _trigger_algorithm(settings: config_handling.Settings,
     # region Calibration.
     elif meas_settings.measure_method == 'Calibration':
         log.info('Triggered calibration measurement.')
+
         meas_algorithms.calibration_measurement(
             settings, res_managers, trimmed_input_data.trimmed_loss, timings)
     # endregion
@@ -273,6 +276,11 @@ def start_session(settings: config_handling.Settings) -> None:
     log.info('Instrumentation initialised.')
     # endregion
 
+    #Added by Will
+    # Heat LNAs before setting any bias values
+    #heater_ctrl._set_lna_temp(res_managers.tc_rm, instr_settings, 
+    #                          instr_settings.temp_ctrl_settings.stabilisation_times.first_on_lna)
+
     
     # region Set back end (cryostat and room-temperature) LNAs.
     timings.start_to_be_bias.end_time = perf_counter()
@@ -292,6 +300,8 @@ def start_session(settings: config_handling.Settings) -> None:
     timings.be_biasing.end_time = perf_counter()
     timings.be_to_meas_lna_biasing.start_time = perf_counter()
     # endregion
+
+    
 
     # region Set up nominal LNA bias points.
     log.cdebug('Setting up nominal LNA bias objects...')

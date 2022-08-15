@@ -107,6 +107,9 @@ def _meas_loop(
         bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} '
                    '[Elapsed: {elapsed}, To Go: {remaining}]{postfix}')
 
+    #Added by Will to turn on Autosweep on Lakeshore
+    util.safe_write(f'SCAN {tc_settings.load_lsch},1', buffer_time, tc_rm)
+
     i = 0
     loop_start = perf_counter()
     while i < len(inter_freqs_array):
@@ -123,6 +126,8 @@ def _meas_loop(
                     f'PL {sig_gen_settings.sig_gen_pwr_lvls[i]} DM')
                 sleep(buffer_time)
                 sig_gen_rm.write(f'CW {inter_freqs_array[i]} GZ')
+                #print('Freq: ' + str(inter_freqs_array[i]) + 
+                #      ', Pwr: ' + str(sig_gen_settings.sig_gen_pwr_lvls[i]))
             # endregion
 
             # region Store pre-loop temperatures, and during loop load temp.
@@ -152,13 +157,14 @@ def _meas_loop(
                 marker_power = util.safe_query(
                     ':CALC:MARK1:Y?', buffer_time, spec_an_rm, 'spec an')
                 powers.append(float(marker_power.strip()))
-            else:
-                sleep(0.2)
-                if hot_or_cold == 'Hot':
-                    marker_power = -50 + round(random.uniform(1.2, 2), 2)
-                else:
-                    marker_power = -50 + round(random.uniform(0.3, 0.6), 2)
-                powers.append(marker_power)
+                #print('Power: ' + str(marker_power))
+            #else:
+                #sleep(0.2)
+                #if hot_or_cold == 'Hot':
+                #    marker_power = -50 + round(random.uniform(1.2, 2), 2)
+                #else:
+                #    marker_power = -50 + round(random.uniform(0.3, 0.6), 2)
+                #powers.append(marker_power)
             # endregion
 
             load_temps.append(load_temp)
@@ -166,6 +172,8 @@ def _meas_loop(
             pre_loop_extra_1_temps.append(pre_loop_extra_1_temp)
             pre_loop_extra_2_temps.append(pre_loop_extra_2_temp)
             # endregion
+
+            
 
             loop_end = perf_counter()
 
@@ -178,6 +186,12 @@ def _meas_loop(
     # endregion
     pbar.close()
     log.info('Frequency sweep completed.')
+
+    #Added by Will
+    # region turn off heaters
+    #if settings.instr_settings.temp_ctrl_settings.temp_ctrl_en:
+    #    util.safe_write('*RST', 0.5, res_managers.tc_rm)
+    # endregion
 
     if isinstance(timings.first_meas_loop.time, float):
         timings.second_meas_loop.start_time = loop_start
@@ -242,10 +256,12 @@ def _closest_temp_then_other(
 #            closer_to_hot = not closer_to_hot
     
     #Changed by Will to fix Cold then Hot measurements
-    cold = _meas_loop(settings, 'Cold', res_managers, timings)
-    timings.second_thermal.start_time = perf_counter()
-    hot = _meas_loop(settings, 'Hot', res_managers, timings)
+    #cold = _meas_loop(settings, 'Cold', res_managers, timings)
+    #hot = _meas_loop(settings, 'Hot', res_managers, timings)
     
+    timings.second_thermal.start_time = perf_counter()
+    #hot = _meas_loop(settings, 'Hot', res_managers, timings)
+    #cold = _meas_loop(settings, 'Cold', res_managers, timings)
 
     return [hot, cold]
     # endregion

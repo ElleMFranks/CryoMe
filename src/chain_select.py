@@ -128,8 +128,17 @@ def back_end_lna_setup(
     if psu_rm is not None and use_g_v_or_d_i == 'g v':
         # region If direct set uncor manual input g/dV to biasing.
         if be_biases.rt_backend_en:
+            #original code for running one chain at a time with 
+            #the rt be LNA controlled by that channel of the PSU
+            #bias_ctrl.direct_set_stage(
+            #    psu_rm, bias_ctrl.CardChnl(chain, 8),
+            #    instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
+            #    [bias_ctrl.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
+            #     bias_ctrl.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
+
+            #New code for always running the rt be lna from channel 1 of the PSU
             bias_ctrl.direct_set_stage(
-                psu_rm, bias_ctrl.CardChnl(chain, 8),
+                psu_rm, bias_ctrl.CardChnl(1, 8),
                 instruments.PSULimits(psu_settings.v_step_lim, 18), buffer_time,
                 [bias_ctrl.GOrDVTarget('g', rtbe_lna.stage_1.g_v),
                  bias_ctrl.GOrDVTarget('d', rtbe_lna.stage_1.d_v_at_psu)])
@@ -158,6 +167,7 @@ def back_end_lna_setup(
             bias_ctrl.adaptive_bias_set(
                 psu_rm, rtbe_lna, psu_settings, buffer_time,
                 settings.file_struc, False)
+        
         if be_biases.cryo_backend_en:
             bias_ctrl.adaptive_bias_set(
                 psu_rm, crbe_lna, psu_settings, buffer_time,
